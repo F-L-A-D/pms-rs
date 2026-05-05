@@ -3,8 +3,9 @@ use crate::domain::reservation::Reservation;
 
 pub fn create_reservation(
     inventory: &mut HotelInventory,
-    reservation: Reservation,
+    reservation: &Reservation,
 ) {
-    inventory.add_reservation(1);
-    let _ = reservation;
+    for date in reservation.nights() {
+        inventory.add_reservation(date, 1);
+    }
 }

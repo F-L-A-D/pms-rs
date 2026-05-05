@@ -1,7 +1,6 @@
 use chrono::NaiveDate;
 
 use pms_rs::db::connection::Db;
-use pms_rs::domain::inventory::HotelInventory;
 use pms_rs::usecase::reservation::create::create;
 use pms_rs::adapter::stay_input::StayInput;
 use pms_rs::repository::sqlite::repository::SqliteReservationRepository;
@@ -9,14 +8,13 @@ use pms_rs::repository::sqlite::repository::SqliteReservationRepository;
 #[tokio::test]
 async fn create_should_persist_to_db() {
     let db = Db::new("sqlite::memory:").await;
-    let mut inv = HotelInventory::new(10);
-
+    
     let input = StayInput::CheckInAndNights {
         check_in: NaiveDate::from_ymd_opt(2026, 5, 1).unwrap(),
         nights: 2,
     };
 
-    create(&db, &mut inv, "r1".into(), input)
+    create(&db, "r1".into(), input)
         .await
         .unwrap();
 

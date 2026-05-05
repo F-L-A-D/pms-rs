@@ -14,14 +14,21 @@ impl HotelInventory {
             reserved: HashMap::new(),
         }
     }
-
-    pub fn add_reservation(&mut self, date: NaiveDate, rooms: i32) {
-        let entry = self.reserved.entry(date).or_insert(0);
-        *entry += rooms;
-    }
-
+    
     pub fn oversolved(&self, date: NaiveDate) -> i32 {
         let reserved = self.reserved.get(&date).unwrap_or(&0);
         reserved - self.total_rooms
+    }
+    fn apply_delta(&mut self, date: NaiveDate, delta: i32) {
+        let entry = self.reserved.entry(date).or_insert(0);
+        *entry += delta;
+    }
+
+    pub fn add_reservation(&mut self, date: NaiveDate, rooms: i32) {
+        self.apply_delta(date, rooms);
+    }
+
+    pub fn remove_reservation(&mut self, date: NaiveDate, rooms: i32) {
+        self.apply_delta(date, -rooms);
     }
 }

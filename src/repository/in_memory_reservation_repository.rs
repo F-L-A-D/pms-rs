@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::domain::reservation::Reservation;
 use crate::repository::reservation_repository::ReservationRepository;
 
+#[derive(Clone)]
 pub struct InMemoryReservationRepository {
     store: HashMap<String, Reservation>,
 }

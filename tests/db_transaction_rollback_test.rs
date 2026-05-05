@@ -7,7 +7,6 @@ use chrono::NaiveDate;
 async fn should_rollback_on_inventory_error() {
     let db = Db::new("sqlite::memory:").await;
 
-    // 1回目成功
     create(
         &db,
         "r1".into(),
@@ -19,7 +18,6 @@ async fn should_rollback_on_inventory_error() {
     .await
     .unwrap();
 
-    // 強制的に不正（cancel2回とか）
     let result = create(
         &db,
         "r2".into(),
@@ -31,7 +29,4 @@ async fn should_rollback_on_inventory_error() {
     .await;
 
     assert!(result.is_err());
-
-    // DB状態が壊れてないことを確認
-    // （ここは必要ならSELECT書く）
 }

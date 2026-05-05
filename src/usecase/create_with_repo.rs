@@ -1,27 +1,39 @@
+use crate::db::connection::Db;
+use crate::repository::sqlite::repository::SqliteReservationRepository;
 use crate::adapter::stay_input::{StayInput, normalize};
 use crate::domain::inventory::HotelInventory;
 use crate::domain::reservation::Reservation;
-use crate::repository::reservation_repository::ReservationRepository;
-use crate::transaction::transaction::run_in_transaction;
 
-pub fn create_with_repo<R: ReservationRepository + Clone>(
-    repo: &mut R,
+pub async fn create_with_repo(
+    db: &Db,
     inventory: &mut HotelInventory,
     id: String,
     input: StayInput,
 ) -> Result<(), String> {
 
-    run_in_transaction(repo, inventory, |repo, inventory| {
+    let mut tx = db.begin_tx().await;
+
+    let result = async {
         let (check_in, check_out) = normalize(input)?;
+        let reservation = Reservation::new(id, check_in, check_out)?;
 
-        let reservation = Reservation::new(id.clone(), check_in, check_out)?;
-
-        for date in reservation.nights() {
-            inventory.add_reservation(date, 1);
+        for d in reservation.nights() {
+            inventory.add_reservation(d, 1);
         }
 
-        repo.save(reservation);
+        SqliteReservationRepository::save_tx(&mut tx, &reservation).await?;
 
         Ok(())
-    })
+    }.await;
+
+    match result {
+        Ok(_) => {
+            tx.commit().await.unwrap();
+            Ok(())
+        }
+        Err(e) => {
+            tx.rollback().await.unwrap();
+            Err(e)
+        }
+    }
 }

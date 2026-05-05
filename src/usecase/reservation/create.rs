@@ -16,6 +16,8 @@ pub async fn create(
         let (check_in, check_out) = normalize(input)?;
         let reservation = Reservation::new(id, check_in, check_out)?;
 
+        SqliteReservationRepository::save_tx(&mut tx, &reservation).await?;
+
         for d in reservation.nights() {
             SqliteInventoryRepository::add_tx(
                 &mut tx,
@@ -24,8 +26,6 @@ pub async fn create(
                 10,
             ).await?;
         }
-
-        SqliteReservationRepository::save_tx(&mut tx, &reservation).await?;
 
         Ok(())
     }.await;

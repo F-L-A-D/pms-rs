@@ -23,6 +23,8 @@ pub async fn modify(
         res.check_in = check_in;
         res.check_out = check_out;
 
+        SqliteReservationRepository::save_tx(&mut tx, &res).await?;
+
         let new_dates = res.nights();
 
         for d in old_dates {
@@ -32,8 +34,6 @@ pub async fn modify(
         for d in new_dates {
             SqliteInventoryRepository::add_tx(&mut tx, &d.to_string(), 1, 10).await?;
         }
-
-        SqliteReservationRepository::save_tx(&mut tx, &res).await?;
 
         Ok(())
     }.await;

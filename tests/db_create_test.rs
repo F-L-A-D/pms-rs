@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 
 use pms_rs::db::connection::Db;
 use pms_rs::domain::inventory::HotelInventory;
-use pms_rs::usecase::create_with_repo::create_with_repo;
+use pms_rs::usecase::reservation::create::create;
 use pms_rs::adapter::stay_input::StayInput;
 use pms_rs::repository::sqlite::repository::SqliteReservationRepository;
 
@@ -16,7 +16,7 @@ async fn create_should_persist_to_db() {
         nights: 2,
     };
 
-    create_with_repo(&db, &mut inv, "r1".into(), input)
+    create(&db, &mut inv, "r1".into(), input)
         .await
         .unwrap();
 

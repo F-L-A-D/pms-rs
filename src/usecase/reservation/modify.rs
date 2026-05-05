@@ -2,26 +2,39 @@ use crate::db::connection::Db;
 use crate::repository::sqlite::repository::SqliteReservationRepository;
 use crate::adapter::stay_input::{StayInput, normalize};
 use crate::domain::inventory::HotelInventory;
-use crate::domain::reservation::Reservation;
 
-pub async fn create_with_repo(
+pub async fn modify(
     db: &Db,
     inventory: &mut HotelInventory,
-    id: String,
+    id: &str,
     input: StayInput,
 ) -> Result<(), String> {
 
     let mut tx = db.begin_tx().await;
 
     let result = async {
-        let (check_in, check_out) = normalize(input)?;
-        let reservation = Reservation::new(id, check_in, check_out)?;
+        let mut res = SqliteReservationRepository::find_by_id_tx(&mut tx, id)
+            .await?
+            .ok_or("not found")?;
 
-        for d in reservation.nights() {
+        let old_dates = res.nights();
+
+        let (check_in, check_out) = normalize(input)?;
+
+        res.check_in = check_in;
+        res.check_out = check_out;
+
+        let new_dates = res.nights();
+
+        for d in old_dates {
+            inventory.remove_reservation(d, 1);
+        }
+
+        for d in new_dates {
             inventory.add_reservation(d, 1);
         }
 
-        SqliteReservationRepository::save_tx(&mut tx, &reservation).await?;
+        SqliteReservationRepository::save_tx(&mut tx, &res).await?;
 
         Ok(())
     }.await;

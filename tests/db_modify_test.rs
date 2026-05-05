@@ -2,8 +2,8 @@ use chrono::NaiveDate;
 
 use pms_rs::db::connection::Db;
 use pms_rs::domain::inventory::HotelInventory;
-use pms_rs::usecase::create_with_repo::create_with_repo;
-use pms_rs::usecase::modify_with_repo::modify_with_repo;
+use pms_rs::usecase::reservation::create::create;
+use pms_rs::usecase::reservation::modify::modify;
 use pms_rs::adapter::stay_input::StayInput;
 use pms_rs::repository::sqlite::repository::SqliteReservationRepository;
 
@@ -12,7 +12,7 @@ async fn modify_should_update_db_and_inventory() {
     let db = Db::new("sqlite::memory:").await;
     let mut inv = HotelInventory::new(10);
 
-    create_with_repo(
+    create(
         &db,
         &mut inv,
         "r1".into(),
@@ -24,7 +24,7 @@ async fn modify_should_update_db_and_inventory() {
     .await
     .unwrap();
 
-    modify_with_repo(
+    modify(
         &db,
         &mut inv,
         "r1",

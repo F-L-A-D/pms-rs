@@ -1,4 +1,4 @@
-use sqlx::{Sqlite, Transaction};
+use sqlx::{Sqlite, Transaction, Row};
 
 pub struct SqliteInventoryRepository;
 
@@ -11,20 +11,43 @@ impl SqliteInventoryRepository {
         total_rooms: i32,
     ) -> Result<(), String> {
 
-        let result = sqlx::query(
+        let row = sqlx::query(
             r#"
-            UPDATE inventory
-            SET reserved_rooms = reserved_rooms + ?1
-            WHERE date = ?2
+            SELECT reserved_rooms
+            FROM inventory
+            WHERE date = ?1
             "#
         )
-        .bind(delta)
         .bind(date)
-        .execute(&mut **tx)
+        .fetch_optional(&mut **tx)
         .await
         .map_err(|e| e.to_string())?;
 
-        if result.rows_affected() == 0 {
+        if let Some(row) = row {
+            let reserved: i32 = row.get(0);
+            let new_value = reserved + delta;
+
+            if new_value < 0 {
+                return Err("inventory cannot be negative".into());
+            }
+
+            sqlx::query(
+                r#"
+                UPDATE inventory
+                SET reserved_rooms = ?1
+                WHERE date = ?2
+                "#
+            )
+            .bind(new_value)
+            .bind(date)
+            .execute(&mut **tx)
+            .await
+            .map_err(|e| e.to_string())?;
+        } else {
+            if delta < 0 {
+                return Err("cannot reduce non-existing inventory".into());
+            }
+
             sqlx::query(
                 r#"
                 INSERT INTO inventory (date, total_rooms, reserved_rooms)
@@ -33,7 +56,7 @@ impl SqliteInventoryRepository {
             )
             .bind(date)
             .bind(total_rooms)
-            .bind(delta.max(0))
+            .bind(delta)
             .execute(&mut **tx)
             .await
             .map_err(|e| e.to_string())?;

@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HotelInventory {
     pub total_rooms: i32,
     pub reserved: HashMap<NaiveDate, i32>,

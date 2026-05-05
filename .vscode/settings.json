@@ -1,0 +1,14 @@
+{
+  "files.watcherExclude": {
+    "**/target/**": true,
+    "**/.git/**": true
+  },
+  "search.exclude": {
+    "**/target/**": true
+  },
+
+  "rust-analyzer.checkOnSave.command": "clippy",
+  "rust-analyzer.cargo.buildScripts.enable": false,
+  "rust-analyzer.procMacro.enable": false,
+  "rust-analyzer.cargo.loadOutDirsFromCheck": false
+}

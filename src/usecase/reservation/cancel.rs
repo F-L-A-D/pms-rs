@@ -1,9 +1,9 @@
 use crate::db::connection::Db;
 use crate::repository::sqlite::repository::SqliteReservationRepository;
 use crate::domain::inventory::HotelInventory;
-use crate::usecase::cancel_reservation::cancel_reservation;
+use crate::domain::reservation::ReservationStatus;
 
-pub async fn cancel_with_repo(
+pub async fn cancel(
     db: &Db,
     inventory: &mut HotelInventory,
     id: &str,
@@ -16,7 +16,17 @@ pub async fn cancel_with_repo(
             .await?
             .ok_or("not found")?;
 
-        cancel_reservation(inventory, &mut res);
+        if res.status == ReservationStatus::Cancelled {
+            return Ok(());
+        }
+
+        let dates = res.nights();
+
+        for d in dates {
+            inventory.remove_reservation(d, 1);
+        }
+
+        res.status = ReservationStatus::Cancelled;
 
         SqliteReservationRepository::save_tx(&mut tx, &res).await?;
 

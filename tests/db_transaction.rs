@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 
 use pms_rs::db::connection::Db;
 use pms_rs::domain::inventory::HotelInventory;
-use pms_rs::usecase::create_with_repo::create_with_repo;
+use pms_rs::usecase::reservation::create::create;
 use pms_rs::adapter::stay_input::StayInput;
 use pms_rs::repository::sqlite::repository::SqliteReservationRepository;
 
@@ -11,7 +11,7 @@ async fn transaction_should_rollback_on_error() {
     let db = Db::new("sqlite::memory:").await;
     let mut inv = HotelInventory::new(10);
 
-    let result = create_with_repo(
+    let result = create(
         &db,
         &mut inv,
         "r1".into(),

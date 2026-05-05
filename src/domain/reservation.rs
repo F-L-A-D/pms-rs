@@ -1,10 +1,15 @@
 use chrono::NaiveDate;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReservationStatus {
+    Active,
+    Cancelled,
+}
 pub struct Reservation {
     pub id: String,
     pub check_in: NaiveDate,
     pub check_out: NaiveDate,
+    pub status: ReservationStatus,
 }
 
 impl Reservation {
@@ -19,7 +24,8 @@ impl Reservation {
         Ok(Self {
             id,
             check_in,
-            check_out
+            check_out,
+            status: ReservationStatus::Active,
         })
     }
 

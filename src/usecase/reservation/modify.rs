@@ -1,11 +1,10 @@
 use crate::db::connection::Db;
 use crate::repository::sqlite::repository::SqliteReservationRepository;
 use crate::adapter::stay_input::{StayInput, normalize};
-use crate::domain::inventory::HotelInventory;
+use crate::repository::sqlite::inventory_repository::SqliteInventoryRepository;
 
 pub async fn modify(
     db: &Db,
-    inventory: &mut HotelInventory,
     id: &str,
     input: StayInput,
 ) -> Result<(), String> {
@@ -27,11 +26,11 @@ pub async fn modify(
         let new_dates = res.nights();
 
         for d in old_dates {
-            inventory.remove_reservation(d, 1);
+            SqliteInventoryRepository::add_tx(&mut tx, &d.to_string(), -1, 10).await?;
         }
 
         for d in new_dates {
-            inventory.add_reservation(d, 1);
+            SqliteInventoryRepository::add_tx(&mut tx, &d.to_string(), 1, 10).await?;
         }
 
         SqliteReservationRepository::save_tx(&mut tx, &res).await?;

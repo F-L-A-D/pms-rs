@@ -1,12 +1,11 @@
 use crate::db::connection::Db;
 use crate::repository::sqlite::repository::SqliteReservationRepository;
 use crate::adapter::stay_input::{StayInput, normalize};
-use crate::domain::inventory::HotelInventory;
 use crate::domain::reservation::Reservation;
+use crate::repository::sqlite::inventory_repository::SqliteInventoryRepository;
 
 pub async fn create(
     db: &Db,
-    inventory: &mut HotelInventory,
     id: String,
     input: StayInput,
 ) -> Result<(), String> {
@@ -18,7 +17,12 @@ pub async fn create(
         let reservation = Reservation::new(id, check_in, check_out)?;
 
         for d in reservation.nights() {
-            inventory.add_reservation(d, 1);
+            SqliteInventoryRepository::add_tx(
+                &mut tx,
+                &d.to_string(),
+                1,
+                10,
+            ).await?;
         }
 
         SqliteReservationRepository::save_tx(&mut tx, &reservation).await?;

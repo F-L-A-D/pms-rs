@@ -1,11 +1,10 @@
 use crate::db::connection::Db;
 use crate::repository::sqlite::repository::SqliteReservationRepository;
-use crate::domain::inventory::HotelInventory;
 use crate::domain::reservation::ReservationStatus;
+use crate::repository::sqlite::inventory_repository::SqliteInventoryRepository;
 
 pub async fn cancel(
     db: &Db,
-    inventory: &mut HotelInventory,
     id: &str,
 ) -> Result<(), String> {
 
@@ -23,7 +22,7 @@ pub async fn cancel(
         let dates = res.nights();
 
         for d in dates {
-            inventory.remove_reservation(d, 1);
+            SqliteInventoryRepository::add_tx(&mut tx, &d.to_string(), -1, 10).await?;
         }
 
         res.status = ReservationStatus::Cancelled;

@@ -24,6 +24,19 @@ impl Db {
         .await
         .unwrap();
 
+    sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS inventory (
+                date TEXT PRIMARY KEY,
+                total_rooms INTEGER NOT NULL,
+                reserved_rooms INTEGER NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
         Self { pool }
     }
 

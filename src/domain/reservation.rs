@@ -5,6 +5,8 @@ pub enum ReservationStatus {
     Active,
     Cancelled,
 }
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Reservation {
     pub id: String,
     pub check_in: NaiveDate,

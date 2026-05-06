@@ -103,6 +103,23 @@ impl Db {
         .await
         .unwrap();
 
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS guests (
+                id TEXT PRIMARY KEY,
+                last_name TEXT NOT NULL,
+                first_name TEXT NOT NULL,
+                phone TEXT,
+                email TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
         Self { pool }
     }
 

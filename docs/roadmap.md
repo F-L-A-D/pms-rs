@@ -1,34 +1,55 @@
-# PMS-RS Roadmap
+# PMS-RS Milestone / Issue Structure
 
-## Vision
+# Milestones
 
-Build a hospitality operating system centered around:
+## Div1 - Operational Core
+
+Establish transactionally consistent hotel operational foundation.
+
+### Includes
 
 - reservation lifecycle
+- inventory consistency
 - room operations
-- billing events
+- stay operations
+- billing ledger
+- operational APIs
+
+---
+
+## Div2 - Guest & Behavioral Foundation
+
+Build long-lived guest identity and behavioral infrastructure.
+
+### Includes
+
 - guest identity
+- reservation / guest relation
 - behavioral history
-- future operational and behavioral integrations
+- CRM foundation
+- guest intelligence foundation
 
-The system prioritizes:
+---
 
-- reproducible decision making
-- event-oriented design
-- extensibility
-- operational consistency
+## Div3 - Forecast & Decision Infrastructure (Future)
+
+Build reproducible decision-making and forecasting infrastructure.
+
+### Includes
+
+- forecast replay
+- decision reconstruction
+- RMS integration
+- optimization engine
+- simulation foundation
+
+---
+
+# Issues
 
 ---
 
 # Div1 - Operational Core
-
-## Goal
-
-Establish a reproducible and transactionally consistent operational foundation for hotel execution.
-
-Div1 represents the completed operational core layer of the PMS.
-
----
 
 ## M1 - Reservation & Inventory
 
@@ -87,176 +108,59 @@ Div1 represents the completed operational core layer of the PMS.
 
 # Div2 - Guest & Behavioral Foundation
 
-## Goal
+## M6 - Guest Identity Core
 
-Build long-lived guest identity and behavioral infrastructure independent from transactional reservation flow.
+### Scope
 
-Reservations, stays, and billing are treated as operational events linked to guest identity.
-
----
-
-# M6 - Guest Identity Core
-
-## Goal
-
-Implement long-lived guest identity management.
-
-## Scope
-
-- guest entity
-- guest profile
+- guest aggregate
 - guest persistence
 - guest API
+- guest validation
 - guest search foundation
-
-## Issues
-
-### #16 Guest Aggregate Root
-
-- guest entity
-- guest_id
-- repository
-- persistence
-
-### #17 Guest Profile
-
-- name
-- phone
-- email
-- address
-- nationality
-
-### #18 Guest API
-
-- create guest
-- update guest
-- get guest
-- search guest
-
-### #19 Guest Validation
-
-- duplicate prevention foundation
-- identity consistency
-
-### #20 Guest Search Foundation
-
-- guest lookup
-- search indexing foundation
+- identity lifecycle
 
 ---
 
-# M7 - Reservation / Guest Relation
+## M7 - Reservation / Guest Relation
 
-## Goal
+### Scope
 
-Connect operational transactions to guest identity.
-
-## Scope
-
-- primary guest
-- accompany guest
+- primary guest relation
+- accompany guest support
 - reservation linkage
 - stay linkage
-
-## Issues
-
-### #21 Primary Guest Relation
-
-### #22 Accompany Guest Support
-
-### #23 Reservation Guest Validation
-
-### #24 Stay / Billing Guest Linkage
+- billing linkage
 
 ---
 
-# M8 - Guest Behavioral Foundation
+## M8 - Guest Behavioral Foundation
 
-## Goal
-
-Accumulate operational history as behavioral data.
-
-## Scope
+### Scope
 
 - guest history
 - stay history
 - spending history
+- guest timeline
 - behavioral metrics
-
-## Issues
-
-### #25 Guest History
-
-### #26 Guest Preference
-
-### #27 Guest Behavioral Metrics
-
-### #28 Guest Timeline API
 
 ---
 
-# M9 - CRM Foundation
+## M9 - CRM Foundation
 
-## Goal
-
-Build hospitality CRM primitives.
-
-## Scope
+### Scope
 
 - membership foundation
 - guest segmentation
-- corporate relation
-
-## Issues
-
-### #29 Company / Organization
-
-### #30 Membership Foundation
-
-### #31 Guest Segmentation
-
-### #32 CRM Search API
+- company / organization relation
+- CRM search foundation
 
 ---
 
-# M10 - Guest Intelligence Foundation
+## M10 - Guest Intelligence Foundation
 
-## Goal
-
-Build analytical foundation for future forecasting and behavioral modeling.
-
-## Scope
+### Scope
 
 - behavioral event modeling
 - guest graph foundation
+- analytics foundation
 - forecast linkage foundation
-
-## Issues
-
-### #33 Guest Graph Foundation
-
-### #34 Behavioral Event Model
-
-### #35 Guest Analytics API
-
-### #36 Forecast / CRM Link Foundation
-
----
-
-# Development Rules
-
-## Scope Management
-
-If implementation requires scope expansion:
-
-1. Propose roadmap modification first
-2. Update milestone / issue structure
-3. Implement after agreement
-
-## Design Principles
-
-- state and events should be separated where reasonable
-- balance is derived from ledger entries
-- append-only operations are preferred
-- operational consistency is prioritized over premature abstraction
-- guest identity and operational events should remain loosely coupled

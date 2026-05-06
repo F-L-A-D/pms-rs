@@ -35,6 +35,13 @@ use crate::api::handlers::billing::{
     get_entries,
 };
 
+use crate::api::handlers::guest::{
+    create_guest_handler,
+    get_guest_handler,
+    list_guests_handler,
+    update_guest_handler,
+};  
+
 use crate::api::state::AppState;
 
 pub fn create_router(
@@ -111,6 +118,26 @@ pub fn create_router(
         .route(
             "/folios/:id/entries",
             get(get_entries),
+        )
+
+        .route(
+            "/guests",
+            post(create_guest_handler),
+        )
+
+        .route(
+            "/guests",
+            get(list_guests_handler),
+        )
+
+        .route(
+            "/guests/:id",
+            get(get_guest_handler),
+        )
+
+        .route(
+            "/guests/:id",
+            patch(update_guest_handler),
         )
 
         .with_state(state)

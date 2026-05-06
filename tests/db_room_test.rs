@@ -8,7 +8,7 @@ async fn should_create_and_find_room() {
 
     let room = Room {
         id: "101".into(),
-        room_type: "single".into(),
+        room_class: "single".into(),
         occupancy_status: OccupancyStatus::Vacant,
         housekeeping_status: HousekeepingStatus::Inspected,
     };

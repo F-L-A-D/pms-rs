@@ -16,6 +16,7 @@ async fn modify_should_update_db_and_inventory() {
         StayInput::CheckInAndNights {
             check_in: NaiveDate::from_ymd_opt(2026, 5, 1).unwrap(),
             nights: 2,
+            room_class: "single".into()
         },
     )
     .await
@@ -27,6 +28,7 @@ async fn modify_should_update_db_and_inventory() {
         StayInput::CheckInAndNights {
             check_in: NaiveDate::from_ymd_opt(2026, 5, 2).unwrap(),
             nights: 2,
+            room_class: "single".into()
         },
     )
     .await

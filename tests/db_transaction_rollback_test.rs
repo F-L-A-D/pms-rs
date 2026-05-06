@@ -13,6 +13,7 @@ async fn should_rollback_on_inventory_error() {
         StayInput::CheckInAndNights {
             check_in: NaiveDate::from_ymd_opt(2026, 5, 1).unwrap(),
             nights: 1,
+            room_class: "single".into()
         },
     )
     .await
@@ -23,7 +24,8 @@ async fn should_rollback_on_inventory_error() {
         "r2".into(),
         StayInput::CheckInAndNights {
             check_in: NaiveDate::from_ymd_opt(2026, 5, 1).unwrap(),
-            nights: -1, // ← invalid
+            nights: -1,
+            room_class: "single".into()
         },
     )
     .await;

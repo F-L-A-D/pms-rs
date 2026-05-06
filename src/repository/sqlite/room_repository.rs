@@ -17,12 +17,12 @@ impl SqliteRoomRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO rooms (id, room_type, occupancy_status, housekeeping_status)
+            INSERT INTO rooms (id, room_class, occupancy_status, housekeeping_status)
             VALUES (?1, ?2, ?3, ?4)
             "#
         )
         .bind(&room.id)
-        .bind(&room.room_type)
+        .bind(&room.room_class)
         .bind(format!("{:?}", room.occupancy_status))
         .bind(format!("{:?}", room.housekeeping_status))
         .execute(db)
@@ -39,7 +39,7 @@ impl SqliteRoomRepository {
 
         let row = sqlx::query(
             r#"
-            SELECT id, room_type, occupancy_status, housekeeping_status
+            SELECT id, room_class, occupancy_status, housekeeping_status
             FROM rooms
             WHERE id = ?1
             "#
@@ -70,7 +70,7 @@ impl SqliteRoomRepository {
 
             Ok(Some(Room {
                 id: r.get("id"),
-                room_type: r.get("room_type"),
+                room_class: r.get("room_class"),
                 occupancy_status,
                 housekeeping_status,
             }))

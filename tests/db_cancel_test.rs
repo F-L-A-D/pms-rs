@@ -16,6 +16,7 @@ async fn cancel_should_update_status() {
         StayInput::CheckInAndNights {
             check_in: NaiveDate::from_ymd_opt(2026, 5, 1).unwrap(),
             nights: 2,
+            room_class: "single".into()
         },
     )
     .await

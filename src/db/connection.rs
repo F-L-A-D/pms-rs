@@ -15,6 +15,8 @@ impl Db {
                 check_in TEXT NOT NULL,
                 check_out TEXT NOT NULL,
                 status TEXT NOT NULL,
+                room_class TEXT NOT NULL,
+                room_id TEXT,
                 created_at TEXT NOT NULL,
                 channel TEXT
             )
@@ -41,7 +43,7 @@ impl Db {
             r#"
             CREATE TABLE IF NOT EXISTS rooms (
                 id TEXT PRIMARY KEY,
-                room_type TEXT NOT NULL,
+                room_class TEXT NOT NULL,
                 occupancy_status TEXT NOT NULL,
                 housekeeping_status TEXT NOT NULL
             )

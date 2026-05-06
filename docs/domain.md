@@ -1,4 +1,4 @@
-# Domain Model
+# PMS-RS Domain Model
 
 ## Overview
 
@@ -15,7 +15,8 @@ Reservation represents a booking request for a stay.
 * id
 * check_in
 * check_out
-* status (Active / Cancelled)
+* reservation_status (Active / Cancelled)
+* stay_status (Confirmed / CheckedIn / CheckedOut)
 
 ### Behavior
 
@@ -57,16 +58,19 @@ Stay represents an actual guest occupancy derived from a reservation.
 
 ---
 
-## Billing (Planned)
+### Billing
 
-### Definition
+Billing is modeled as append-only ledger events.
 
-Billing represents financial records associated with a stay.
+#### Components
 
-### Components
+* Folio
+* FolioEntry
 
-* Charges
-* Payments
+#### Principles
+
+* Balance is derived
+* Entries are append-only
 
 ---
 

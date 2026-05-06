@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use pms_rs::db::connection::Db;
 use pms_rs::repository::sqlite::inventory_repository::SqliteInventoryRepository;
 

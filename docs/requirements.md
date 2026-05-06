@@ -1,4 +1,4 @@
-# Requirements
+# PMS-RS Requirements
 
 ## Goal
 
@@ -41,8 +41,9 @@ Build a minimal but consistent PMS backend.
 
 ### Billing
 
-* Charges must be recorded
-* Payments must be tracked
+* Billing is modeled as append-only ledger entries
+* Balance is derived from ledger entries
+* Charges and payments are recorded as events
 
 ### API
 

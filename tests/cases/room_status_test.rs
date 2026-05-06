@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use pms_rs::domain::room::{Room, OccupancyStatus, HousekeepingStatus};
 
 #[test]

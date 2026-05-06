@@ -1,12 +1,32 @@
-use sqlx::{SqlitePool, Sqlite, Transaction};
+use sqlx::{
+    Sqlite, 
+    SqlitePool, 
+    Transaction, 
+    sqlite::{
+        SqliteConnectOptions, 
+        SqlitePoolOptions,
+    },
+};
 
+use std::str::FromStr;
+
+#[derive(Clone)]
 pub struct Db {
     pub pool: SqlitePool,
 }
 
 impl Db {
     pub async fn new(database_url: &str) -> Self {
-        let pool = SqlitePool::connect(database_url).await.unwrap();
+        let options = 
+            SqliteConnectOptions::from_str(database_url)
+                .unwrap()
+                .create_if_missing(true);
+
+        let pool = 
+            SqlitePoolOptions::new()
+                .connect_with(options)
+                .await
+                .unwrap();
 
         sqlx::query(
             r#"

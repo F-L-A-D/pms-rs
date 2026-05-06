@@ -27,6 +27,14 @@ use crate::api::handlers::reservation::{
     cancel_reservation,
 };
 
+use crate::api::handlers::billing::{
+    open_folio,
+    post_room_charge,
+    post_payment,
+    get_balance,
+    get_entries,
+};
+
 use crate::api::state::AppState;
 
 pub fn create_router(
@@ -78,6 +86,31 @@ pub fn create_router(
         .route(
             "/rooms",
             get(list_rooms),
+        )
+
+        .route(
+            "/folios",
+            post(open_folio),
+        )
+
+        .route(
+            "/folios/:id/charges/room",
+            post(post_room_charge),
+        )
+
+        .route(
+            "/folios/:id/payments",
+            post(post_payment),
+        )
+
+        .route(
+            "/folios/:id/balance",
+            get(get_balance),
+        )
+
+        .route(
+            "/folios/:id/entries",
+            get(get_entries),
         )
 
         .with_state(state)

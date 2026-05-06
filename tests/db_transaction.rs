@@ -14,7 +14,8 @@ async fn transaction_should_rollback_on_error() {
         "r1".into(),
         StayInput::CheckInAndNights {
             check_in: NaiveDate::from_ymd_opt(2026, 5, 1).unwrap(),
-            nights: -1, // invalid
+            nights: -1,
+            room_class: "single".into()
         },
     )
     .await;

@@ -13,8 +13,10 @@ pub async fn create(
     let mut tx = db.begin_tx().await;
 
     let result = async {
-        let (check_in, check_out) = normalize(input)?;
-        let reservation = Reservation::new(id, check_in, check_out)?;
+        let (check_in, check_out) = normalize(input.clone())?;
+        let room_class = input.room_class();
+
+        let reservation = Reservation::new(id, check_in, check_out, room_class)?;
 
         SqliteReservationRepository::save_tx(&mut tx, &reservation).await?;
 

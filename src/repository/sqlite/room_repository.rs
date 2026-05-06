@@ -1,4 +1,9 @@
-use sqlx::Row;
+use sqlx::{
+    Row,
+    SqlitePool,
+    Sqlite,
+    Transaction,
+};
 
 use crate::domain::room::{
     Room,
@@ -11,27 +16,53 @@ pub struct SqliteRoomRepository;
 impl SqliteRoomRepository {
 
     pub async fn save(
-        db: &sqlx::SqlitePool,
+        pool: &SqlitePool,
         room: &Room,
     ) -> Result<(), String> {
 
         sqlx::query(
             r#"
-            INSERT OR REPLACE INTO rooms 
-            (
-                id, 
-                room_class, 
-                occupancy_status, 
+            INSERT OR REPLACE INTO rooms (
+                id,
+                room_class,
+                occupancy_status,
                 housekeeping_status
             )
-            VALUES (?1, ?2, ?3, ?4)
+            VALUES (?, ?, ?, ?)
             "#
         )
         .bind(&room.id)
         .bind(&room.room_class)
         .bind(format!("{:?}", room.occupancy_status))
         .bind(format!("{:?}", room.housekeeping_status))
-        .execute(db)
+        .execute(pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    pub async fn save_tx(
+        tx: &mut Transaction<'_, Sqlite>,
+        room: &Room,
+    ) -> Result<(), String> {
+
+        sqlx::query(
+            r#"
+            INSERT OR REPLACE INTO rooms (
+                id,
+                room_class,
+                occupancy_status,
+                housekeeping_status
+            )
+            VALUES (?, ?, ?, ?)
+            "#
+        )
+        .bind(&room.id)
+        .bind(&room.room_class)
+        .bind(format!("{:?}", room.occupancy_status))
+        .bind(format!("{:?}", room.housekeeping_status))
+        .execute(&mut **tx)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -39,49 +70,164 @@ impl SqliteRoomRepository {
     }
 
     pub async fn find_by_id(
-        db: &sqlx::SqlitePool,
+        pool: &SqlitePool,
         id: &str,
     ) -> Result<Option<Room>, String> {
 
-        let row = sqlx::query(
-            r#"
-            SELECT id, room_class, occupancy_status, housekeeping_status
-            FROM rooms
-            WHERE id = ?1
-            "#
-        )
-        .bind(id)
-        .fetch_optional(db)
-        .await
-        .map_err(|e| e.to_string())?;
+        let row =
+            sqlx::query(
+                r#"
+                SELECT
+                    id,
+                    room_class,
+                    occupancy_status,
+                    housekeeping_status
+                FROM rooms
+                WHERE id = ?
+                "#
+            )
+            .bind(id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| e.to_string())?;
 
-        if let Some(r) = row {
+        match row {
 
-            let occ_str: String = r.get("occupancy_status");
-            let hk_str: String = r.get("housekeeping_status");
+            Some(row) => {
 
-            let occupancy_status = match occ_str.as_str() {
-                "Vacant" => OccupancyStatus::Vacant,
-                "Occupied" => OccupancyStatus::Occupied,
-                _ => return Err("invalid occupancy status".into()),
-            };
+                let occupancy_status =
+                    match row.get::<String, _>("occupancy_status").as_str() {
+                        "Occupied" => OccupancyStatus::Occupied,
+                        _ => OccupancyStatus::Vacant,
+                    };
 
-            let housekeeping_status = match hk_str.as_str() {
-                "Dirty" => HousekeepingStatus::Dirty,
-                "Cleaning" => HousekeepingStatus::Cleaning,
-                "Cleaned" => HousekeepingStatus::Cleaned,
-                "Inspected" => HousekeepingStatus::Inspected,
-                _ => return Err("invalid housekeeping status".into()),
-            };
+                let housekeeping_status =
+                    match row.get::<String, _>("housekeeping_status").as_str() {
+                        "Dirty" => HousekeepingStatus::Dirty,
+                        "Cleaning" => HousekeepingStatus::Cleaning,
+                        "Cleaned" => HousekeepingStatus::Cleaned,
+                        _ => HousekeepingStatus::Inspected,
+                    };
 
-            Ok(Some(Room {
-                id: r.get("id"),
-                room_class: r.get("room_class"),
-                occupancy_status,
-                housekeeping_status,
-            }))
-        } else {
-            Ok(None)
+                Ok(
+                    Some(
+                        Room {
+                            id: row.get("id"),
+                            room_class: row.get("room_class"),
+                            occupancy_status,
+                            housekeeping_status,
+                        }
+                    )
+                )
+            }
+
+            None => Ok(None),
         }
+    }
+
+    pub async fn find_by_id_tx(
+        tx: &mut Transaction<'_, Sqlite>,
+        id: &str,
+    ) -> Result<Option<Room>, String> {
+
+        let row =
+            sqlx::query(
+                r#"
+                SELECT
+                    id,
+                    room_class,
+                    occupancy_status,
+                    housekeeping_status
+                FROM rooms
+                WHERE id = ?
+                "#
+            )
+            .bind(id)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        match row {
+
+            Some(row) => {
+
+                let occupancy_status =
+                    match row.get::<String, _>("occupancy_status").as_str() {
+                        "Occupied" => OccupancyStatus::Occupied,
+                        _ => OccupancyStatus::Vacant,
+                    };
+
+                let housekeeping_status =
+                    match row.get::<String, _>("housekeeping_status").as_str() {
+                        "Dirty" => HousekeepingStatus::Dirty,
+                        "Cleaning" => HousekeepingStatus::Cleaning,
+                        "Cleaned" => HousekeepingStatus::Cleaned,
+                        _ => HousekeepingStatus::Inspected,
+                    };
+
+                Ok(
+                    Some(
+                        Room {
+                            id: row.get("id"),
+                            room_class: row.get("room_class"),
+                            occupancy_status,
+                            housekeeping_status,
+                        }
+                    )
+                )
+            }
+
+            None => Ok(None),
+        }
+    }
+
+    pub async fn find_all(
+        pool: &SqlitePool,
+    ) -> Result<Vec<Room>, String> {
+
+        let rows =
+            sqlx::query(
+                r#"
+                SELECT
+                    id,
+                    room_class,
+                    occupancy_status,
+                    housekeeping_status
+                FROM rooms
+                "#
+            )
+            .fetch_all(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let mut rooms = vec![];
+
+        for row in rows {
+
+            let occupancy_status =
+                match row.get::<String, _>("occupancy_status").as_str() {
+                    "Occupied" => OccupancyStatus::Occupied,
+                    _ => OccupancyStatus::Vacant,
+                };
+
+            let housekeeping_status =
+                match row.get::<String, _>("housekeeping_status").as_str() {
+                    "Dirty" => HousekeepingStatus::Dirty,
+                    "Cleaning" => HousekeepingStatus::Cleaning,
+                    "Cleaned" => HousekeepingStatus::Cleaned,
+                    _ => HousekeepingStatus::Inspected,
+                };
+
+            rooms.push(
+                Room {
+                    id: row.get("id"),
+                    room_class: row.get("room_class"),
+                    occupancy_status,
+                    housekeeping_status,
+                }
+            );
+        }
+
+        Ok(rooms)
     }
 }

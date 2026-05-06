@@ -30,17 +30,18 @@ pub async fn check_out(
         }
 
         if reservation.stay_status != Some(StayStatus::CheckedIn) {
-            return Err("reservation is not checked in".into());
+            return Err("invalid stay status".into());
         }
 
-        let room_id = reservation
-            .room_id
-            .clone()
-            .ok_or("room not assigned")?;
+        let room_id =
+            reservation
+                .room_id
+                .clone()
+                .ok_or("room not assigned")?;
 
         let mut room =
-            SqliteRoomRepository::find_by_id(
-                &db.pool,
+            SqliteRoomRepository::find_by_id_tx(
+                &mut tx,
                 &room_id,
             )
             .await?
@@ -51,8 +52,8 @@ pub async fn check_out(
         reservation.stay_status =
             Some(StayStatus::CheckedOut);
 
-        SqliteRoomRepository::save(
-            &db.pool,
+        SqliteRoomRepository::save_tx(
+            &mut tx,
             &room,
         )
         .await?;
@@ -68,10 +69,12 @@ pub async fn check_out(
     }.await;
 
     match result {
+
         Ok(_) => {
             tx.commit().await.unwrap();
             Ok(())
         }
+
         Err(e) => {
             tx.rollback().await.unwrap();
             Err(e)

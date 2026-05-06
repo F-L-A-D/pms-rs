@@ -24,12 +24,26 @@ impl Db {
         .await
         .unwrap();
 
-    sqlx::query(
+        sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS inventory (
                 date TEXT PRIMARY KEY,
                 total_rooms INTEGER NOT NULL,
                 reserved_rooms INTEGER NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS rooms (
+                id TEXT PRIMARY KEY,
+                room_type TEXT NOT NULL,
+                occupancy_status TEXT NOT NULL,
+                housekeeping_status TEXT NOT NULL
             )
             "#
         )

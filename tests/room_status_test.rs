@@ -4,7 +4,7 @@ use pms_rs::domain::room::{Room, OccupancyStatus, HousekeepingStatus};
 fn check_in_should_succeed_when_room_ready() {
     let mut room = Room {
         id: "101".into(),
-        room_type: "single".into(),
+        room_class: "single".into(),
         occupancy_status: OccupancyStatus::Vacant,
         housekeeping_status: HousekeepingStatus::Inspected,
     };
@@ -17,7 +17,7 @@ fn check_in_should_succeed_when_room_ready() {
 fn check_in_should_fail_when_not_inspected() {
     let mut room = Room {
         id: "101".into(),
-        room_type: "single".into(),
+        room_class: "single".into(),
         occupancy_status: OccupancyStatus::Vacant,
         housekeeping_status: HousekeepingStatus::Dirty,
     };
@@ -29,7 +29,7 @@ fn check_in_should_fail_when_not_inspected() {
 fn cleaning_flow_should_work() {
     let mut room = Room {
         id: "101".into(),
-        room_type: "single".into(),
+        room_class: "single".into(),
         occupancy_status: OccupancyStatus::Vacant,
         housekeeping_status: HousekeepingStatus::Dirty,
     };

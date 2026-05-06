@@ -15,16 +15,16 @@ pub enum HousekeepingStatus {
 #[derive(Debug, Clone)]
 pub struct Room {
     pub id: String,
-    pub room_type: String,
+    pub room_class: String,
     pub occupancy_status: OccupancyStatus,
     pub housekeeping_status: HousekeepingStatus,
 }
 
 impl Room {
-    pub fn new(id: String, room_type: String) -> Self {
+    pub fn new(id: String, room_class: String) -> Self {
         Self {
             id,
-            room_type,
+            room_class,
             occupancy_status: OccupancyStatus::Vacant,
             housekeeping_status: HousekeepingStatus::Inspected,
         }

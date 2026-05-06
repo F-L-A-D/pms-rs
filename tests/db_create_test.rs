@@ -12,6 +12,7 @@ async fn create_should_persist_to_db() {
     let input = StayInput::CheckInAndNights {
         check_in: NaiveDate::from_ymd_opt(2026, 5, 1).unwrap(),
         nights: 2,
+        room_class: "single".into()
     };
 
     create(&db, "r1".into(), input)

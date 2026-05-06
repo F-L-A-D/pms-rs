@@ -87,7 +87,7 @@ See:
 * [x] HTTP server
 * [x] Reservation API
 * [x] Room / Stay API
-* [ ] Billing API
+* [x] Billing API
 
 ---
 

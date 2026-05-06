@@ -79,13 +79,9 @@ impl SqliteFolioEntryRepository {
 
             let entry_type =
                 match r.get::<String, _>("entry_type").as_str() {
-
                     "RoomCharge" => EntryType::RoomCharge,
-
                     "Payment" => EntryType::Payment,
-
                     "Adjustment" => EntryType::Adjustment,
-
                     _ => {
                         return Err(
                             "invalid entry type".into()

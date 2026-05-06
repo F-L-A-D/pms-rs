@@ -11,6 +11,7 @@ pub mod folio_entry_test;
 pub mod housekeeping_test;
 pub mod inventory_negative_test;
 pub mod modify_test;
+pub mod post_room_charge_test;
 pub mod room_status_test;
 pub mod room_test;
 pub mod transaction_commit_test;

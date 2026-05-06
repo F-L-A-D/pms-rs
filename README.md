@@ -79,8 +79,8 @@ See:
 
 * [x] Folio core
 * [x] Folio entry core
-* [ ] Balance calculation
-* [ ] Room charge posting
+* [x] Balance calculation
+* [x] Room charge posting
 
 ### M5 - API Layer
 

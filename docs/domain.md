@@ -2,13 +2,15 @@
 
 ## Overview
 
-The domain represents the core business entities of the PMS.
+The domain represents the core operational and behavioral entities of the PMS.
+
+---
 
 ## Reservation
 
 ### Definition
 
-Reservation represents a booking request for a stay.
+Reservation represents an operational booking transaction for a future stay.
 
 ### Attributes
 
@@ -22,11 +24,11 @@ Reservation represents a booking request for a stay.
 
 * Validate date range
 * Provide stay nights
-* Transition status (Active → Cancelled)
+* Transition status
 
 ---
 
-## Room (Planned)
+## Room
 
 ### Definition
 
@@ -35,42 +37,69 @@ Room represents a physical unit in the hotel.
 ### Attributes
 
 * id
-* room_type
-* status (Vacant / Occupied / Dirty)
+* room_class
+* occupancy_status (Vacant / Occupied)
+* housekeeping_status (Dirty / Cleaning / Cleaned / Inspected)
 
 ### Behavior
 
 * Assign to reservation
-* Track availability
+* Transition occupancy state
+* Transition housekeeping lifecycle
 
 ---
 
-## Stay (Planned)
+## Stay
 
 ### Definition
 
-Stay represents an actual guest occupancy derived from a reservation.
+Stay represents operational occupancy lifecycle derived from reservation state.
 
 ### Behavior
 
-* Check-in (Reservation → Stay)
-* Check-out (Stay ends)
+* Check-in
+* Check-out
+* Occupancy transition
 
 ---
 
-### Billing
+## Billing
 
 Billing is modeled as append-only ledger events.
 
-#### Components
+### Components
 
 * Folio
 * FolioEntry
 
-#### Principles
+### Principles
 
 * Balance is derived
 * Entries are append-only
+* Billing events are treated as operational history
+
+---
+
+## Guest (Planned)
+
+### Definition
+
+Guest represents a long-lived hospitality identity.
+
+Reservations, stays, and billing events are linked to guests as operational history.
+
+### Attributes
+
+* id
+* profile information
+* contact information
+* guest relations
+
+### Behavior
+
+* Maintain identity across stays
+* Aggregate operational history
+* Provide behavioral foundation for CRM / analytics
 
 ---
 
@@ -81,6 +110,7 @@ Inventory is NOT a domain entity.
 * It is a derived and aggregated dataset
 * Stored for performance and consistency
 * Managed within repository layer
+* Represents operational constraints, not pricing decisions
 
 ---
 

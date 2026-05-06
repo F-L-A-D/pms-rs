@@ -40,6 +40,7 @@ tests       - integration & transaction tests
 * append-only operations are preferred where reasonable
 * balance is derived from ledger entries
 * operational consistency is prioritized over premature abstraction
+* guest identity and operational events remain loosely coupled
 
 ---
 
@@ -53,7 +54,11 @@ See:
 * `decisions.md`
 * `testing.md`
 
-### M1 - Reservation & Inventory
+---
+
+# Div1 - Operational Core
+
+## M1 - Reservation & Inventory
 
 * [x] Reservation create
 * [x] Reservation modify
@@ -61,7 +66,7 @@ See:
 * [x] Inventory persistence
 * [x] Transaction rollback handling
 
-### M2 - Room & Assignment
+## M2 - Room & Assignment
 
 * [x] Room entity
 * [x] Occupancy status
@@ -69,25 +74,62 @@ See:
 * [x] Room assignment
 * [x] Room class validation
 
-### M3 - Stay Operations
+## M3 - Stay Operations
 
 * [x] Check-in
 * [x] Check-out
 * [x] Housekeeping lifecycle
 
-### M4 - Billing Core
+## M4 - Billing Core
 
 * [x] Folio core
 * [x] Folio entry core
 * [x] Balance calculation
 * [x] Room charge posting
 
-### M5 - API Layer
+## M5 - API Layer
 
 * [x] HTTP server
 * [x] Reservation API
 * [x] Room / Stay API
 * [x] Billing API
+
+---
+
+# Div2 - Guest & Behavioral Foundation (Planned)
+
+## M6 - Guest Identity Core
+
+* [ ] Guest aggregate
+* [ ] Guest profile
+* [ ] Guest API
+* [ ] Guest search foundation
+
+## M7 - Reservation / Guest Relation
+
+* [ ] Primary guest relation
+* [ ] Accompany guest support
+* [ ] Reservation linkage
+* [ ] Stay linkage
+
+## M8 - Guest Behavioral Foundation
+
+* [ ] Stay history
+* [ ] Spending history
+* [ ] Behavioral metrics
+* [ ] Timeline foundation
+
+## M9 - CRM Foundation
+
+* [ ] Membership foundation
+* [ ] Guest segmentation
+* [ ] Corporate relation
+
+## M10 - Guest Intelligence Foundation
+
+* [ ] Behavioral event modeling
+* [ ] Guest graph foundation
+* [ ] Forecast linkage foundation
 
 ---
 
@@ -105,71 +147,4 @@ Billing is modeled as append-only ledger entries.
 * entries are append-only
 * balance is derived from entries
 * operational history is treated as first-class data
-
----
-
-## Development Workflow
-
-```plaintext
-Issue
-→ Branch
-→ PR
-→ Review
-→ Merge
-```
-
-### Example
-
-```bash
-git checkout -b feature/folio-entry-core
-```
-
----
-
-## Testing
-
-Run all tests:
-
-```bash
-cargo test
-```
-
-### Testing Focus
-
-* state transition validation
-* transactional consistency
-* repository persistence
-* append-only ledger behavior
-
----
-
-## Setup
-
-```bash
-git clone <repo>
-cd pms-rs
-cargo test
-```
-
----
-
-## Database
-
-### Development
-
-* SQLite
-
-### Planned
-
-* MySQL
-
----
-
-## Future Considerations
-
-* RMS integration
-* operational analytics
-* cleaning optimization
-* IoT integration
-* smart lock support
-* event-driven operational modeling
+* billing events may later be consumed as behavioral signals

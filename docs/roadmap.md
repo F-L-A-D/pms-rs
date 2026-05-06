@@ -3,12 +3,16 @@
 ## Vision
 
 Build a hospitality operating system centered around:
+
 - reservation lifecycle
 - room operations
 - billing events
-- future operational integrations
+- guest identity
+- behavioral history
+- future operational and behavioral integrations
 
 The system prioritizes:
+
 - reproducible decision making
 - event-oriented design
 - extensibility
@@ -16,189 +20,226 @@ The system prioritizes:
 
 ---
 
-# M1 - Reservation & Inventory
+# Div1 - Operational Core
 
 ## Goal
 
-Implement reservation lifecycle and inventory control.
+Establish a reproducible and transactionally consistent operational foundation for hotel execution.
 
-## Scope
-
-- reservation creation
-- reservation modification
-- cancellation
-- inventory adjustment
-- transaction handling
-
-## Issues
-
-### #1 Reservation Create
-
-- reservation entity
-- create usecase
-- inventory increment
-- persistence
-
-### #2 Reservation Modify / Cancel
-
-- modify reservation
-- cancel reservation
-- inventory rollback
-- transaction rollback tests
+Div1 represents the completed operational core layer of the PMS.
 
 ---
 
-# M2 - Room & Assignment
+## M1 - Reservation & Inventory
 
-## Goal
+### Scope
 
-Implement physical room management.
+- reservation lifecycle
+- inventory persistence
+- transaction handling
 
-## Scope
+---
 
-- room entity
+## M2 - Room & Assignment
+
+### Scope
+
+- room management
 - occupancy status
 - housekeeping status
 - room assignment
 
-## Issues
-
-### #3 Room Core
-
-- room entity
-- room_class
-- occupancy status
-- housekeeping status
-- persistence
-
-### #4 Assign Room
-
-- assign reservation to room
-- room_class validation
-- room status update
-
 ---
 
-# M3 - Stay Operations
+## M3 - Stay Operations
 
-## Goal
-
-Implement stay lifecycle and operational room flow.
-
-## Scope
+### Scope
 
 - check-in
 - check-out
-- housekeeping lifecycle
-
-## Issues
-
-### #5 Check-in
-
-- stay status update
-- occupancy update
-- validation
-
-### #6 Check-out
-
-- checkout processing
-- room vacancy update
-
-### #7 Housekeeping Lifecycle
-
-- dirty
-- cleaning
-- cleaned
-- inspected
+- operational room flow
 
 ---
 
-# M4 - Billing Core
+## M4 - Billing Core
 
-## Goal
-
-Implement append-only billing foundation for stay operations.
-
-Billing is modeled as append-only ledger entries.
-
-## Scope
+### Scope
 
 - folio management
-- billing entries
-- balance calculation
-- room charge posting
-
-## Issues
-
-### #8 Folio Core
-
-- folio entity
-- folio lifecycle
-- repository
-- tests
-
-### #9 Folio Entry Core
-
-- folio_entries table
-- FolioEntry entity
-- EntryType
-- repository
-- tests
-
-### #10 Balance Calculation
-
-- calculate balance from entries
-- balance projection
-- tests
-
-### #11 Room Charge Posting
-
-- connect stay operations to billing
-- room charge entries
-- folio linkage
+- append-only ledger
+- balance derivation
+- charge posting
+- payment posting
 
 ---
 
-# M5 - API Layer
+## M5 - API Layer
 
-## Goal
-
-Expose PMS functionality through HTTP API.
-
-## Scope
+### Scope
 
 - HTTP server
 - routing
-- JSON serialization
-- API endpoints
+- serialization
+- operational APIs
+- integration validation
+
+---
+
+# Div2 - Guest & Behavioral Foundation
+
+## Goal
+
+Build long-lived guest identity and behavioral infrastructure independent from transactional reservation flow.
+
+Reservations, stays, and billing are treated as operational events linked to guest identity.
+
+---
+
+# M6 - Guest Identity Core
+
+## Goal
+
+Implement long-lived guest identity management.
+
+## Scope
+
+- guest entity
+- guest profile
+- guest persistence
+- guest API
+- guest search foundation
 
 ## Issues
 
-### #12 HTTP Server Setup
+### #16 Guest Aggregate Root
 
-- axum setup
-- router
-- app state
-- health endpoint
+- guest entity
+- guest_id
+- repository
+- persistence
 
-### #13 Reservation API
+### #17 Guest Profile
 
-- create reservation endpoint
-- modify reservation endpoint
-- cancel reservation endpoint
+- name
+- phone
+- email
+- address
+- nationality
 
-### #14 Room / Stay API
+### #18 Guest API
 
-- assign room endpoint
-- check-in endpoint
-- check-out endpoint
-- housekeeping endpoints
+- create guest
+- update guest
+- get guest
+- search guest
 
-### #15 Billing API
+### #19 Guest Validation
 
-- folio endpoint
-- entry posting endpoint
-- balance endpoint
+- duplicate prevention foundation
+- identity consistency
+
+### #20 Guest Search Foundation
+
+- guest lookup
+- search indexing foundation
+
+---
+
+# M7 - Reservation / Guest Relation
+
+## Goal
+
+Connect operational transactions to guest identity.
+
+## Scope
+
+- primary guest
+- accompany guest
+- reservation linkage
+- stay linkage
+
+## Issues
+
+### #21 Primary Guest Relation
+
+### #22 Accompany Guest Support
+
+### #23 Reservation Guest Validation
+
+### #24 Stay / Billing Guest Linkage
+
+---
+
+# M8 - Guest Behavioral Foundation
+
+## Goal
+
+Accumulate operational history as behavioral data.
+
+## Scope
+
+- guest history
+- stay history
+- spending history
+- behavioral metrics
+
+## Issues
+
+### #25 Guest History
+
+### #26 Guest Preference
+
+### #27 Guest Behavioral Metrics
+
+### #28 Guest Timeline API
+
+---
+
+# M9 - CRM Foundation
+
+## Goal
+
+Build hospitality CRM primitives.
+
+## Scope
+
+- membership foundation
+- guest segmentation
+- corporate relation
+
+## Issues
+
+### #29 Company / Organization
+
+### #30 Membership Foundation
+
+### #31 Guest Segmentation
+
+### #32 CRM Search API
+
+---
+
+# M10 - Guest Intelligence Foundation
+
+## Goal
+
+Build analytical foundation for future forecasting and behavioral modeling.
+
+## Scope
+
+- behavioral event modeling
+- guest graph foundation
+- forecast linkage foundation
+
+## Issues
+
+### #33 Guest Graph Foundation
+
+### #34 Behavioral Event Model
+
+### #35 Guest Analytics API
+
+### #36 Forecast / CRM Link Foundation
 
 ---
 
@@ -207,6 +248,7 @@ Expose PMS functionality through HTTP API.
 ## Scope Management
 
 If implementation requires scope expansion:
+
 1. Propose roadmap modification first
 2. Update milestone / issue structure
 3. Implement after agreement
@@ -217,4 +259,4 @@ If implementation requires scope expansion:
 - balance is derived from ledger entries
 - append-only operations are preferred
 - operational consistency is prioritized over premature abstraction
-- internal domain language is English-based
+- guest identity and operational events should remain loosely coupled

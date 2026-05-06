@@ -6,10 +6,12 @@ pub mod handlers {
     pub mod reservation;
     pub mod room;
     pub mod stay;
+    pub mod guest;
 }
 pub mod dto{
     pub mod billing;
     pub mod reservation;
     pub mod room;
     pub mod stay;
+    pub mod guest;
 }

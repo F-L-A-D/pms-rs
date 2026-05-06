@@ -96,14 +96,14 @@ See:
 
 ---
 
-# Div2 - Guest & Behavioral Foundation (Planned)
+# Div2 - Guest & Behavioral Foundation
 
 ## M6 - Guest Identity Core
 
-* [ ] Guest aggregate
-* [ ] Guest profile
-* [ ] Guest API
-* [ ] Guest search foundation
+* [x] Guest aggregate
+* [x] Guest profile
+* [x] Guest API
+* [x] Guest search foundation
 
 ## M7 - Reservation / Guest Relation
 

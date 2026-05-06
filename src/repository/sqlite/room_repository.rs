@@ -17,7 +17,13 @@ impl SqliteRoomRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO rooms (id, room_class, occupancy_status, housekeeping_status)
+            INSERT OR REPLACE INTO rooms 
+            (
+                id, 
+                room_class, 
+                occupancy_status, 
+                housekeeping_status
+            )
             VALUES (?1, ?2, ?3, ?4)
             "#
         )

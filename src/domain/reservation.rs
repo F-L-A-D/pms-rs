@@ -7,11 +7,19 @@ pub enum ReservationStatus {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum StayStatus{
+    Confirmed,
+    CheckedIn,
+    CheckedOut,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Reservation {
     pub id: String,
     pub check_in: NaiveDate,
     pub check_out: NaiveDate,
-    pub status: ReservationStatus,
+    pub reservation_status: ReservationStatus,
+    pub stay_status: Option<StayStatus>,
     pub room_class: String,
     pub room_id: Option<String>,
 }
@@ -30,7 +38,8 @@ impl Reservation {
             id,
             check_in,
             check_out,
-            status: ReservationStatus::Active,
+            reservation_status: ReservationStatus::Active,
+            stay_status: Some(StayStatus::Confirmed),
             room_class,
             room_id: None,
         })

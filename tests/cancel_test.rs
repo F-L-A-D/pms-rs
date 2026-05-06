@@ -33,5 +33,5 @@ async fn cancel_should_update_status() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(format!("{:?}", res.status), "Cancelled");
+    assert_eq!(format!("{:?}", res.reservation_status), "Cancelled");
 }

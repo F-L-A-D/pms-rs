@@ -13,3 +13,4 @@ pub mod room_test;
 pub mod transaction_commit_test;
 pub mod transaction_rollback_test;
 pub mod folio_test;
+pub mod folio_entry_test;

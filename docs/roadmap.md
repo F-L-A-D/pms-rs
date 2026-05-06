@@ -1,233 +1,220 @@
-# PMS-RS Roadmap (M4+)
+# PMS-RS Roadmap
 
-## M4 - Billing Core
+## Vision
 
-### Goal
+Build a hospitality operating system centered around:
+- reservation lifecycle
+- room operations
+- billing events
+- future operational integrations
 
-Implement core billing functionality for stay operations.
-
-Scope is limited to:
-
-* folio management
-* billing entries
-* balance calculation
-* room charge posting
-
-This milestone does NOT include:
-
-* POS integration
-* IoT integration
-* CRM
-* external payment gateway
-* analytics
+The system prioritizes:
+- reproducible decision making
+- event-oriented design
+- extensibility
+- operational consistency
 
 ---
 
-#25 - Folio Core
+# M1 - Reservation & Inventory
 
-## Summary
+## Goal
 
-Implement folio container for billing operations.
+Implement reservation lifecycle and inventory control.
 
 ## Scope
 
-* [x] Define `folios` table
-* [x] Implement `Folio` entity
-* [x] Implement `FolioStatus`
-* [x] Implement open / close operations
-* [x] Implement repository
-* [x] Add integration tests
+- reservation creation
+- reservation modification
+- cancellation
+- inventory adjustment
+- transaction handling
 
-## Done Criteria
+## Issues
 
-* [x] Folio can be opened
-* [x] Folio can be closed
-* [x] Closed folio cannot be closed twice
+### #1 Reservation Create
+
+- reservation entity
+- create usecase
+- inventory increment
+- persistence
+
+### #2 Reservation Modify / Cancel
+
+- modify reservation
+- cancel reservation
+- inventory rollback
+- transaction rollback tests
 
 ---
 
-#26 - Folio Entry Core
+# M2 - Room & Assignment
 
-## Summary
+## Goal
 
-Implement billing entry model.
+Implement physical room management.
 
 ## Scope
 
-* [ ] Define `folio_entries` table
-* [ ] Implement `FolioEntry` entity
-* [ ] Implement `EntryType`
-* [ ] Implement repository
-* [ ] Add integration tests
+- room entity
+- occupancy status
+- housekeeping status
+- room assignment
 
-## Entry Types
+## Issues
 
-Initial types:
+### #3 Room Core
 
-* RoomCharge
-* Payment
-* Adjustment
+- room entity
+- room_class
+- occupancy status
+- housekeeping status
+- persistence
 
-## Done Criteria
+### #4 Assign Room
 
-* [ ] Billing entries can be stored
-* [ ] Entry types are validated
-* [ ] Entries belong to a folio
+- assign reservation to room
+- room_class validation
+- room status update
 
 ---
 
-#27 - Balance Calculation
+# M3 - Stay Operations
 
-## Summary
+## Goal
 
-Implement folio balance calculation.
+Implement stay lifecycle and operational room flow.
 
 ## Scope
 
-* [ ] Calculate balance from folio entries
-* [ ] Implement balance usecase
-* [ ] Add integration tests
+- check-in
+- check-out
+- housekeeping lifecycle
 
-## Notes
+## Issues
 
-Balance must be derived from entries.
+### #5 Check-in
 
-Balance itself is not the source of truth.
+- stay status update
+- occupancy update
+- validation
 
-## Done Criteria
+### #6 Check-out
 
-* [ ] Positive balances are calculated correctly
-* [ ] Negative balances are calculated correctly
-* [ ] Empty folio returns zero
+- checkout processing
+- room vacancy update
+
+### #7 Housekeeping Lifecycle
+
+- dirty
+- cleaning
+- cleaned
+- inspected
 
 ---
 
-#28 - Room Charge Posting
+# M4 - Billing Core
 
-## Summary
+## Goal
 
-Implement room charge posting flow.
+Implement append-only billing foundation for stay operations.
+
+Billing is modeled as append-only ledger entries.
 
 ## Scope
 
-* [ ] Post room charge entries
-* [ ] Connect stay operations to billing
-* [ ] Add integration tests
+- folio management
+- billing entries
+- balance calculation
+- room charge posting
 
-## Notes
+## Issues
 
-This issue only covers stay-related room charges.
+### #8 Folio Core
 
-## Done Criteria
+- folio entity
+- folio lifecycle
+- repository
+- tests
 
-* [ ] Room charge entries are created
-* [ ] Charges are linked to folios
-* [ ] Balance reflects room charges
+### #9 Folio Entry Core
 
----
+- folio_entries table
+- FolioEntry entity
+- EntryType
+- repository
+- tests
 
-## M5 - API Layer
+### #10 Balance Calculation
 
-### Goal
+- calculate balance from entries
+- balance projection
+- tests
 
-Expose PMS operations through HTTP API.
+### #11 Room Charge Posting
 
-This milestone introduces:
-
-* HTTP server
-* routing
-* JSON serialization
-* API endpoints
-
-This milestone does NOT include:
-
-* authentication
-* authorization
-* external integrations
-* websocket/event streaming
+- connect stay operations to billing
+- room charge entries
+- folio linkage
 
 ---
 
-#29 - HTTP Server Setup
+# M5 - API Layer
 
-## Summary
+## Goal
 
-Setup API server foundation.
+Expose PMS functionality through HTTP API.
 
 ## Scope
 
-* [ ] Introduce axum
-* [ ] Setup router
-* [ ] Setup application state
-* [ ] Setup JSON responses
-* [ ] Add health check endpoint
+- HTTP server
+- routing
+- JSON serialization
+- API endpoints
 
-## Done Criteria
+## Issues
 
-* [ ] Server boots successfully
-* [ ] Health check endpoint responds
-* [ ] Shared DB state works
+### #12 HTTP Server Setup
 
----
+- axum setup
+- router
+- app state
+- health endpoint
 
-#30 - Reservation API
+### #13 Reservation API
 
-## Summary
+- create reservation endpoint
+- modify reservation endpoint
+- cancel reservation endpoint
 
-Implement reservation API endpoints.
+### #14 Room / Stay API
 
-## Scope
+- assign room endpoint
+- check-in endpoint
+- check-out endpoint
+- housekeeping endpoints
 
-* [ ] Create reservation endpoint
-* [ ] Modify reservation endpoint
-* [ ] Cancel reservation endpoint
-* [ ] Add integration tests
+### #15 Billing API
 
-## Done Criteria
-
-* [ ] Reservations can be created via HTTP
-* [ ] Reservations can be modified via HTTP
-* [ ] Reservations can be cancelled via HTTP
-
----
-
-#44 - Room / Stay API
-
-## Summary
-
-Implement room and stay operation endpoints.
-
-## Scope
-
-* [ ] Assign room endpoint
-* [ ] Check-in endpoint
-* [ ] Check-out endpoint
-* [ ] Housekeeping endpoints
-* [ ] Add integration tests
-
-## Done Criteria
-
-* [ ] Room assignment works through API
-* [ ] Stay operations work through API
-* [ ] Housekeeping lifecycle works through API
+- folio endpoint
+- entry posting endpoint
+- balance endpoint
 
 ---
 
-#45 - Billing API
+# Development Rules
 
-## Summary
+## Scope Management
 
-Implement billing-related API endpoints.
+If implementation requires scope expansion:
+1. Propose roadmap modification first
+2. Update milestone / issue structure
+3. Implement after agreement
 
-## Scope
+## Design Principles
 
-* [ ] Open folio endpoint
-* [ ] Post entry endpoint
-* [ ] Balance endpoint
-* [ ] Add integration tests
-
-## Done Criteria
-
-* [ ] Folios can be opened via API
-* [ ] Entries can be posted via API
-* [ ] Balance can be retrieved via API
+- state and events should be separated where reasonable
+- balance is derived from ledger entries
+- append-only operations are preferred
+- operational consistency is prioritized over premature abstraction
+- internal domain language is English-based

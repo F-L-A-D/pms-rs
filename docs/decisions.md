@@ -1,4 +1,4 @@
-# Decisions
+# PMS-RS Decisions
 
 ## Architecture
 
@@ -24,6 +24,17 @@
 * Inventory stored as daily aggregated table
 * Inventory is NOT derived on the fly
 * Inventory is updated alongside reservation
+
+## Billing Design
+
+* Billing uses append-only ledger entries
+* Balance is derived from entries
+* Folio acts as billing container
+
+## Event Design
+
+* State and events should be separated where reasonable
+* Operational history is treated as first-class data
 
 ## Overbooking
 

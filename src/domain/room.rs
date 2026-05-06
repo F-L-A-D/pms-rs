@@ -59,6 +59,13 @@ impl Room {
         }
     }
 
+    pub fn mark_dirty(&mut self) -> Result<(), String> {
+        self.housekeeping_status = 
+            HousekeepingStatus::Dirty;
+        
+        Ok(())
+    }
+
     pub fn start_cleaning(&mut self) -> Result<(), String> {
         match self.housekeeping_status {
             HousekeepingStatus::Dirty => {

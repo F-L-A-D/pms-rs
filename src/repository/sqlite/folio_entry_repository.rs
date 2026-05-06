@@ -1,8 +1,16 @@
-use sqlx::{Row, SqlitePool};
+use chrono::{
+    DateTime,
+    Utc,
+};
+
+use sqlx::{
+    Row,
+    SqlitePool,
+};
 
 use crate::domain::folio_entry::{
-    FolioEntry,
     EntryType,
+    FolioEntry,
 };
 
 pub struct SqliteFolioEntryRepository;
@@ -45,47 +53,65 @@ impl SqliteFolioEntryRepository {
         folio_id: &str,
     ) -> Result<Vec<FolioEntry>, String> {
 
-        let rows = sqlx::query(
-            r#"
-            SELECT
-                id,
-                folio_id,
-                entry_type,
-                amount,
-                occurred_at,
-                description
-            FROM folio_entries
-            WHERE folio_id = ?1
-            ORDER BY occurred_at
-            "#
-        )
-        .bind(folio_id)
-        .fetch_all(db)
-        .await
-        .map_err(|e| e.to_string())?;
+        let rows =
+            sqlx::query(
+                r#"
+                SELECT
+                    id,
+                    folio_id,
+                    entry_type,
+                    amount,
+                    occurred_at,
+                    description
+                FROM folio_entries
+                WHERE folio_id = ?1
+                ORDER BY occurred_at
+                "#
+            )
+            .bind(folio_id)
+            .fetch_all(db)
+            .await
+            .map_err(|e| e.to_string())?;
 
         let mut entries = vec![];
 
         for r in rows {
 
-            let entry_type = match r.get::<String, _>("entry_type").as_str() {
-                "RoomCharge" => EntryType::RoomCharge,
-                "Payment" => EntryType::Payment,
-                "Adjustment" => EntryType::Adjustment,
-                _ => return Err("invalid entry type".into()),
-            };
+            let entry_type =
+                match r.get::<String, _>("entry_type").as_str() {
+                    "RoomCharge" => EntryType::RoomCharge,
+                    "Payment" => EntryType::Payment,
+                    "Adjustment" => EntryType::Adjustment,
+                    _ => {
+                        return Err(
+                            "invalid entry type".into()
+                        )
+                    }
+                };
 
-            entries.push(FolioEntry {
-                id: r.get("id"),
-                folio_id: r.get("folio_id"),
-                entry_type,
-                amount: r.get("amount"),
-                occurred_at: r
-                    .get::<String, _>("occurred_at")
-                    .parse()
-                    .unwrap(),
-                description: r.get("description"),
-            });
+            let occurred_at_str =
+                r.get::<String, _>("occurred_at");
+
+            let occurred_at =
+                DateTime::parse_from_rfc3339(
+                    &occurred_at_str,
+                )
+                .map_err(|e| e.to_string())?
+                .with_timezone(&Utc);
+
+            entries.push(
+                FolioEntry {
+                    id: r.get("id"),
+                    folio_id:
+                        r.get("folio_id"),
+                    entry_type,
+                    amount:
+                        r.get("amount"),
+                    occurred_at,
+                    description:
+                        r.get("description"),
+                }
+            );
         }
 
         Ok(entries)

@@ -15,7 +15,7 @@ pub async fn cancel(
             .await?
             .ok_or("not found")?;
 
-        if res.status == ReservationStatus::Cancelled {
+        if res.reservation_status == ReservationStatus::Cancelled {
             return Ok(());
         }
 
@@ -25,7 +25,8 @@ pub async fn cancel(
             SqliteInventoryRepository::add_tx(&mut tx, &d.to_string(), -1, 10).await?;
         }
 
-        res.status = ReservationStatus::Cancelled;
+        res.reservation_status = ReservationStatus::Cancelled;
+        res.stay_status = None;
 
         SqliteReservationRepository::save_tx(&mut tx, &res).await?;
 

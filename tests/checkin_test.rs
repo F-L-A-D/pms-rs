@@ -1,14 +1,25 @@
-use pms_rs::db::connection::Db;
-use pms_rs::usecase::reservation::create::create;
-use pms_rs::usecase::reservation::assign_room::assign_room;
-use pms_rs::adapter::stay_input::StayInput;
-use pms_rs::repository::sqlite::room_repository::SqliteRoomRepository;
-use pms_rs::domain::room::{Room, OccupancyStatus, HousekeepingStatus};
-
 use chrono::NaiveDate;
 
+use pms_rs::db::connection::Db;
+
+use pms_rs::adapter::stay_input::StayInput;
+
+use pms_rs::domain::room::{
+    Room,
+    OccupancyStatus,
+    HousekeepingStatus,
+};
+
+use pms_rs::repository::sqlite::room_repository::SqliteRoomRepository;
+
+use pms_rs::usecase::reservation::create::create;
+use pms_rs::usecase::reservation::assign_room::assign_room;
+
+use pms_rs::usecase::stay::check_in::check_in;
+
 #[tokio::test]
-async fn should_assign_room() {
+async fn should_check_in() {
+
     let db = Db::new("sqlite::memory:").await;
 
     let room = Room {
@@ -34,7 +45,11 @@ async fn should_assign_room() {
     .await
     .unwrap();
 
-    let result = assign_room(&db, "r1", "101").await;
+    assign_room(&db, "r1", "101")
+        .await
+        .unwrap();
+
+    let result = check_in(&db, "r1").await;
 
     assert!(result.is_ok());
 }

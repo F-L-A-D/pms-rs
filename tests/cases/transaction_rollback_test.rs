@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use pms_rs::db::connection::Db;
 use pms_rs::usecase::reservation::create::create;
 use pms_rs::adapter::stay_input::StayInput;

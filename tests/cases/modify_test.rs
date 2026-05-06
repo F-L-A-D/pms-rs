@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use chrono::NaiveDate;
 
 use pms_rs::db::connection::Db;

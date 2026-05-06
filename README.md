@@ -84,9 +84,9 @@ See:
 
 ### M5 - API Layer
 
-* [ ] HTTP server
-* [ ] Reservation API
-* [ ] Room / Stay API
+* [x] HTTP server
+* [x] Reservation API
+* [x] Room / Stay API
 * [ ] Billing API
 
 ---

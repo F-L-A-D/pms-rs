@@ -69,7 +69,7 @@ pub async fn assign_room(
         res.room_id =
             Some(room_id.to_string());
 
-        SqliteReservationRepository::save(
+        SqliteReservationRepository::update(
             &mut tx,
             &res,
         )

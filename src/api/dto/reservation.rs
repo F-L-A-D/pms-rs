@@ -1,26 +1,50 @@
 use serde::{
-    Deserialize,
     Serialize,
+    Deserialize,
 };
 
-#[derive(Deserialize)]
+use chrono::NaiveDate;
+
+use crate::domain::reservation_guest_relation::
+    ReservationGuestRelationType;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReservationParticipantInput {
+    pub guest_id: String,
+    pub relation_type: ReservationGuestRelationType,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreateReservationRequest {
     pub id: String,
-    pub check_in: String,
-    pub nights: u32,
+    pub check_in: NaiveDate,
+    pub check_out: NaiveDate,
     pub room_class: String,
-    pub primary_guest_id: Option<String>,
+    pub participants: Vec<ReservationParticipantInput>,
 }
 
-#[derive(Deserialize)]
-pub struct ModifyReservationRequest {
-    pub check_in: String,
-    pub nights: u32,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateReservationRequest {
+    pub check_in: NaiveDate,
+    pub check_out: NaiveDate,
     pub room_class: String,
+    pub participants: Vec<ReservationParticipantInput>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
+pub struct ReservationParticipantResponse {
+    pub guest_id: String,
+    pub relation_type: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ReservationResponse {
     pub id: String,
-    pub status: String,
+    pub check_in: NaiveDate,
+    pub check_out: NaiveDate,
+    pub reservation_status: String,
+    pub stay_status: Option<String>,
+    pub room_class: String,
+    pub room_id: Option<String>,
+    pub participants: Vec<ReservationParticipantResponse>,
 }

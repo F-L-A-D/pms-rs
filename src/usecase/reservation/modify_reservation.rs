@@ -1,6 +1,6 @@
 use crate::db::connection::Db;
 
-use crate::adapter::stay_input::{
+use crate::usecase::reservation::stay_input::{
     normalize,
     StayInput,
 };
@@ -47,7 +47,7 @@ pub async fn modify_reservation(
         res.check_in = check_in;
         res.check_out = check_out;
 
-        SqliteReservationRepository::save(
+        SqliteReservationRepository::update(
             &mut tx,
             &res,
         )

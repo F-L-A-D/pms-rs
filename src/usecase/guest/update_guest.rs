@@ -1,6 +1,11 @@
+use chrono::NaiveDate;
+
 use crate::db::connection::Db;
 
-use crate::domain::guest::Guest;
+use crate::domain::guest::{
+    Guest,
+    Gender,
+};
 
 use crate::error::app_error::{
     AppError,
@@ -16,6 +21,11 @@ pub async fn update_guest(
     first_name: String,
     phone: Option<String>,
     email: Option<String>,
+    nationality: Option<String>,
+    birth_date: Option<NaiveDate>,
+    gender: Option<Gender>,
+    membership_code: Option<String>,
+    marketing_opt_in: bool,
 ) -> AppResult<Guest> {
 
     let mut tx =
@@ -41,6 +51,11 @@ pub async fn update_guest(
             first_name,
             phone,
             email,
+            nationality,
+            birth_date,
+            gender,
+            membership_code,
+            marketing_opt_in,
         )
         .map_err(AppError::Validation)?;
 

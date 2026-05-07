@@ -98,15 +98,20 @@ pub async fn check_in(
         .await
         .map_err(AppError::Infrastructure)?;
 
-        SqliteReservationRepository::save(
+        SqliteReservationRepository::update(
             &mut tx,
             &res,
         )
         .await
         .map_err(AppError::Infrastructure)?;
 
+        let primary_guest_id =
+            res
+                .primary_participant()
+                .map(|p| p.guest_id.clone());
+
         if let Some(guest_id) =
-            &res.primary_guest_id {
+            &primary_guest_id {
 
             record_event(
                 &mut tx,

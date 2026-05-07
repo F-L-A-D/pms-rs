@@ -1,6 +1,11 @@
 use sqlx::{Row, Sqlite, Transaction};
 
-use crate::domain::guest::Guest;
+use chrono::NaiveDate;
+
+use crate::domain::guest::{
+    Gender,
+    Guest,
+};
 
 pub struct SqliteGuestRepository;
 
@@ -19,10 +24,28 @@ impl SqliteGuestRepository {
                 first_name,
                 phone,
                 email,
+                nationality,
+                birth_date,
+                gender,
+                membership_code,
+                marketing_opt_in,
                 created_at,
                 updated_at
             )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            VALUES (
+                ?1,
+                ?2,
+                ?3,
+                ?4,
+                ?5,
+                ?6,
+                ?7,
+                ?8,
+                ?9,
+                ?10,
+                ?11,
+                ?12
+            )
             "#
         )
         .bind(&guest.id)
@@ -30,6 +53,15 @@ impl SqliteGuestRepository {
         .bind(&guest.first_name)
         .bind(&guest.phone)
         .bind(&guest.email)
+        .bind(&guest.nationality)
+        .bind(guest.birth_date)
+        .bind(
+            guest.gender.as_ref().map(|v| {
+                format!("{:?}", v)
+            })
+        )
+        .bind(&guest.membership_code)
+        .bind(guest.marketing_opt_in)
         .bind(guest.created_at.to_rfc3339())
         .bind(guest.updated_at.to_rfc3339())
         .execute(&mut **tx)
@@ -53,6 +85,11 @@ impl SqliteGuestRepository {
                     first_name,
                     phone,
                     email,
+                    nationality,
+                    birth_date,
+                    gender,
+                    membership_code,
+                    marketing_opt_in,
                     created_at,
                     updated_at
                 FROM guests
@@ -91,6 +128,11 @@ impl SqliteGuestRepository {
                     first_name,
                     phone,
                     email,
+                    nationality,
+                    birth_date,
+                    gender,
+                    membership_code,
+                    marketing_opt_in,
                     created_at,
                     updated_at
                 FROM guests
@@ -122,14 +164,28 @@ impl SqliteGuestRepository {
                 first_name = ?2,
                 phone = ?3,
                 email = ?4,
-                updated_at = ?5
-            WHERE id = ?6
+                nationality = ?5,
+                birth_date = ?6,
+                gender = ?7,
+                membership_code = ?8,
+                marketing_opt_in = ?9,
+                updated_at = ?10
+            WHERE id = ?11
             "#
         )
         .bind(&guest.last_name)
         .bind(&guest.first_name)
         .bind(&guest.phone)
         .bind(&guest.email)
+        .bind(&guest.nationality)
+        .bind(guest.birth_date)
+        .bind(
+            guest.gender.as_ref().map(|v| {
+                format!("{:?}", v)
+            })
+        )
+        .bind(&guest.membership_code)
+        .bind(guest.marketing_opt_in)
         .bind(guest.updated_at.to_rfc3339())
         .bind(&guest.id)
         .execute(&mut **tx)
@@ -155,6 +211,11 @@ impl SqliteGuestRepository {
                     first_name,
                     phone,
                     email,
+                    nationality,
+                    birth_date,
+                    gender,
+                    membership_code,
+                    marketing_opt_in,
                     created_at,
                     updated_at
                 FROM guests
@@ -187,10 +248,39 @@ impl SqliteGuestRepository {
             first_name: r.get("first_name"),
             phone: r.get("phone"),
             email: r.get("email"),
+            nationality: r.get("nationality"),
+            birth_date:
+                r.get::<Option<NaiveDate>, _>("birth_date"),
+
+            gender:
+                match r.get::<Option<String>, _>("gender") {
+
+                    Some(v) => {
+                        match v.as_str() {
+                            "Male" => Some(Gender::Male),
+                            "Female" => Some(Gender::Female),
+                            "Other" => Some(Gender::Other),
+                            "Unspecified" => {
+                                Some(Gender::Unspecified)
+                            }
+                            _ => None,
+                        }
+                    }
+
+                    None => None,
+                },
+
+            membership_code:
+                r.get("membership_code"),
+
+            marketing_opt_in:
+                r.get("marketing_opt_in"),
+
             created_at: r
                 .get::<String, _>("created_at")
                 .parse()
                 .unwrap(),
+
             updated_at: r
                 .get::<String, _>("updated_at")
                 .parse()

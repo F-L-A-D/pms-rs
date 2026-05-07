@@ -1,5 +1,14 @@
-use sqlx::{Sqlite, Transaction, Row};
-use crate::domain::reservation::{Reservation, ReservationStatus, StayStatus};
+use sqlx::{
+    Row,
+    Sqlite,
+    Transaction,
+};
+
+use crate::domain::reservation::{
+    Reservation,
+    ReservationStatus,
+    StayStatus,
+};
 
 pub struct SqliteReservationRepository;
 
@@ -10,10 +19,80 @@ impl SqliteReservationRepository {
         reservation: &Reservation,
     ) -> Result<(), String> {
 
-        let result = sqlx::query(
+        sqlx::query(
+            r#"
+            INSERT INTO reservations (
+                id,
+                check_in,
+                check_out,
+                reservation_status,
+                stay_status,
+                room_class,
+                room_id,
+                created_at
+            )
+            VALUES (
+                ?1,
+                ?2,
+                ?3,
+                ?4,
+                ?5,
+                ?6,
+                ?7,
+                ?8
+            )
+            "#
+        )
+        .bind(&reservation.id)
+        .bind(reservation.check_in.to_string())
+        .bind(reservation.check_out.to_string())
+        .bind(
+            match reservation.reservation_status {
+                ReservationStatus::Active =>
+                    "ACTIVE",
+                ReservationStatus::Cancelled =>
+                    "CANCELLED",
+            }
+        )
+        .bind(
+            reservation
+                .stay_status
+                .as_ref()
+                .map(|s| {
+                    match s {
+                        StayStatus::Confirmed =>
+                            "CONFIRMED",
+                        StayStatus::CheckedIn =>
+                            "CHECKED_IN",
+                        StayStatus::CheckedOut =>
+                            "CHECKED_OUT",
+                    }
+                })
+        )
+        .bind(&reservation.room_class)
+        .bind(&reservation.room_id)
+        .bind(
+            reservation
+                .created_at
+                .to_rfc3339()
+        )
+        .execute(&mut **tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    pub async fn update(
+        tx: &mut Transaction<'_, Sqlite>,
+        reservation: &Reservation,
+    ) -> Result<(), String> {
+
+        sqlx::query(
             r#"
             UPDATE reservations
-            SET check_in = ?1,
+            SET
+                check_in = ?1,
                 check_out = ?2,
                 reservation_status = ?3,
                 stay_status = ?4,
@@ -22,60 +101,57 @@ impl SqliteReservationRepository {
             WHERE id = ?7
             "#
         )
-        .bind(reservation.check_in.to_string())
-        .bind(reservation.check_out.to_string())
-        .bind(format!("{:?}", reservation.reservation_status))
+        .bind(
+            reservation
+                .check_in
+                .to_string()
+        )
+        .bind(
+            reservation
+                .check_out
+                .to_string()
+        )
+        .bind(
+            match reservation.reservation_status {
+
+                ReservationStatus::Active =>
+                    "ACTIVE",
+
+                ReservationStatus::Cancelled =>
+                    "CANCELLED",
+            }
+        )
         .bind(
             reservation
                 .stay_status
                 .as_ref()
-                .map(|s| format!("{:?}", s))
+                .map(|s| {
+
+                    match s {
+
+                        StayStatus::Confirmed =>
+                            "CONFIRMED",
+
+                        StayStatus::CheckedIn =>
+                            "CHECKED_IN",
+
+                        StayStatus::CheckedOut =>
+                            "CHECKED_OUT",
+                    }
+                })
         )
-        .bind(&reservation.room_class)
-        .bind(&reservation.room_id)
-        .bind(&reservation.id)
+        .bind(
+            &reservation.room_class
+        )
+        .bind(
+            &reservation.room_id
+        )
+        .bind(
+            &reservation.id
+        )
         .execute(&mut **tx)
         .await
         .map_err(|e| e.to_string())?;
-
-        if result.rows_affected() == 0 {
-            sqlx::query(
-                r#"
-                INSERT INTO reservations
-                (
-                    id, 
-                    check_in, 
-                    check_out, 
-                    reservation_status,
-                    stay_status, 
-                    room_class, 
-                    room_id, 
-                    created_at, 
-                    channel,
-                    primary_guest_id
-                )
-                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
-                "#
-            )
-            .bind(&reservation.id)
-            .bind(reservation.check_in.to_string())
-            .bind(reservation.check_out.to_string())
-            .bind(format!("{:?}", reservation.reservation_status))
-            .bind(
-                reservation
-                    .stay_status
-                    .as_ref()
-                    .map(|s| format!("{:?}", s))
-            )
-            .bind(&reservation.room_class)
-            .bind(&reservation.room_id)
-            .bind(chrono::Utc::now().to_string())
-            .bind("direct")
-            .bind(&reservation.primary_guest_id)
-            .execute(&mut **tx)
-            .await
-            .map_err(|e| e.to_string())?;
-        }
 
         Ok(())
     }
@@ -85,55 +161,118 @@ impl SqliteReservationRepository {
         id: &str,
     ) -> Result<Option<Reservation>, String> {
 
-        let row = sqlx::query(
-            r#"
-            SELECT 
-                id, 
-                check_in, 
-                check_out, 
-                reservation_status,
-                stay_status,
-                room_class, 
-                room_id,
-                primary_guest_id
-            FROM reservations
-            WHERE id = ?1
-            "#
-        )
-        .bind(id)
-        .fetch_optional(&mut **tx)
-        .await
-        .map_err(|e| e.to_string())?;
+        let row =
+            sqlx::query(
+                r#"
+                SELECT
+                    id,
+                    check_in,
+                    check_out,
+                    reservation_status,
+                    stay_status,
+                    room_class,
+                    room_id,
+                    created_at
+                FROM reservations
+                WHERE id = ?1
+                "#
+            )
+            .bind(id)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(|e| e.to_string())?;
 
-        if let Some(r) = row {
+        match row {
 
-            let stay_status = match r.get::<Option<String>, _>("stay_status") {
-                Some(s) => match s.as_str() {
-                    "Confirmed" => Some(StayStatus::Confirmed),
-                    "CheckedIn" => Some(StayStatus::CheckedIn),
-                    "CheckedOut" => Some(StayStatus::CheckedOut),
-                    _ => return Err("invalid stay status".into()),
-                },
-                None => None,
-            };
+            Some(r) => {
 
-            let room_id: Option<String> = r.get("room_id");
+                let participants =
+                    crate::repository::sqlite::
+                        reservation_guest_relation_repository::
+                        SqliteReservationGuestRelationRepository
+                            ::list_by_reservation_id(
+                                tx,
+                                id,
+                            )
+                            .await?;
 
-            Ok(Some(Reservation {
-                id: r.get("id"),
-                check_in: r.get::<String, _>("check_in").parse().unwrap(),
-                check_out: r.get::<String, _>("check_out").parse().unwrap(),
-                reservation_status: match r.get::<String, _>("reservation_status").as_str() {
-                    "Cancelled" => ReservationStatus::Cancelled,
-                    _ => ReservationStatus::Active,
-                },
-                stay_status,
-                room_class: r.get("room_class"),
-                room_id,
-                primary_guest_id: r.get("primary_guest_id")
-            }))
-        } else {
-            Ok(None)
+                Ok(
+                    Some(
+                        Reservation {
+                            id: r.get("id"),
+                            check_in: r
+                                .get::<String, _>("check_in")
+                                .parse()
+                                .unwrap(),
+                            check_out: r
+                                .get::<String, _>("check_out")
+                                .parse()
+                                .unwrap(),
+                            reservation_status:
+                                match r.get::<String, _>(
+                                    "reservation_status"
+                                ).as_str() {
+
+                                    "ACTIVE" =>
+                                        ReservationStatus::Active,
+
+                                    "CANCELLED" =>
+                                        ReservationStatus::Cancelled,
+
+                                    _ =>
+                                        return Err(
+                                            "invalid reservation_status"
+                                                .into()
+                                        ),
+                                },
+                            stay_status:
+                                match r
+                                    .get::<Option<String>, _>(
+                                        "stay_status"
+                                    ) {
+
+                                    Some(v) => {
+                                        Some(
+                                            match v.as_str() {
+
+                                                "CONFIRMED" =>
+                                                    StayStatus::Confirmed,
+
+                                                "CHECKED_IN" =>
+                                                    StayStatus::CheckedIn,
+
+                                                "CHECKED_OUT" =>
+                                                    StayStatus::CheckedOut,
+
+                                                _ =>
+                                                    return Err(
+                                                        "invalid stay_status"
+                                                            .into()
+                                                    ),
+                                            }
+                                        )
+                                    }
+
+                                    None => None,
+                                },
+                            room_class:
+                                r.get("room_class"),
+                            room_id:
+                                r.get(  "room_id"),
+                            participants,
+
+                            created_at:
+                                r.get::<String, _>(
+                                    "created_at"
+                                )
+                                .parse()
+                                .unwrap(),
+                        }
+                    )
+                )
+            }
+
+            None => Ok(None),
         }
     }
 
@@ -145,18 +284,19 @@ impl SqliteReservationRepository {
         let rows =
             sqlx::query(
                 r#"
-                SELECT
-                    id,
-                    check_in,
-                    check_out,
-                    reservation_status,
-                    stay_status,
-                    room_class,
-                    room_id,
-                    primary_guest_id
-                FROM reservations
-                WHERE primary_guest_id = ?1
-                ORDER BY check_in DESC
+                SELECT DISTINCT
+                    r.id,
+                    r.check_in,
+                    r.check_out,
+                    r.reservation_status,
+                    r.stay_status,
+                    r.room_class,
+                    r.room_id,
+                    r.created_at
+                FROM reservations r
+                INNER JOIN reservation_guest_relations rel
+                    ON r.id = rel.reservation_id
+                WHERE rel.guest_id = ?1
                 "#
             )
             .bind(guest_id)
@@ -166,68 +306,103 @@ impl SqliteReservationRepository {
 
         let mut reservations = vec![];
 
-        for r in rows {
+        for row in rows {
 
-            let stay_status =
-                match r.get::<Option<String>, _>("stay_status") {
+            let reservation_id: String =
+                row.get("id");
 
-                    Some(s) =>
-                        match s.as_str() {
-
-                            "Confirmed" =>
-                                Some(StayStatus::Confirmed),
-
-                            "CheckedIn" =>
-                                Some(StayStatus::CheckedIn),
-
-                            "CheckedOut" =>
-                                Some(StayStatus::CheckedOut),
-
-                            _ =>
-                                return Err(
-                                    "invalid stay status".into()
-                                ),
-                        },
-
-                    None => None,
-                };
-
-            let room_id: Option<String> =
-                r.get("room_id");
+            let participants =
+                crate::repository::sqlite::
+                    reservation_guest_relation_repository::
+                    SqliteReservationGuestRelationRepository
+                        ::list_by_reservation_id(
+                            tx,
+                            &reservation_id,
+                        )
+                        .await?;
 
             reservations.push(
                 Reservation {
-                    id: r.get("id"),
-
+                    id: reservation_id,
                     check_in:
-                        r.get::<String, _>("check_in")
-                            .parse()
-                            .unwrap(),
+                        row.get::<String, _>(
+                            "check_in"
+                        )
+                        .parse()
+                        .unwrap(),
 
                     check_out:
-                        r.get::<String, _>("check_out")
-                            .parse()
-                            .unwrap(),
+                        row.get::<String, _>(
+                            "check_out"
+                        )
+                        .parse()
+                        .unwrap(),
 
                     reservation_status:
-                        match r.get::<String, _>("reservation_status").as_str() {
+                        match row
+                            .get::<String, _>(
+                                "reservation_status"
+                            )
+                            .as_str() {
 
-                            "Cancelled" =>
+                            "ACTIVE" =>
+                                ReservationStatus::Active,
+
+                            "CANCELLED" =>
                                 ReservationStatus::Cancelled,
 
                             _ =>
-                                ReservationStatus::Active,
+                                return Err(
+                                    "invalid reservation_status"
+                                        .into()
+                                ),
                         },
 
-                    stay_status,
+                    stay_status:
+                        match row
+                            .get::<Option<String>, _>(
+                                "stay_status"
+                            ) {
+
+                            Some(v) => {
+                                Some(
+                                    match v.as_str() {
+
+                                        "CONFIRMED" =>
+                                            StayStatus::Confirmed,
+
+                                        "CHECKED_IN" =>
+                                            StayStatus::CheckedIn,
+
+                                        "CHECKED_OUT" =>
+                                            StayStatus::CheckedOut,
+
+                                        _ =>
+                                            return Err(
+                                                "invalid stay_status"
+                                                    .into()
+                                            ),
+                                    }
+                                )
+                            }
+
+                            None => None,
+                        },
 
                     room_class:
-                        r.get("room_class"),
+                        row.get("room_class"),
 
-                    room_id,
+                    room_id:
+                        row.get("room_id"),
 
-                    primary_guest_id:
-                        r.get("primary_guest_id"),
+                    participants,
+
+                    created_at:
+                        row.get::<String, _>(
+                            "created_at"
+                        )
+                        .parse()
+                        .unwrap(),
                 }
             );
         }

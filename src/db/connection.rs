@@ -39,8 +39,7 @@ impl Db {
                 room_class TEXT NOT NULL,
                 room_id TEXT,
                 created_at TEXT NOT NULL,
-                channel TEXT,
-                primary_guest_id TEXT
+                channel TEXT
             )
             "#
         )
@@ -112,6 +111,11 @@ impl Db {
                 first_name TEXT NOT NULL,
                 phone TEXT,
                 email TEXT,
+                nationality TEXT,
+                birth_date TEXT,
+                gender TEXT,
+                membership_code TEXT,
+                marketing_opt_in INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
@@ -126,7 +130,8 @@ impl Db {
             CREATE TABLE IF NOT EXISTS reservation_guest_relations (
                 reservation_id TEXT NOT NULL,
                 guest_id TEXT NOT NULL,
-                relation_type TEXT NOT NULL
+                relation_type TEXT NOT NULL,
+                UNIQUE(reservation_id, guest_id)
             )
             "#
         )

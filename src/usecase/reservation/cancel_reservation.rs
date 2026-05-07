@@ -65,7 +65,12 @@ pub async fn cancel_reservation(
 
         res.stay_status = None;
 
-        SqliteReservationRepository::save(
+        let primary_guest_id =
+            res
+                .primary_participant()
+                .map(|p| p.guest_id.clone());
+
+        SqliteReservationRepository::update(
             &mut tx,
             &res,
         )
@@ -73,7 +78,7 @@ pub async fn cancel_reservation(
         .map_err(AppError::Infrastructure)?;
 
         if let Some(guest_id) =
-            &res.primary_guest_id {
+            &primary_guest_id {
 
             record_event(
                 &mut tx,

@@ -39,7 +39,8 @@ impl Db {
                 room_class TEXT NOT NULL,
                 room_id TEXT,
                 created_at TEXT NOT NULL,
-                channel TEXT
+                channel TEXT,
+                primary_guest_id TEXT
             )
             "#
         )
@@ -113,6 +114,47 @@ impl Db {
                 email TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS reservation_guest_relations (
+                reservation_id TEXT NOT NULL,
+                guest_id TEXT NOT NULL,
+                relation_type TEXT NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+        r#"
+            CREATE TABLE IF NOT EXISTS guest_timeline_events (
+                id TEXT PRIMARY KEY,
+                guest_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                reference_id TEXT NOT NULL,
+                occurred_at TEXT NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_guest_timeline_guest
+            ON guest_timeline_events (
+                guest_id,
+                occurred_at DESC
             )
             "#
         )

@@ -1,8 +1,8 @@
 use axum::{
     extract::{
         Path,
-        State,
         Query,
+        State,
     },
     http::StatusCode,
     Json,
@@ -11,15 +11,24 @@ use axum::{
 use crate::api::dto::guest::{
     CreateGuestRequest,
     GuestResponse,
-    UpdateGuestRequest,
     GuestSearchQuery,
+    UpdateGuestRequest,
 };
+
+use crate::api::error::map_app_error;
 
 use crate::api::state::AppState;
 
 use crate::domain::guest::Guest;
 
-use crate::repository::sqlite::guest_repository::SqliteGuestRepository;
+use crate::error::app_error::AppError;
+
+use crate::usecase::guest::{
+    create_guest::create_guest,
+    get_guest::get_guest,
+    list_guests::list_guests,
+    update_guest::update_guest,
+};
 
 pub async fn create_guest_handler(
     State(state): State<AppState>,
@@ -34,14 +43,18 @@ pub async fn create_guest_handler(
             req.phone,
             req.email,
         )
-        .map_err(|_| StatusCode::BAD_REQUEST)?;
+        .map_err(|e| {
+            map_app_error(
+                AppError::Validation(e)
+            )
+        })?;
 
-    SqliteGuestRepository::save(
-        &state.db.pool,
-        &guest,
+    create_guest(
+        &state.db,
+        guest.clone(),
     )
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(map_app_error)?;
 
     Ok(
         Json(
@@ -62,12 +75,12 @@ pub async fn get_guest_handler(
 ) -> Result<Json<GuestResponse>, StatusCode> {
 
     let guest =
-        SqliteGuestRepository::find_by_id(
-            &state.db.pool,
+        get_guest(
+            &state.db,
             &id,
         )
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(map_app_error)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
     Ok(
@@ -89,25 +102,12 @@ pub async fn list_guests_handler(
 ) -> Result<Json<Vec<GuestResponse>>, StatusCode> {
 
     let guests =
-
-        if let Some(name) = query.name {
-
-            SqliteGuestRepository::find_by_name(
-                &state.db.pool,
-                &name,
-            )
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-
-        } else {
-
-            SqliteGuestRepository::find_all(
-                &state.db.pool,
-            )
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-
-        };
+        list_guests(
+            &state.db,
+            query.name,
+        )
+        .await
+        .map_err(map_app_error)?;
 
     let response =
         guests
@@ -134,29 +134,17 @@ pub async fn update_guest_handler(
     Json(req): Json<UpdateGuestRequest>,
 ) -> Result<Json<GuestResponse>, StatusCode> {
 
-    let mut guest =
-        SqliteGuestRepository::find_by_id(
-            &state.db.pool,
+    let guest =
+        update_guest(
+            &state.db,
             &id,
+            req.last_name,
+            req.first_name,
+            req.phone,
+            req.email,
         )
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
-
-    guest.update_profile(
-        req.last_name,
-        req.first_name,
-        req.phone,
-        req.email,
-    )
-    .map_err(|_| StatusCode::BAD_REQUEST)?;
-
-    SqliteGuestRepository::update(
-        &state.db.pool,
-        &guest,
-    )
-    .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(map_app_error)?;
 
     Ok(
         Json(

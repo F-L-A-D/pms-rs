@@ -4,7 +4,7 @@ pub struct SqliteInventoryRepository;
 
 impl SqliteInventoryRepository {
 
-    pub async fn add_tx(
+    pub async fn add(
         tx: &mut Transaction<'_, Sqlite>,
         date: &str,
         delta: i32,

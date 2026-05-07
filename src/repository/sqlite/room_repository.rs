@@ -1,9 +1,4 @@
-use sqlx::{
-    Row,
-    SqlitePool,
-    Sqlite,
-    Transaction,
-};
+use sqlx::{Row, Sqlite, Transaction};
 
 use crate::domain::room::{
     Room,
@@ -16,33 +11,6 @@ pub struct SqliteRoomRepository;
 impl SqliteRoomRepository {
 
     pub async fn save(
-        pool: &SqlitePool,
-        room: &Room,
-    ) -> Result<(), String> {
-
-        sqlx::query(
-            r#"
-            INSERT OR REPLACE INTO rooms (
-                id,
-                room_class,
-                occupancy_status,
-                housekeeping_status
-            )
-            VALUES (?, ?, ?, ?)
-            "#
-        )
-        .bind(&room.id)
-        .bind(&room.room_class)
-        .bind(format!("{:?}", room.occupancy_status))
-        .bind(format!("{:?}", room.housekeeping_status))
-        .execute(pool)
-        .await
-        .map_err(|e| e.to_string())?;
-
-        Ok(())
-    }
-
-    pub async fn save_tx(
         tx: &mut Transaction<'_, Sqlite>,
         room: &Room,
     ) -> Result<(), String> {
@@ -70,62 +38,6 @@ impl SqliteRoomRepository {
     }
 
     pub async fn find_by_id(
-        pool: &SqlitePool,
-        id: &str,
-    ) -> Result<Option<Room>, String> {
-
-        let row =
-            sqlx::query(
-                r#"
-                SELECT
-                    id,
-                    room_class,
-                    occupancy_status,
-                    housekeeping_status
-                FROM rooms
-                WHERE id = ?
-                "#
-            )
-            .bind(id)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| e.to_string())?;
-
-        match row {
-
-            Some(row) => {
-
-                let occupancy_status =
-                    match row.get::<String, _>("occupancy_status").as_str() {
-                        "Occupied" => OccupancyStatus::Occupied,
-                        _ => OccupancyStatus::Vacant,
-                    };
-
-                let housekeeping_status =
-                    match row.get::<String, _>("housekeeping_status").as_str() {
-                        "Dirty" => HousekeepingStatus::Dirty,
-                        "Cleaning" => HousekeepingStatus::Cleaning,
-                        "Cleaned" => HousekeepingStatus::Cleaned,
-                        _ => HousekeepingStatus::Inspected,
-                    };
-
-                Ok(
-                    Some(
-                        Room {
-                            id: row.get("id"),
-                            room_class: row.get("room_class"),
-                            occupancy_status,
-                            housekeeping_status,
-                        }
-                    )
-                )
-            }
-
-            None => Ok(None),
-        }
-    }
-
-    pub async fn find_by_id_tx(
         tx: &mut Transaction<'_, Sqlite>,
         id: &str,
     ) -> Result<Option<Room>, String> {
@@ -182,7 +94,7 @@ impl SqliteRoomRepository {
     }
 
     pub async fn find_all(
-        pool: &SqlitePool,
+        tx: &mut Transaction<'_, Sqlite>,
     ) -> Result<Vec<Room>, String> {
 
         let rows =
@@ -196,7 +108,7 @@ impl SqliteRoomRepository {
                 FROM rooms
                 "#
             )
-            .fetch_all(pool)
+            .fetch_all(&mut **tx)
             .await
             .map_err(|e| e.to_string())?;
 

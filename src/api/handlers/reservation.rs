@@ -9,20 +9,22 @@ use axum::{
 
 use chrono::NaiveDate;
 
+use crate::adapter::stay_input::StayInput;
+
 use crate::api::dto::reservation::{
     CreateReservationRequest,
     ModifyReservationRequest,
     ReservationResponse,
 };
 
+use crate::api::error::map_app_error;
+
 use crate::api::state::AppState;
 
-use crate::adapter::stay_input::StayInput;
-
 use crate::usecase::reservation::{
-    create::create,
-    modify::modify,
-    cancel::cancel,
+    cancel_reservation::cancel_reservation as cancel,
+    create_reservation::create_reservation as create,
+    modify_reservation::modify_reservation as modify,
 };
 
 pub async fn create_reservation(
@@ -45,9 +47,10 @@ pub async fn create_reservation(
             nights: req.nights as i64,
             room_class: req.room_class.clone(),
         },
+        req.primary_guest_id.clone(),
     )
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(map_app_error)?;
 
     Ok(
         Json(
@@ -75,14 +78,14 @@ pub async fn modify_reservation(
     modify(
         &state.db,
         &id,
-        StayInput::CheckInAndNights { 
-            check_in, 
-            nights: req.nights as i64, 
-            room_class: req.room_class.clone(), 
+        StayInput::CheckInAndNights {
+            check_in,
+            nights: req.nights as i64,
+            room_class: req.room_class.clone(),
         }
     )
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(map_app_error)?;
 
     Ok(
         Json(
@@ -104,7 +107,7 @@ pub async fn cancel_reservation(
         &id,
     )
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(map_app_error)?;
 
     Ok(
         Json(

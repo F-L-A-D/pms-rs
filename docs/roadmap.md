@@ -75,3 +75,21 @@
 - behavioral event modeling
 - guest graph foundation
 - forecast linkage foundation
+
+---
+
+# Projection-Oriented Intelligence Direction
+
+Future CRM and forecasting layers must remain projection-oriented.
+Operational ownership must remain within operational aggregates.
+Behavioral intelligence layers must not become transactional authority.
+
+Projection layers are intended for:
+
+- analytics
+- forecasting
+- segmentation
+- personalization
+- operational intelligence
+
+Projection layers must remain rebuildable and non-authoritative.

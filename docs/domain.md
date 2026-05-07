@@ -56,6 +56,7 @@ FolioEntry represents append-only billing events.
 
 ## Guest
 
+
 ### Definition
 
 Guest represents a long-lived hospitality identity.
@@ -73,6 +74,27 @@ Reservations, stays, billing events, and behavioral projections are linked throu
 * maintain identity across stays
 * aggregate operational history
 * provide CRM / behavioral foundation
+
+---
+
+## Guest Aggregate Responsibility
+
+Guest aggregates represent operational guest identity.
+
+Examples:
+
+- guest profile
+- membership identifiers
+- operational guest linkage
+
+Behavioral interpretation belongs to projection layers rather than operational identity ownership.
+
+Examples:
+
+- segmentation
+- loyalty scoring
+- behavioral classification
+- forecasting features
 
 ---
 

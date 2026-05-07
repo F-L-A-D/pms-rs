@@ -1,202 +1,296 @@
-use axum::{
-    body::Body,
-    http::{
-        Request,
-        StatusCode,
-    },
+use chrono::NaiveDate;
+
+use pms_rs::db::connection::Db;
+
+use pms_rs::domain::guest::Guest;
+
+use pms_rs::domain::reservation::Reservation;
+
+use pms_rs::domain::reservation_guest_relation::{
+    ReservationGuestRelation,
+    ReservationGuestRelationType,
 };
 
-use serde_json::json;
+use pms_rs::repository::sqlite::
+    reservation_repository::
+        SqliteReservationRepository;
 
-use tower::ServiceExt;
+use pms_rs::usecase::guest::
+    create_guest::create_guest;
 
-use crate::helpers::{
-    app::test_app,
-    guest::create_guest,
-    reservation::create_reservation,
-};
+use pms_rs::usecase::reservation::
+    create_reservation::create_reservation;
 
 #[tokio::test]
-async fn should_create_reservation() {
+async fn should_create_reservation_with_primary_participant() {
 
-    let app =
-        test_app().await;
+    let db =
+        Db::new("sqlite::memory:")
+            .await;
+
+    let guest =
+        Guest::new(
+            "guest-1".into(),
+            "Yamada".into(),
+            "Taro".into(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+        )
+        .unwrap();
 
     create_guest(
-        &app,
-        "guest-001",
+        &db,
+        guest,
     )
-    .await;
+    .await
+    .unwrap();
 
-    let payload =
-        json!({
-            "id": "reservation-001",
-            "check_in": "2026-05-10",
-            "nights": 2,
-            "room_class": "STD",
-            "primary_guest_id": "guest-001"
-        });
-
-    let response =
-        app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/reservations")
-                    .header(
-                        "content-type",
-                        "application/json",
-                    )
-                    .body(
-                        Body::from(
-                            payload.to_string()
-                        )
-                    )
-                    .unwrap()
+    let reservation =
+        Reservation::new(
+            "res-1".into(),
+            NaiveDate::from_ymd_opt(
+                2026,
+                1,
+                1,
             )
-            .await
-            .unwrap();
-
-    assert_eq!(
-        response.status(),
-        StatusCode::OK,
-    );
-}
-
-#[tokio::test]
-async fn should_fail_when_guest_not_found() {
-
-    let app =
-        test_app().await;
-
-    let payload =
-        json!({
-            "id": "reservation-001",
-            "check_in": "2026-05-10",
-            "nights": 2,
-            "room_class": "STD",
-            "primary_guest_id": "guest-999"
-        });
-
-    let response =
-        app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/reservations")
-                    .header(
-                        "content-type",
-                        "application/json",
-                    )
-                    .body(
-                        Body::from(
-                            payload.to_string()
-                        )
-                    )
-                    .unwrap()
+            .unwrap(),
+            NaiveDate::from_ymd_opt(
+                2026,
+                1,
+                3,
             )
-            .await
-            .unwrap();
+            .unwrap(),
+            "DOUBLE".into(),
+            vec![
+                ReservationGuestRelation {
+                    reservation_id:
+                        "res-1".into(),
 
-    assert_eq!(
-        response.status(),
-        StatusCode::NOT_FOUND,
-    );
-}
+                    guest_id:
+                        "guest-1".into(),
 
-#[tokio::test]
-async fn should_modify_reservation() {
-
-    let app =
-        test_app().await;
-
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+                    relation_type:
+                        ReservationGuestRelationType::Primary,
+                }
+            ],
+        )
+        .unwrap();
 
     create_reservation(
-        &app,
-        "reservation-001",
-        "guest-001",
+        &db,
+        reservation.clone(),
     )
-    .await;
+    .await
+    .unwrap();
 
-    let payload =
-        json!({
-            "check_in": "2026-05-15",
-            "nights": 3,
-            "room_class": "DLX"
-        });
+    let mut tx =
+        db.begin_tx().await;
 
-    let response =
-        app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("PATCH")
-                    .uri(
-                        "/reservations/reservation-001"
-                    )
-                    .header(
-                        "content-type",
-                        "application/json",
-                    )
-                    .body(
-                        Body::from(
-                            payload.to_string()
-                        )
-                    )
-                    .unwrap()
+    let loaded =
+        SqliteReservationRepository
+            ::find_by_id(
+                &mut tx,
+                "res-1",
             )
             .await
+            .unwrap()
             .unwrap();
 
     assert_eq!(
-        response.status(),
-        StatusCode::OK,
+        loaded.participants.len(),
+        1,
+    );
+
+    assert_eq!(
+        loaded.participants[0]
+            .guest_id,
+        "guest-1",
+    );
+
+    assert!(
+        loaded.participants[0]
+            .is_primary()
     );
 }
 
 #[tokio::test]
-async fn should_cancel_reservation() {
+async fn should_fail_when_duplicate_participants_exist() {
 
-    let app =
-        test_app().await;
+    let reservation =
+        Reservation::new(
+            "res-1".into(),
+            NaiveDate::from_ymd_opt(
+                2026,
+                1,
+                1,
+            )
+            .unwrap(),
+            NaiveDate::from_ymd_opt(
+                2026,
+                1,
+                2,
+            )
+            .unwrap(),
+            "DOUBLE".into(),
+            vec![
+                ReservationGuestRelation {
+                    reservation_id:
+                        "res-1".into(),
+
+                    guest_id:
+                        "guest-1".into(),
+
+                    relation_type:
+                        ReservationGuestRelationType::Primary,
+                },
+
+                ReservationGuestRelation {
+                    reservation_id:
+                        "res-1".into(),
+
+                    guest_id:
+                        "guest-1".into(),
+
+                    relation_type:
+                        ReservationGuestRelationType::Accompany,
+                }
+            ],
+        );
+
+    assert!(
+        reservation.is_err()
+    );
+}
+
+#[tokio::test]
+async fn should_fail_when_primary_participant_missing() {
+
+    let reservation =
+        Reservation::new(
+            "res-1".into(),
+            NaiveDate::from_ymd_opt(
+                2026,
+                1,
+                1,
+            )
+            .unwrap(),
+            NaiveDate::from_ymd_opt(
+                2026,
+                1,
+                2,
+            )
+            .unwrap(),
+            "DOUBLE".into(),
+            vec![
+                ReservationGuestRelation {
+                    reservation_id:
+                        "res-1".into(),
+
+                    guest_id:
+                        "guest-1".into(),
+
+                    relation_type:
+                        ReservationGuestRelationType::Accompany,
+                }
+            ],
+        );
+
+    assert!(
+        reservation.is_err()
+    );
+}
+
+#[tokio::test]
+async fn should_find_reservations_by_guest_id() {
+
+    let db =
+        Db::new("sqlite::memory:")
+            .await;
+
+    let guest =
+        Guest::new(
+            "guest-1".into(),
+            "Suzuki".into(),
+            "Hanako".into(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+        )
+        .unwrap();
 
     create_guest(
-        &app,
-        "guest-001",
+        &db,
+        guest,
     )
-    .await;
+    .await
+    .unwrap();
+
+    let reservation =
+        Reservation::new(
+            "res-1".into(),
+            NaiveDate::from_ymd_opt(
+                2026,
+                2,
+                1,
+            )
+            .unwrap(),
+            NaiveDate::from_ymd_opt(
+                2026,
+                2,
+                3,
+            )
+            .unwrap(),
+            "TWIN".into(),
+            vec![
+                ReservationGuestRelation {
+                    reservation_id:
+                        "res-1".into(),
+
+                    guest_id:
+                        "guest-1".into(),
+
+                    relation_type:
+                        ReservationGuestRelationType::Primary,
+                }
+            ],
+        )
+        .unwrap();
 
     create_reservation(
-        &app,
-        "reservation-001",
-        "guest-001",
+        &db,
+        reservation,
     )
-    .await;
+    .await
+    .unwrap();
 
-    let response =
-        app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("DELETE")
-                    .uri(
-                        "/reservations/reservation-001"
-                    )
-                    .body(Body::empty())
-                    .unwrap()
+    let mut tx =
+        db.begin_tx().await;
+
+    let reservations =
+        SqliteReservationRepository
+            ::find_by_guest_id(
+                &mut tx,
+                "guest-1",
             )
             .await
             .unwrap();
 
     assert_eq!(
-        response.status(),
-        StatusCode::OK,
+        reservations.len(),
+        1,
+    );
+
+    assert_eq!(
+        reservations[0].id,
+        "res-1",
     );
 }

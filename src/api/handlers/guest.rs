@@ -16,7 +16,6 @@ use crate::api::dto::guest::{
 };
 
 use crate::api::error::map_app_error;
-
 use crate::api::state::AppState;
 
 use crate::domain::guest::Guest;
@@ -42,6 +41,11 @@ pub async fn create_guest_handler(
             req.first_name,
             req.phone,
             req.email,
+            req.nationality,
+            req.birth_date,
+            req.gender,
+            req.membership_code,
+            req.marketing_opt_in,
         )
         .map_err(|e| {
             map_app_error(
@@ -56,17 +60,7 @@ pub async fn create_guest_handler(
     .await
     .map_err(map_app_error)?;
 
-    Ok(
-        Json(
-            GuestResponse {
-                id: guest.id,
-                last_name: guest.last_name,
-                first_name: guest.first_name,
-                phone: guest.phone,
-                email: guest.email,
-            }
-        )
-    )
+    Ok(Json(guest.into()))
 }
 
 pub async fn get_guest_handler(
@@ -83,17 +77,7 @@ pub async fn get_guest_handler(
         .map_err(map_app_error)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
-    Ok(
-        Json(
-            GuestResponse {
-                id: guest.id,
-                last_name: guest.last_name,
-                first_name: guest.first_name,
-                phone: guest.phone,
-                email: guest.email,
-            }
-        )
-    )
+        Ok(Json(guest.into()))
 }
 
 pub async fn list_guests_handler(
@@ -112,20 +96,10 @@ pub async fn list_guests_handler(
     let response =
         guests
             .into_iter()
-            .map(|guest| {
-
-                GuestResponse {
-                    id: guest.id,
-                    last_name: guest.last_name,
-                    first_name: guest.first_name,
-                    phone: guest.phone,
-                    email: guest.email,
-                }
-
-            })
+            .map(Into::into)
             .collect();
 
-    Ok(Json(response))
+        Ok(Json(response))
 }
 
 pub async fn update_guest_handler(
@@ -142,19 +116,14 @@ pub async fn update_guest_handler(
             req.first_name,
             req.phone,
             req.email,
+            req.nationality,
+            req.birth_date,
+            req.gender,
+            req.membership_code,
+            req.marketing_opt_in,
         )
         .await
         .map_err(map_app_error)?;
 
-    Ok(
-        Json(
-            GuestResponse {
-                id: guest.id,
-                last_name: guest.last_name,
-                first_name: guest.first_name,
-                phone: guest.phone,
-                email: guest.email,
-            }
-        )
-    )
+    Ok(Json(guest.into()))
 }

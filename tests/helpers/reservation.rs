@@ -21,9 +21,14 @@ pub async fn create_reservation(
         json!({
             "id": reservation_id,
             "check_in": "2026-05-10",
-            "nights": 2,
+            "check_out": "2026-05-12",
             "room_class": "STD",
-            "primary_guest_id": guest_id
+            "participants": [
+                {
+                    "guest_id": guest_id,
+                    "relation_type": "Primary"
+                }
+            ]
         });
 
     let response =

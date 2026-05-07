@@ -1,18 +1,6 @@
 use crate::db::connection::Db;
 
-use crate::adapter::stay_input::{
-    normalize,
-    StayInput,
-};
-
 use crate::domain::reservation::Reservation;
-
-use crate::domain::reservation_guest_relation::{
-    ReservationGuestRelation,
-    ReservationGuestRelationType,
-};
-
-use crate::domain::guest_timeline_event::TimelineEventType;
 
 use crate::error::app_error::{
     AppError,
@@ -21,18 +9,18 @@ use crate::error::app_error::{
 
 use crate::repository::sqlite::{
     guest_repository::SqliteGuestRepository,
-    inventory_repository::SqliteInventoryRepository,
-    reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
+    reservation_guest_relation_repository::
+        SqliteReservationGuestRelationRepository,
     reservation_repository::SqliteReservationRepository,
 };
+
+use crate::domain::guest_timeline_event::TimelineEventType;
 
 use crate::usecase::timeline::record_event::record_event;
 
 pub async fn create_reservation(
     db: &Db,
-    id: String,
-    input: StayInput,
-    primary_guest_id: Option<String>,
+    reservation: Reservation,
 ) -> AppResult<()> {
 
     let mut tx =
@@ -40,20 +28,12 @@ pub async fn create_reservation(
 
     let result = async {
 
-        let (check_in, check_out) =
-            normalize(input.clone())
-                .map_err(AppError::Validation)?;
-
-        let room_class =
-            input.room_class();
-
-        if let Some(guest_id) =
-            &primary_guest_id {
+        for participant in &reservation.participants {
 
             let guest =
                 SqliteGuestRepository::find_by_id(
                     &mut tx,
-                    guest_id,
+                    &participant.guest_id,
                 )
                 .await
                 .map_err(AppError::Infrastructure)?;
@@ -62,21 +42,14 @@ pub async fn create_reservation(
 
                 return Err(
                     AppError::NotFound(
-                        "guest not found".into()
+                        format!(
+                            "guest not found: {}",
+                            participant.guest_id
+                        )
                     )
                 );
             }
         }
-
-        let reservation =
-            Reservation::new(
-                id,
-                check_in,
-                check_out,
-                room_class,
-                primary_guest_id.clone(),
-            )
-            .map_err(AppError::Validation)?;
 
         SqliteReservationRepository::save(
             &mut tx,
@@ -85,27 +58,23 @@ pub async fn create_reservation(
         .await
         .map_err(AppError::Infrastructure)?;
 
-        if let Some(guest_id) =
-            &primary_guest_id {
-
-            let relation =
-                ReservationGuestRelation {
-                    reservation_id:
-                        reservation.id.clone(),
-
-                    guest_id:
-                        guest_id.clone(),
-
-                    relation_type:
-                        ReservationGuestRelationType::Primary,
-                };
+        for participant in &reservation.participants {
 
             SqliteReservationGuestRelationRepository::save(
                 &mut tx,
-                &relation,
+                participant,
             )
             .await
             .map_err(AppError::Infrastructure)?;
+        }
+
+        let primary_guest_id =
+            reservation
+                .primary_participant()
+                .map(|p| p.guest_id.clone());
+
+        if let Some(guest_id) =
+            &primary_guest_id {
 
             record_event(
                 &mut tx,
@@ -114,18 +83,6 @@ pub async fn create_reservation(
                 reservation.id.clone(),
             )
             .await?;
-        }
-
-        for d in reservation.nights() {
-
-            SqliteInventoryRepository::add(
-                &mut tx,
-                &d.to_string(),
-                1,
-                10,
-            )
-            .await
-            .map_err(AppError::Infrastructure)?;
         }
 
         Ok(())

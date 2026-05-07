@@ -122,9 +122,10 @@ Behavioral events:
 - CheckedOut
 - RoomChargePosted
 
-Timeline is behavioral projection only.
-
-Operational-only events are intentionally excluded.
+Timeline is a behavioral projection layer derived from operational truth.
+Timeline exists for behavioral reconstruction and guest-centric interpretation.
+Timeline is append-only but non-authoritative.
+Timeline must not replace operational truth.
 
 ### Guest Metrics
 
@@ -135,35 +136,54 @@ Derived projections:
 - total_spending
 - last_stay_at
 
-Metrics are derived from operational tables rather than timeline events.
+Metrics are derived behavioral projections rebuilt from:
 
----
+- operational tables
+- append-only accounting/behavioral history
 
-## M9 - Participant Authority Migration
+Metrics are non-authoritative read models.
+
+--- 
+
+## M9 - CRM Foundation
+
+### M9-a - Participant Authority Migration
 
 Implemented:
 
-- participant-authoritative reservation model
-- ReservationGuestRelation persistence
-- reservation aggregate reconstruction from relations
-- participant-based behavioral propagation
-- participant-aware guest metrics linkage
-- reservation read reconstruction foundation
+* participant-authoritative reservation model
+* ReservationGuestRelation persistence
+* reservation aggregate reconstruction from relations
+* participant-based behavioral propagation
+* participant-aware guest metrics linkage
+* reservation read reconstruction foundation
 
 Operational ownership was migrated from:
 
-- primary_guest_id
+* primary_guest_id
 
 to:
 
-- ReservationGuestRelation
+* ReservationGuestRelation
 
 Reservation state remains mutable operational truth.
 
 Behavioral history remains append-only through:
 
-- guest timeline
-- folio entries
+* guest timeline
+* folio entries
+
+### M9-b - CRM Projection Foundation
+
+Planned:
+
+* event model formalization
+* CRM projection boundary refinement
+* segmentation foundation
+* behavioral projection architecture
+* guest behavioral reconstruction consistency
+* membership domain direction refinement
+
 
 ---
 
@@ -391,6 +411,13 @@ The long-term goal is not only PMS functionality, but a hospitality behavioral o
 - behavioral analytics
 - operational decision support
 - behavioral reproducibility
+
+The system prioritizes:
+
+- operational reproducibility
+- behavioral reproducibility
+- projection rebuildability
+- separation of operational truth and behavioral intelligence
 
 ---
 

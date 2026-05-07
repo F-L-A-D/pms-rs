@@ -39,7 +39,8 @@ impl Db {
                 room_class TEXT NOT NULL,
                 room_id TEXT,
                 created_at TEXT NOT NULL,
-                channel TEXT
+                channel TEXT,
+                primary_guest_id TEXT
             )
             "#
         )
@@ -113,6 +114,19 @@ impl Db {
                 email TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS reservation_guest_relations (
+                reservation_id TEXT NOT NULL,
+                guest_id TEXT NOT NULL,
+                relation_type TEXT NOT NULL
             )
             "#
         )

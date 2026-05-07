@@ -5,64 +5,100 @@ use crate::domain::reservation::{
     StayStatus,
 };
 
-use crate::repository::sqlite::repository::SqliteReservationRepository;
+use crate::error::app_error::{
+    AppError,
+    AppResult,
+};
+
+use crate::repository::sqlite::reservation_repository::SqliteReservationRepository;
+
 use crate::repository::sqlite::room_repository::SqliteRoomRepository;
 
 pub async fn check_in(
     db: &Db,
     reservation_id: &str,
-) -> Result<(), String> {
+) -> AppResult<()> {
 
-    let mut tx = db.begin_tx().await;
+    let mut tx =
+        db.begin_tx().await;
 
     let result = async {
 
         let mut reservation =
-            SqliteReservationRepository::find_by_id_tx(
+            SqliteReservationRepository::find_by_id(
                 &mut tx,
                 reservation_id,
             )
-            .await?
-            .ok_or("reservation not found")?;
+            .await
+            .map_err(AppError::Infrastructure)?
+            .ok_or(
+                AppError::NotFound(
+                    "reservation not found".into()
+                )
+            )?;
 
-        if reservation.reservation_status != ReservationStatus::Active {
-            return Err("reservation inactive".into());
+        if reservation.reservation_status !=
+            ReservationStatus::Active {
+
+            return Err(
+                AppError::Conflict(
+                    "reservation inactive".into()
+                )
+            );
         }
 
-        if reservation.stay_status != Some(StayStatus::Confirmed) {
-            return Err("invalid stay status".into());
+        if reservation.stay_status !=
+            Some(StayStatus::Confirmed) {
+
+            return Err(
+                AppError::Conflict(
+                    "invalid stay status".into()
+                )
+            );
         }
 
         let room_id =
             reservation
                 .room_id
                 .clone()
-                .ok_or("room not assigned")?;
+                .ok_or(
+                    AppError::Conflict(
+                        "room not assigned".into()
+                    )
+                )?;
 
         let mut room =
-            SqliteRoomRepository::find_by_id_tx(
+            SqliteRoomRepository::find_by_id(
                 &mut tx,
                 &room_id,
             )
-            .await?
-            .ok_or("room not found")?;
+            .await
+            .map_err(AppError::Infrastructure)?
+            .ok_or(
+                AppError::NotFound(
+                    "room not found".into()
+                )
+            )?;
 
-        room.check_in()?;
+        room.check_in()
+            .map_err(AppError::Conflict)?;
 
         reservation.stay_status =
             Some(StayStatus::CheckedIn);
 
-        SqliteRoomRepository::save_tx(
+        SqliteRoomRepository::save(
             &mut tx,
             &room,
         )
-        .await?;
+        .await
+        .map_err(AppError::Infrastructure)?;
 
-        SqliteReservationRepository::save_tx(
+        SqliteReservationRepository::save(
             &mut tx,
             &reservation,
         )
-        .await?;
+        .await
+        .map_err(AppError::Infrastructure)?;
 
         Ok(())
 
@@ -71,12 +107,28 @@ pub async fn check_in(
     match result {
 
         Ok(_) => {
-            tx.commit().await.unwrap();
+
+            tx.commit()
+                .await
+                .map_err(|e| {
+                    AppError::Infrastructure(
+                        e.to_string()
+                    )
+                })?;
+
             Ok(())
         }
 
         Err(e) => {
-            tx.rollback().await.unwrap();
+
+            tx.rollback()
+                .await
+                .map_err(|e| {
+                    AppError::Infrastructure(
+                        e.to_string()
+                    )
+                })?;
+
             Err(e)
         }
     }

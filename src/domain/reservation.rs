@@ -22,6 +22,7 @@ pub struct Reservation {
     pub stay_status: Option<StayStatus>,
     pub room_class: String,
     pub room_id: Option<String>,
+    pub primary_guest_id: Option<String>,
 }
 
 impl Reservation {
@@ -30,6 +31,7 @@ impl Reservation {
         check_in: NaiveDate,
         check_out: NaiveDate,
         room_class: String,
+        primary_guest_id: Option<String>
     ) -> Result<Self, String> {
         if check_in > check_out {
             return Err("check_in must be before or equal to check_out".into());
@@ -42,6 +44,7 @@ impl Reservation {
             stay_status: Some(StayStatus::Confirmed),
             room_class,
             room_id: None,
+            primary_guest_id,
         })
     }
 

@@ -9,6 +9,7 @@ pub struct CreateReservationRequest {
     pub check_in: String,
     pub nights: u32,
     pub room_class: String,
+    pub primary_guest_id: Option<String>,
 }
 
 #[derive(Deserialize)]

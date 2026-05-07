@@ -1098,10 +1098,12 @@ dependencies = [
  "async-trait",
  "axum",
  "chrono",
+ "hyper",
  "serde",
  "serde_json",
  "sqlx",
  "tokio",
+ "tower",
 ]
 
 [[package]]

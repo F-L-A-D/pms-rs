@@ -5,7 +5,8 @@ use chrono::{
 
 use sqlx::{
     Row,
-    SqlitePool,
+    Sqlite,
+    Transaction,
 };
 
 use crate::domain::folio_entry::{
@@ -18,7 +19,7 @@ pub struct SqliteFolioEntryRepository;
 impl SqliteFolioEntryRepository {
 
     pub async fn save(
-        db: &SqlitePool,
+        tx: &mut Transaction<'_, Sqlite>,
         entry: &FolioEntry,
     ) -> Result<(), String> {
 
@@ -41,7 +42,7 @@ impl SqliteFolioEntryRepository {
         .bind(entry.amount)
         .bind(entry.occurred_at.to_rfc3339())
         .bind(&entry.description)
-        .execute(db)
+        .execute(&mut **tx)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -49,7 +50,7 @@ impl SqliteFolioEntryRepository {
     }
 
     pub async fn find_by_folio_id(
-        db: &SqlitePool,
+        tx: &mut Transaction<'_, Sqlite>,
         folio_id: &str,
     ) -> Result<Vec<FolioEntry>, String> {
 
@@ -69,7 +70,7 @@ impl SqliteFolioEntryRepository {
                 "#
             )
             .bind(folio_id)
-            .fetch_all(db)
+            .fetch_all(&mut **tx)
             .await
             .map_err(|e| e.to_string())?;
 
@@ -79,9 +80,16 @@ impl SqliteFolioEntryRepository {
 
             let entry_type =
                 match r.get::<String, _>("entry_type").as_str() {
-                    "RoomCharge" => EntryType::RoomCharge,
-                    "Payment" => EntryType::Payment,
-                    "Adjustment" => EntryType::Adjustment,
+
+                    "RoomCharge" =>
+                        EntryType::RoomCharge,
+
+                    "Payment" =>
+                        EntryType::Payment,
+
+                    "Adjustment" =>
+                        EntryType::Adjustment,
+
                     _ => {
                         return Err(
                             "invalid entry type".into()
@@ -102,12 +110,17 @@ impl SqliteFolioEntryRepository {
             entries.push(
                 FolioEntry {
                     id: r.get("id"),
+
                     folio_id:
                         r.get("folio_id"),
+
                     entry_type,
+
                     amount:
                         r.get("amount"),
+
                     occurred_at,
+
                     description:
                         r.get("description"),
                 }

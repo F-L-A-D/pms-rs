@@ -1,7 +1,4 @@
-use sqlx::{
-    Row,
-    SqlitePool,
-};
+use sqlx::{Row, Sqlite, Transaction};
 
 use crate::domain::guest::Guest;
 
@@ -10,7 +7,7 @@ pub struct SqliteGuestRepository;
 impl SqliteGuestRepository {
 
     pub async fn save(
-        db: &SqlitePool,
+        tx: &mut Transaction<'_, Sqlite>,
         guest: &Guest,
     ) -> Result<(), String> {
 
@@ -35,7 +32,7 @@ impl SqliteGuestRepository {
         .bind(&guest.email)
         .bind(guest.created_at.to_rfc3339())
         .bind(guest.updated_at.to_rfc3339())
-        .execute(db)
+        .execute(&mut **tx)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -43,7 +40,7 @@ impl SqliteGuestRepository {
     }
 
     pub async fn find_by_id(
-        db: &SqlitePool,
+        tx: &mut Transaction<'_, Sqlite>,
         id: &str,
     ) -> Result<Option<Guest>, String> {
 
@@ -63,31 +60,16 @@ impl SqliteGuestRepository {
                 "#
             )
             .bind(id)
-            .fetch_optional(db)
+            .fetch_optional(&mut **tx)
             .await
             .map_err(|e| e.to_string())?;
 
         match row {
 
             Some(r) => {
-
                 Ok(
                     Some(
-                        Guest {
-                            id: r.get("id"),
-                            last_name: r.get("last_name"),
-                            first_name: r.get("first_name"),
-                            phone: r.get("phone"),
-                            email: r.get("email"),
-                            created_at: r
-                                .get::<String, _>("created_at")
-                                .parse()
-                                .unwrap(),
-                            updated_at: r
-                                .get::<String, _>("updated_at")
-                                .parse()
-                                .unwrap(),
-                        }
+                        Self::row_to_guest(r)
                     )
                 )
             }
@@ -97,7 +79,7 @@ impl SqliteGuestRepository {
     }
 
     pub async fn find_all(
-        db: &SqlitePool,
+        tx: &mut Transaction<'_, Sqlite>,
     ) -> Result<Vec<Guest>, String> {
 
         let rows =
@@ -115,38 +97,20 @@ impl SqliteGuestRepository {
                 ORDER BY last_name, first_name
                 "#
             )
-            .fetch_all(db)
+            .fetch_all(&mut **tx)
             .await
             .map_err(|e| e.to_string())?;
 
-        let mut guests = vec![];
-
-        for r in rows {
-
-            guests.push(
-                Guest {
-                    id: r.get("id"),
-                    last_name: r.get("last_name"),
-                    first_name: r.get("first_name"),
-                    phone: r.get("phone"),
-                    email: r.get("email"),
-                    created_at: r
-                        .get::<String, _>("created_at")
-                        .parse()
-                        .unwrap(),
-                    updated_at: r
-                        .get::<String, _>("updated_at")
-                        .parse()
-                        .unwrap(),
-                }
-            );
-        }
-
-        Ok(guests)
+        Ok(
+            rows
+                .into_iter()
+                .map(Self::row_to_guest)
+                .collect()
+        )
     }
 
     pub async fn update(
-        db: &SqlitePool,
+        tx: &mut Transaction<'_, Sqlite>,
         guest: &Guest,
     ) -> Result<(), String> {
 
@@ -168,15 +132,15 @@ impl SqliteGuestRepository {
         .bind(&guest.email)
         .bind(guest.updated_at.to_rfc3339())
         .bind(&guest.id)
-        .execute(db)
+        .execute(&mut **tx)
         .await
         .map_err(|e| e.to_string())?;
 
         Ok(())
     }
-    
+
     pub async fn find_by_name(
-        db: &SqlitePool,
+        tx: &mut Transaction<'_, Sqlite>,
         keyword: &str,
     ) -> Result<Vec<Guest>, String> {
 
@@ -201,33 +165,36 @@ impl SqliteGuestRepository {
                 "#
             )
             .bind(pattern)
-            .fetch_all(db)
+            .fetch_all(&mut **tx)
             .await
             .map_err(|e| e.to_string())?;
 
-        let mut guests = vec![];
+        Ok(
+            rows
+                .into_iter()
+                .map(Self::row_to_guest)
+                .collect()
+        )
+    }
 
-        for r in rows {
+    fn row_to_guest(
+        r: sqlx::sqlite::SqliteRow,
+    ) -> Guest {
 
-            guests.push(
-                Guest {
-                    id: r.get("id"),
-                    last_name: r.get("last_name"),
-                    first_name: r.get("first_name"),
-                    phone: r.get("phone"),
-                    email: r.get("email"),
-                    created_at: r
-                        .get::<String, _>("created_at")
-                        .parse()
-                        .unwrap(),
-                    updated_at: r
-                        .get::<String, _>("updated_at")
-                        .parse()
-                        .unwrap(),
-                }
-            );
+        Guest {
+            id: r.get("id"),
+            last_name: r.get("last_name"),
+            first_name: r.get("first_name"),
+            phone: r.get("phone"),
+            email: r.get("email"),
+            created_at: r
+                .get::<String, _>("created_at")
+                .parse()
+                .unwrap(),
+            updated_at: r
+                .get::<String, _>("updated_at")
+                .parse()
+                .unwrap(),
         }
-
-        Ok(guests)
     }
 }

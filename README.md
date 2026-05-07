@@ -107,17 +107,17 @@ See:
 
 ## M7 - Reservation / Guest Relation
 
-* [ ] Primary guest relation
+* [x] Primary guest relation
 * [ ] Accompany guest support
-* [ ] Reservation linkage
-* [ ] Stay linkage
+* [x] Reservation linkage
+* [x] Stay linkage
 
 ## M8 - Guest Behavioral Foundation
 
-* [ ] Stay history
-* [ ] Spending history
-* [ ] Behavioral metrics
-* [ ] Timeline foundation
+* [x] Stay history
+* [x] Spending history
+* [x] Behavioral metrics
+* [x] Timeline foundation
 
 ## M9 - CRM Foundation
 

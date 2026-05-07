@@ -10,9 +10,14 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::reservation_repository::SqliteReservationRepository;
+use crate::repository::sqlite::{
+    reservation_repository::SqliteReservationRepository,
+    room_repository::SqliteRoomRepository,
+};
 
-use crate::repository::sqlite::room_repository::SqliteRoomRepository;
+use crate::domain::guest_timeline_event::TimelineEventType;
+
+use crate::usecase::timeline::record_event::record_event;
 
 pub async fn check_out(
     db: &Db,
@@ -24,7 +29,7 @@ pub async fn check_out(
 
     let result = async {
 
-        let mut reservation =
+        let mut res =
             SqliteReservationRepository::find_by_id(
                 &mut tx,
                 reservation_id,
@@ -37,7 +42,7 @@ pub async fn check_out(
                 )
             )?;
 
-        if reservation.reservation_status !=
+        if res.reservation_status !=
             ReservationStatus::Active {
 
             return Err(
@@ -47,7 +52,7 @@ pub async fn check_out(
             );
         }
 
-        if reservation.stay_status !=
+        if res.stay_status !=
             Some(StayStatus::CheckedIn) {
 
             return Err(
@@ -58,7 +63,7 @@ pub async fn check_out(
         }
 
         let room_id =
-            reservation
+            res
                 .room_id
                 .clone()
                 .ok_or(
@@ -83,7 +88,7 @@ pub async fn check_out(
         room.check_out()
             .map_err(AppError::Conflict)?;
 
-        reservation.stay_status =
+        res.stay_status =
             Some(StayStatus::CheckedOut);
 
         SqliteRoomRepository::save(
@@ -95,10 +100,22 @@ pub async fn check_out(
 
         SqliteReservationRepository::save(
             &mut tx,
-            &reservation,
+            &res,
         )
         .await
         .map_err(AppError::Infrastructure)?;
+        
+        if let Some(guest_id) =
+            &res.primary_guest_id {
+
+            record_event(
+                &mut tx,
+                guest_id.clone(),
+                TimelineEventType::CheckedOut,
+                res.id.clone(),
+            )
+            .await?;
+        }
 
         Ok(())
 

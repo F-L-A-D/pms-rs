@@ -2,13 +2,19 @@ use crate::db::connection::Db;
 
 use crate::domain::reservation::ReservationStatus;
 
+use crate::domain::guest_timeline_event::TimelineEventType;
+
 use crate::error::app_error::{
     AppError,
     AppResult,
 };
 
-use crate::repository::sqlite::inventory_repository::SqliteInventoryRepository;
-use crate::repository::sqlite::reservation_repository::SqliteReservationRepository;
+use crate::repository::sqlite::{
+    inventory_repository::SqliteInventoryRepository,
+    reservation_repository::SqliteReservationRepository
+};
+
+use crate::usecase::timeline::record_event::record_event;
 
 pub async fn cancel_reservation(
     db: &Db,
@@ -65,6 +71,18 @@ pub async fn cancel_reservation(
         )
         .await
         .map_err(AppError::Infrastructure)?;
+
+        if let Some(guest_id) =
+            &res.primary_guest_id {
+
+            record_event(
+                &mut tx,
+                guest_id.clone(),
+                TimelineEventType::ReservationCancelled,
+                res.id.clone(),
+            )
+            .await?;
+        }
 
         Ok(())
 

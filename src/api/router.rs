@@ -49,6 +49,14 @@ use crate::api::handlers::stay::{
     check_out_handler,
 };
 
+use crate::api::handlers::timeline::{
+    create_timeline_event_handler,
+    get_guest_timeline_handler,
+};
+
+use crate::api::handlers::guest_metrics::{
+    get_guest_metrics_handler,
+};
 use crate::api::state::AppState;
 
 pub fn create_router(
@@ -177,6 +185,23 @@ pub fn create_router(
         .route(
             "/guests/:id",
             patch(update_guest_handler),
+        )
+
+        // timeline
+
+        .route(
+            "/guests/:id/timeline",
+            get(get_guest_timeline_handler),
+        )
+
+        .route(
+            "/internal/timeline-events",
+            post(create_timeline_event_handler),
+        )
+
+        .route(
+            "/guests/:id/metrics",
+            get(get_guest_metrics_handler),
         )
 
         .with_state(state)

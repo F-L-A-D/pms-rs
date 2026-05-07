@@ -136,4 +136,102 @@ impl SqliteReservationRepository {
             Ok(None)
         }
     }
+
+    pub async fn find_by_guest_id(
+        tx: &mut Transaction<'_, Sqlite>,
+        guest_id: &str,
+    ) -> Result<Vec<Reservation>, String> {
+
+        let rows =
+            sqlx::query(
+                r#"
+                SELECT
+                    id,
+                    check_in,
+                    check_out,
+                    reservation_status,
+                    stay_status,
+                    room_class,
+                    room_id,
+                    primary_guest_id
+                FROM reservations
+                WHERE primary_guest_id = ?1
+                ORDER BY check_in DESC
+                "#
+            )
+            .bind(guest_id)
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let mut reservations = vec![];
+
+        for r in rows {
+
+            let stay_status =
+                match r.get::<Option<String>, _>("stay_status") {
+
+                    Some(s) =>
+                        match s.as_str() {
+
+                            "Confirmed" =>
+                                Some(StayStatus::Confirmed),
+
+                            "CheckedIn" =>
+                                Some(StayStatus::CheckedIn),
+
+                            "CheckedOut" =>
+                                Some(StayStatus::CheckedOut),
+
+                            _ =>
+                                return Err(
+                                    "invalid stay status".into()
+                                ),
+                        },
+
+                    None => None,
+                };
+
+            let room_id: Option<String> =
+                r.get("room_id");
+
+            reservations.push(
+                Reservation {
+                    id: r.get("id"),
+
+                    check_in:
+                        r.get::<String, _>("check_in")
+                            .parse()
+                            .unwrap(),
+
+                    check_out:
+                        r.get::<String, _>("check_out")
+                            .parse()
+                            .unwrap(),
+
+                    reservation_status:
+                        match r.get::<String, _>("reservation_status").as_str() {
+
+                            "Cancelled" =>
+                                ReservationStatus::Cancelled,
+
+                            _ =>
+                                ReservationStatus::Active,
+                        },
+
+                    stay_status,
+
+                    room_class:
+                        r.get("room_class"),
+
+                    room_id,
+
+                    primary_guest_id:
+                        r.get("primary_guest_id"),
+                }
+            );
+        }
+
+        Ok(reservations)
+    }
 }

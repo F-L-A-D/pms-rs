@@ -12,15 +12,21 @@ use crate::domain::reservation_guest_relation::{
     ReservationGuestRelationType,
 };
 
+use crate::domain::guest_timeline_event::TimelineEventType;
+
 use crate::error::app_error::{
     AppError,
     AppResult,
 };
 
-use crate::repository::sqlite::guest_repository::SqliteGuestRepository;
-use crate::repository::sqlite::inventory_repository::SqliteInventoryRepository;
-use crate::repository::sqlite::reservation_guest_relation_repository::SqliteReservationGuestRelationRepository;
-use crate::repository::sqlite::reservation_repository::SqliteReservationRepository;
+use crate::repository::sqlite::{
+    guest_repository::SqliteGuestRepository,
+    inventory_repository::SqliteInventoryRepository,
+    reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
+    reservation_repository::SqliteReservationRepository,
+};
+
+use crate::usecase::timeline::record_event::record_event;
 
 pub async fn create_reservation(
     db: &Db,
@@ -100,6 +106,14 @@ pub async fn create_reservation(
             )
             .await
             .map_err(AppError::Infrastructure)?;
+
+            record_event(
+                &mut tx,
+                guest_id.clone(),
+                TimelineEventType::ReservationCreated,
+                reservation.id.clone(),
+            )
+            .await?;
         }
 
         for d in reservation.nights() {

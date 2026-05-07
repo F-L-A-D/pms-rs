@@ -66,4 +66,54 @@ impl SqliteFolioRepository {
             Ok(None)
         }
     }
+
+    pub async fn find_by_reservation_id(
+        tx: &mut Transaction<'_, Sqlite>,
+        reservation_id: &str,
+    ) -> Result<Vec<Folio>, String> {
+
+        let rows =
+            sqlx::query(
+                r#"
+                SELECT
+                    id,
+                    reservation_id,
+                    status
+                FROM folios
+                WHERE reservation_id = ?1
+                "#
+            )
+            .bind(reservation_id)
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let mut folios = vec![];
+
+        for r in rows {
+
+            let status =
+                match r.get::<String, _>("status").as_str() {
+
+                    "Closed" =>
+                        crate::domain::folio::FolioStatus::Closed,
+
+                    _ =>
+                        crate::domain::folio::FolioStatus::Open,
+                };
+
+            folios.push(
+                Folio {
+                    id: r.get("id"),
+
+                    reservation_id:
+                        r.get("reservation_id"),
+
+                    status,
+                }
+            );
+        }
+
+        Ok(folios)
+    }
 }

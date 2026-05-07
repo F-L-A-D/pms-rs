@@ -1,130 +1,58 @@
-# PMS-RS Testing Strategy
+# PMS-RS Testing
 
-## Goal
+## Principles
 
-Ensure operational consistency, reproducible behavior, and behavioral reproducibility.
-
-Testing is treated as part of domain validation.
-
----
-
-# Test Principles
-
-## Success and Failure Cases
-
-Every important usecase should include:
-
-- success pattern
-- failure pattern
+* integration-first testing
+* transactional consistency validation
+* API-level behavioral verification
+* operational flow validation
 
 ---
 
-## State Transition Validation
+## Current Coverage
 
-Tests should verify:
+### Reservation
 
-- before state
-- operation
-- after state
+* reservation create
+* reservation modify
+* reservation cancel
+* invalid guest validation
 
----
+### Stay
 
-## Persistence Validation
+* room assignment
+* check-in
 
-State-changing operations should verify:
+### Billing
 
-- DB persistence
-- repository consistency
+* open folio
+* room charge posting
+* payment posting
+* balance calculation
 
----
+### Housekeeping
 
-## Transaction Validation
+* dirty transition
+* cleaning lifecycle
 
-Transactional operations should verify:
+### Guest
 
-- commit behavior
-- rollback behavior
-- inventory consistency
+* guest creation
+* guest retrieval
+* guest update
+* guest search
 
----
+### Behavioral Projection
 
-## Ledger Validation
-
-Billing tests should verify:
-
-- entries are append-only
-- balance is derived from entries
-- corrections are additive instead of destructive
-- ledger entries preserve operational history for future behavioral analysis
-
----
-
-## Behavioral Consistency
-
-Behavioral history should remain reproducible from operational events.
+* timeline propagation
+* behavioral event consistency
+* guest metrics derivation
+* empty projection handling
 
 ---
 
-# Test Categories
+## Testing Strategy
 
-## Domain Tests
+Behavioral projections are validated through API-level integration tests rather than isolated repository tests.
 
-Focus:
-
-- entity rules
-- validation
-- state transitions
-
----
-
-## Integration Tests
-
-Focus:
-
-- usecase execution
-- repository interaction
-- DB consistency
-- cross-domain consistency
-
----
-
-## Transaction Tests
-
-Focus:
-
-- rollback safety
-- consistency guarantees
-
----
-
-# Naming Convention
-
-Use:
-
-- should_xxx
-- should_fail_xxx
-
----
-
-# API Testing (Planned)
-
-Future API tests should validate:
-
-- HTTP status codes
-- JSON responses
-- request validation
-- serialization consistency
-
----
-
-# Future Expansion
-
-Future milestones may introduce:
-
-- concurrency tests
-- load tests
-- event replay consistency
-- API contract tests
-- guest timeline consistency
-- behavior reconstruction tests
-- cross-domain event consistency
+Operational consistency is validated through transactional integration flows.

@@ -1,70 +1,74 @@
-# PMS-RS Decisions
+# PMS -RS Decisions
 
-## Architecture
+## Append-Only Billing
 
-* Clean Architecture style
-* domain / usecase / repository separation
+Billing is modeled through append-only ledger entries.
 
-## Language
+### Rationale
 
-* Rust for core logic (safety & correctness)
+* preserve operational history
+* support auditability
+* support future behavioral analytics
 
-## Database
+---
 
-* SQLite (development)
-* MySQL planned for production
+## Operational Consistency First
 
-## Transaction
+Operational consistency is prioritized over premature abstraction.
 
-* All write operations must be transactional
-* Usecase layer controls transaction boundary
+### Rationale
 
-## Inventory Design
+Hotel PMS operations require strong transactional guarantees across:
 
-* Inventory stored as daily aggregated table
-* Inventory is NOT derived on the fly
-* Inventory is updated alongside reservation
-* Inventory is operational constraint, not pricing logic
+* reservations
+* room assignment
+* stay operations
+* billing
 
-## Billing Design
+---
 
-* Billing uses append-only ledger entries
-* Balance is derived from entries
-* Folio acts as billing container
-* Billing events may later be consumed as behavioral signals
+## Guest Identity Separation
 
-## Event Design
+Guest identity remains separated from operational facts.
 
-* State and events should be separated where reasonable
-* Operational history is treated as first-class data
-* Behavioral history is treated as analytical foundation
+### Rationale
 
-## Guest-Centric Modeling
+Operational events may exist independently from long-lived guest identity.
 
-* Guest is treated as long-lived identity
-* Reservations and stays are treated as operational events
-* Guest identity and operational events remain loosely coupled
+This prevents unnecessary coupling between:
 
-## Overbooking
+* operational lifecycle
+* CRM concerns
+* behavioral modeling
 
-* Allowed by design
-* Controlled externally (RMS)
+---
 
-## Validation Rules
+## Behavioral Projection Separation
 
-* Negative inventory is forbidden
-* Reservation must remain consistent
+Operational facts, behavioral events, and behavioral projections are treated as separate layers.
 
-## Repository Pattern
+### Operational Facts
 
-* DB access isolated in repository layer
-* Usecase does not contain SQL
+Source-of-truth operational entities:
 
-## Future Considerations
+* reservations
+* folios
+* folio_entries
 
-* RMS integration
-* CRM integration
-* guest behavioral analytics
-* forecast reproducibility
-* cleaning optimization
-* IoT (smart lock integration)
+### Behavioral Events
+
+Guest-centric behavioral projections:
+
+* ReservationCreated
+* ReservationCancelled
+* CheckedIn
+* CheckedOut
+* RoomChargePosted
+
+### Behavioral Projections
+
+Derived guest metrics and CRM-oriented read models.
+
+### Rationale
+
+This separation prevents operational consistency concerns from being polluted by analytics concerns while preserving extensibility toward CRM and guest intelligence layers.

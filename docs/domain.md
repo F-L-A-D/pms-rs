@@ -1,30 +1,16 @@
-# PMS-RS Domain Model
-
-## Overview
-
-The domain represents the core operational and behavioral entities of the PMS.
-
----
+# PMS-RS Domain
 
 ## Reservation
 
 ### Definition
 
-Reservation represents an operational booking transaction for a future stay.
+Reservation represents an operational booking fact.
 
-### Attributes
+### Principles
 
-* id
-* check_in
-* check_out
-* reservation_status (Active / Cancelled)
-* stay_status (Confirmed / CheckedIn / CheckedOut)
-
-### Behavior
-
-* Validate date range
-* Provide stay nights
-* Transition status
+* reservation is operational source-of-truth
+* reservation may exist independently from guest identity
+* reservation lifecycle must remain transactionally consistent
 
 ---
 
@@ -32,90 +18,102 @@ Reservation represents an operational booking transaction for a future stay.
 
 ### Definition
 
-Room represents a physical unit in the hotel.
-
-### Attributes
-
-* id
-* room_class
-* occupancy_status (Vacant / Occupied)
-* housekeeping_status (Dirty / Cleaning / Cleaned / Inspected)
-
-### Behavior
-
-* Assign to reservation
-* Transition occupancy state
-* Transition housekeeping lifecycle
-
----
-
-## Stay
-
-### Definition
-
-Stay represents operational occupancy lifecycle derived from reservation state.
-
-### Behavior
-
-* Check-in
-* Check-out
-* Occupancy transition
-
----
-
-## Billing
-
-Billing is modeled as append-only ledger events.
-
-### Components
-
-* Folio
-* FolioEntry
+Room represents a physical sellable inventory unit.
 
 ### Principles
 
-* Balance is derived
-* Entries are append-only
-* Billing events are treated as operational history
+* room state transitions are explicit
+* occupancy and housekeeping are separated concerns
 
 ---
 
-## Guest (Planned)
+## Folio
+
+### Definition
+
+Folio represents a billing container attached to operational stay context.
+
+### Principles
+
+* folio aggregates financial entries
+* folio itself does not represent balance
+
+---
+
+## FolioEntry
+
+### Definition
+
+FolioEntry represents append-only billing events.
+
+### Principles
+
+* entries are append-only
+* balance is derived from entries
+* billing history is immutable
+
+---
+
+## Guest
 
 ### Definition
 
 Guest represents a long-lived hospitality identity.
 
-Reservations, stays, and billing events are linked to guests as operational history.
+Reservations, stays, billing events, and behavioral projections are linked through guest identity.
 
 ### Attributes
 
 * id
 * profile information
 * contact information
-* guest relations
 
 ### Behavior
 
-* Maintain identity across stays
-* Aggregate operational history
-* Provide behavioral foundation for CRM / analytics
+* maintain identity across stays
+* aggregate operational history
+* provide CRM / behavioral foundation
 
 ---
 
-## Inventory (Design Note)
+## GuestTimelineEvent
 
-Inventory is NOT a domain entity.
+### Definition
 
-* It is a derived and aggregated dataset
-* Stored for performance and consistency
-* Managed within repository layer
-* Represents operational constraints, not pricing decisions
+GuestTimelineEvent represents behavioral milestones derived from operational events.
+
+### Principles
+
+* timeline is behavioral projection
+* timeline is NOT source-of-truth
+* operational-only events are excluded
+* events are append-only
+
+### Current Events
+
+* ReservationCreated
+* ReservationCancelled
+* CheckedIn
+* CheckedOut
+* RoomChargePosted
 
 ---
 
-## Design Principles
+## GuestMetrics
 
-* Domain contains only core business entities
-* Derived data must not pollute domain layer
-* Usecase orchestrates domain + persistence
+### Definition
+
+GuestMetrics represents derived behavioral projections calculated from operational history.
+
+### Current Metrics
+
+* total_stays
+* total_nights
+* total_spending
+* last_stay_at
+
+### Principles
+
+* metrics are derived on read
+* operational tables remain source-of-truth
+* timeline is not used as authoritative source

@@ -1,4 +1,4 @@
-# pms-rs
+# PMS-RS
 
 A hotel Property Management System (PMS) core implemented in Rust.
 
@@ -9,6 +9,7 @@ This project aims to build a reliable and extensible hospitality backend focusin
 * reservation lifecycle
 * room operations
 * billing events
+* guest behavioral projection
 * transactional consistency
 * operational reproducibility
 
@@ -18,21 +19,11 @@ The system is designed with:
 * event-oriented thinking
 * append-only billing
 * strong transactional guarantees
+* timeline-based behavioral foundation
 
 ---
 
-## Architecture
-
-```plaintext
-domain      - core business entities
-usecase     - application logic
-repository  - persistence abstraction
-db          - database connection / transaction
-adapter     - input normalization
-tests       - integration & transaction tests
-```
-
-### Design Principles
+## Design Principles
 
 * domain contains core business rules
 * usecase orchestrates state transitions
@@ -41,6 +32,45 @@ tests       - integration & transaction tests
 * balance is derived from ledger entries
 * operational consistency is prioritized over premature abstraction
 * guest identity and operational events remain loosely coupled
+* behavioral projections are separated from operational source-of-truth
+
+---
+
+## Behavioral Architecture
+
+The system separates:
+
+* operational facts
+* behavioral events
+* behavioral projections
+
+### Operational Facts
+
+Operational source-of-truth entities:
+
+* reservations
+* folios
+* folio_entries
+
+### Behavioral Events
+
+Guest-centric behavioral milestones:
+
+* ReservationCreated
+* ReservationCancelled
+* CheckedIn
+* CheckedOut
+* RoomChargePosted
+
+### Behavioral Projections
+
+Derived guest-oriented read models:
+
+* guest timeline
+* guest metrics
+* future CRM projections
+
+Operational entities remain authoritative while behavioral layers are derived independently for CRM and guest intelligence purposes.
 
 ---
 
@@ -111,13 +141,15 @@ See:
 * [ ] Accompany guest support
 * [x] Reservation linkage
 * [x] Stay linkage
+* [x] Billing linkage foundation
 
 ## M8 - Guest Behavioral Foundation
 
-* [x] Stay history
-* [x] Spending history
+* [x] Guest behavioral timeline
+* [x] Behavioral projection
+* [x] Stay history foundation
+* [x] Spending history foundation
 * [x] Behavioral metrics
-* [x] Timeline foundation
 
 ## M9 - CRM Foundation
 

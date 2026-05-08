@@ -29,8 +29,7 @@ pub async fn list_guests(
                         &mut tx,
                         &keyword,
                     )
-                    .await
-                    .map_err(AppError::Infrastructure)?
+                    .await?
                 }
 
                 None => {
@@ -38,8 +37,7 @@ pub async fn list_guests(
                     SqliteGuestRepository::find_all(
                         &mut tx,
                     )
-                    .await
-                    .map_err(AppError::Infrastructure)?
+                    .await?
                 }
             };
 

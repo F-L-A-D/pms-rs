@@ -23,17 +23,17 @@ async fn should_record_guest_timeline() {
         test_app().await;
     
     let guest_id =
-        create_guest(&app).await;
+        create_guest(&app.app).await;
 
     create_reservation(
-        &app,
+        &app.app,
         "reservation-001",
         guest_id,
     )
     .await;
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()
@@ -90,10 +90,10 @@ async fn should_return_empty_timeline() {
         test_app().await;
 
     let guest_id =
-        create_guest(&app).await;
+        create_guest(&app.app).await;
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()

@@ -36,18 +36,17 @@ pub async fn update_guest(
 
     let result = async {
 
-        let mut guest =
-            SqliteGuestRepository::find_by_id(
-                &mut tx,
-                guest_id,
+    let mut guest =
+        SqliteGuestRepository::find_by_id(
+            &mut tx,
+            guest_id,
+        )
+        .await?
+        .ok_or(
+            AppError::NotFound(
+                "guest not found".into()
             )
-            .await
-            .map_err(AppError::Infrastructure)?
-            .ok_or(
-                AppError::NotFound(
-                    "guest not found".into()
-                )
-            )?;
+        )?;
 
         guest.update_profile(
             last_name,
@@ -60,14 +59,13 @@ pub async fn update_guest(
             membership_code,
             marketing_opt_in,
         )
-        .map_err(AppError::Validation)?;
+        .map_err(AppError::Infrastructure)?;
 
         SqliteGuestRepository::update(
             &mut tx,
             &guest,
         )
-        .await
-        .map_err(AppError::Infrastructure)?;
+        .await?;
 
         Ok(guest)
 

@@ -27,8 +27,7 @@ pub async fn get_guest(
                 &mut tx,
                 guest_id,
             )
-            .await
-            .map_err(AppError::Infrastructure)?;
+            .await?;
 
         Ok(guest)
 

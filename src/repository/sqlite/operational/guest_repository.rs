@@ -1,4 +1,8 @@
-use sqlx::{Row, Sqlite, Transaction};
+use sqlx::{
+    Row,
+    Sqlite,
+    Transaction,
+};
 
 use chrono::NaiveDate;
 
@@ -9,6 +13,11 @@ use crate::domain::guest::{
     Guest,
 };
 
+use crate::error::app_error::{
+    AppError,
+    AppResult,
+};
+
 pub struct SqliteGuestRepository;
 
 impl SqliteGuestRepository {
@@ -16,7 +25,7 @@ impl SqliteGuestRepository {
     pub async fn save(
         tx: &mut Transaction<'_, Sqlite>,
         guest: &Guest,
-    ) -> Result<(), String> {
+    ) -> AppResult<()> {
 
         sqlx::query(
             r#"
@@ -68,7 +77,11 @@ impl SqliteGuestRepository {
         .bind(guest.updated_at.to_rfc3339())
         .execute(&mut **tx)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            AppError::Infrastructure(
+                e.to_string()
+            )
+        })?;
 
         Ok(())
     }
@@ -76,7 +89,7 @@ impl SqliteGuestRepository {
     pub async fn find_by_id(
         tx: &mut Transaction<'_, Sqlite>,
         id: Uuid,
-    ) -> Result<Option<Guest>, String> {
+    ) -> AppResult<Option<Guest>> {
 
         let row =
             sqlx::query(
@@ -101,7 +114,11 @@ impl SqliteGuestRepository {
             .bind(id.to_string())
             .fetch_optional(&mut **tx)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                AppError::Infrastructure(
+                    e.to_string()
+                )
+            })?;
 
         match row {
 
@@ -119,7 +136,7 @@ impl SqliteGuestRepository {
 
     pub async fn find_all(
         tx: &mut Transaction<'_, Sqlite>,
-    ) -> Result<Vec<Guest>, String> {
+    ) -> AppResult<Vec<Guest>> {
 
         let rows =
             sqlx::query(
@@ -143,7 +160,11 @@ impl SqliteGuestRepository {
             )
             .fetch_all(&mut **tx)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                AppError::Infrastructure(
+                    e.to_string()
+                )
+            })?;
 
         Ok(
             rows
@@ -156,7 +177,7 @@ impl SqliteGuestRepository {
     pub async fn update(
         tx: &mut Transaction<'_, Sqlite>,
         guest: &Guest,
-    ) -> Result<(), String> {
+    ) -> AppResult<()> {
 
         sqlx::query(
             r#"
@@ -192,7 +213,11 @@ impl SqliteGuestRepository {
         .bind(&guest.id.to_string())
         .execute(&mut **tx)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            AppError::Infrastructure(
+                e.to_string()
+            )
+        })?;
 
         Ok(())
     }
@@ -200,9 +225,10 @@ impl SqliteGuestRepository {
     pub async fn find_by_name(
         tx: &mut Transaction<'_, Sqlite>,
         keyword: &str,
-    ) -> Result<Vec<Guest>, String> {
+    ) -> AppResult<Vec<Guest>> {
 
-        let pattern = format!("%{}%", keyword);
+        let pattern =
+            format!("%{}%", keyword);
 
         let rows =
             sqlx::query(
@@ -230,7 +256,11 @@ impl SqliteGuestRepository {
             .bind(pattern)
             .fetch_all(&mut **tx)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                AppError::Infrastructure(
+                    e.to_string()
+                )
+            })?;
 
         Ok(
             rows
@@ -251,25 +281,50 @@ impl SqliteGuestRepository {
                         .as_str()
                 )
                 .unwrap(),
-            last_name: r.get("last_name"),
-            first_name: r.get("first_name"),
-            phone: r.get("phone"),
-            email: r.get("email"),
-            nationality: r.get("nationality"),
+
+            last_name:
+                r.get("last_name"),
+
+            first_name:
+                r.get("first_name"),
+
+            phone:
+                r.get("phone"),
+
+            email:
+                r.get("email"),
+
+            nationality:
+                r.get("nationality"),
+
             birth_date:
-                r.get::<Option<NaiveDate>, _>("birth_date"),
+                r.get::<Option<NaiveDate>, _>(
+                    "birth_date"
+                ),
 
             gender:
-                match r.get::<Option<String>, _>("gender") {
+                match r.get::<Option<String>, _>(
+                    "gender"
+                ) {
 
                     Some(v) => {
                         match v.as_str() {
-                            "Male" => Some(Gender::Male),
-                            "Female" => Some(Gender::Female),
-                            "Other" => Some(Gender::Other),
+
+                            "Male" =>
+                                Some(Gender::Male),
+
+                            "Female" =>
+                                Some(Gender::Female),
+
+                            "Other" =>
+                                Some(Gender::Other),
+
                             "Unspecified" => {
-                                Some(Gender::Unspecified)
+                                Some(
+                                    Gender::Unspecified
+                                )
                             }
+
                             _ => None,
                         }
                     }
@@ -283,15 +338,15 @@ impl SqliteGuestRepository {
             marketing_opt_in:
                 r.get("marketing_opt_in"),
 
-            created_at: r
-                .get::<String, _>("created_at")
-                .parse()
-                .unwrap(),
+            created_at:
+                r.get::<String, _>("created_at")
+                    .parse()
+                    .unwrap(),
 
-            updated_at: r
-                .get::<String, _>("updated_at")
-                .parse()
-                .unwrap(),
+            updated_at:
+                r.get::<String, _>("updated_at")
+                    .parse()
+                    .unwrap(),
         }
     }
 }

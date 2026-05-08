@@ -27,31 +27,31 @@ async fn should_get_guest_summary() {
         test_app().await;
 
     let guest_id =
-        create_guest(&app).await;
+        create_guest(&app.app).await;
 
     create_reservation(
-        &app,
+        &app.app,
         "reservation-001",
         guest_id,
     )
     .await;
 
     open_folio(
-        &app,
+        &app.app,
         "folio-001",
         "reservation-001",
     )
     .await;
 
     post_room_charge(
-        &app,
+        &app.app,
         "folio-001",
         12000,
     )
     .await;
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()
@@ -110,10 +110,10 @@ async fn should_return_zero_metrics() {
         test_app().await;
 
     let guest_id =
-        create_guest(&app).await;
+        create_guest(&app.app).await;
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()

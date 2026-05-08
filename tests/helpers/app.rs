@@ -7,7 +7,12 @@ use pms_rs::api::{
 
 use pms_rs::db::connection::Db;
 
-pub async fn test_app() -> Router {
+pub struct TestApp {
+    pub app: Router,
+    pub db: Db,
+}
+
+pub async fn test_app() -> TestApp {
 
     let db =
         Db::new("sqlite::memory:")
@@ -15,8 +20,14 @@ pub async fn test_app() -> Router {
 
     let state =
         AppState {
-            db,
+            db: db.clone(),
         };
 
-    create_router(state)
+    let app =
+        create_router(state);
+
+    TestApp {
+        app,
+        db,
+    }
 }

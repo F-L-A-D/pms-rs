@@ -26,17 +26,17 @@ async fn should_open_folio() {
         test_app().await;
 
     let guest_id =
-        create_guest(&app).await;
+        create_guest(&app.app).await;
 
     create_reservation(
-        &app,
+        &app.app,
         "reservation-001",
         guest_id,
     )
     .await;
 
     open_folio(
-        &app,
+        &app.app,
         "folio-001",
         "reservation-001",
     )
@@ -50,24 +50,24 @@ async fn should_post_room_charge() {
         test_app().await;
 
     let guest_id =
-        create_guest(&app).await;
+        create_guest(&app.app).await;
 
     create_reservation(
-        &app,
+        &app.app,
         "reservation-001",
         guest_id,
     )
     .await;
 
     open_folio(
-        &app,
+        &app.app,
         "folio-001",
         "reservation-001",
     )
     .await;
 
     post_room_charge(
-        &app,
+        &app.app,
         "folio-001",
         12000,
     )
@@ -81,24 +81,24 @@ async fn should_post_payment() {
         test_app().await;
 
     let guest_id =
-        create_guest(&app).await;
+        create_guest(&app.app).await;
 
     create_reservation(
-        &app,
+        &app.app,
         "reservation-001",
         guest_id,
     )
     .await;
 
     open_folio(
-        &app,
+        &app.app,
         "folio-001",
         "reservation-001",
     )
     .await;
 
     post_payment(
-        &app,
+        &app.app,
         "folio-001",
         12000,
     )
@@ -112,38 +112,38 @@ async fn should_get_balance() {
         test_app().await;
 
     let guest_id =
-        create_guest(&app).await;
+        create_guest(&app.app).await;
 
     create_reservation(
-        &app,
+        &app.app,
         "reservation-001",
         guest_id,
     )
     .await;
 
     open_folio(
-        &app,
+        &app.app,
         "folio-001",
         "reservation-001",
     )
     .await;
 
     post_room_charge(
-        &app,
+        &app.app,
         "folio-001",
         12000,
     )
     .await;
 
     post_payment(
-        &app,
+        &app.app,
         "folio-001",
         5000,
     )
     .await;
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()

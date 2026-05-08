@@ -17,6 +17,10 @@ use crate::domain::guest_timeline_event::TimelineEventType;
 
 use crate::usecase::timeline::record_event::record_event;
 
+use crate::projection::service::
+    guest_summary_projection_service::
+    refresh_guest_summary_projection;
+
 pub async fn create_reservation(
     db: &Db,
     reservation: Reservation,
@@ -34,8 +38,7 @@ pub async fn create_reservation(
                     &mut tx,
                     participant.guest_id,
                 )
-                .await
-                .map_err(AppError::Infrastructure)?;
+                .await?;
 
             if guest.is_none() {
 
@@ -70,7 +73,7 @@ pub async fn create_reservation(
         let primary_guest_id =
             reservation
                 .primary_participant()
-                .map(|p| p.guest_id.clone());
+                .map(|p| p.guest_id);
 
         if let Some(guest_id) =
             &primary_guest_id {
@@ -80,6 +83,14 @@ pub async fn create_reservation(
                 guest_id.clone(),
                 TimelineEventType::ReservationCreated,
                 reservation.id.clone(),
+            )
+            .await?;
+        }
+
+        for participant in &reservation.participants {
+            refresh_guest_summary_projection(
+                &mut tx,
+                participant.guest_id,
             )
             .await?;
         }

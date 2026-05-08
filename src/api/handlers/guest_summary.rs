@@ -22,6 +22,9 @@ pub async fn get_guest_summary_handler(
     Path(guest_id): Path<String>,
 ) -> Result<Json<GuestSummaryResponse>, StatusCode> {
 
+    let mut tx =
+        state.db.begin_tx().await;
+
     let guest_id =
         Uuid::parse_str(&guest_id)
             .map_err(|e| {
@@ -32,11 +35,21 @@ pub async fn get_guest_summary_handler(
         
     let metrics =
         get_guest_summary(
-            &state.db,
+            &mut tx,
             guest_id,
         )
         .await
         .map_err(map_app_error)?;
+
+    tx.rollback()
+    .await
+    .map_err(|e| {
+        map_app_error(
+            AppError::Infrastructure(
+                e.to_string()
+            )
+        )
+    })?;
 
     Ok(
         Json(

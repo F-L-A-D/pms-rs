@@ -10,44 +10,36 @@ use axum::{
 use chrono::Utc;
 
 use crate::api::dto::billing::{
-    OpenFolioRequest,
-    PostRoomChargeRequest,
-    PostPaymentRequest,
-    FolioResponse,
     BalanceResponse,
     FolioEntryResponse,
+    FolioResponse,
+    OpenFolioRequest,
+    PostPaymentRequest,
+    PostRoomChargeRequest,
 };
+
+use crate::api::error::map_app_error;
 
 use crate::api::state::AppState;
 
-use crate::domain::folio::Folio;
-use crate::domain::folio_entry::{FolioEntry, EntryType};
-
-
-use crate::repository::sqlite::folio_repository::SqliteFolioRepository;
-use crate::repository::sqlite::folio_entry_repository::SqliteFolioEntryRepository;
-
 use crate::usecase::billing::{
     calculate_balance::calculate_balance,
+    open_folio::open_folio,
+    post_room_charge::post_room_charge,
 };
 
-pub async fn open_folio(
+pub async fn open_folio_handler(
     State(state): State<AppState>,
     Json(req): Json<OpenFolioRequest>,
 ) -> Result<Json<FolioResponse>, StatusCode> {
 
-    let folio =
-        Folio::new(
-            req.folio_id.clone(),
-            req.reservation_id.clone(),
-        );
-
-    SqliteFolioRepository::save(
-        &state.db.pool,
-        &folio,
+    open_folio(
+        &state.db,
+        req.folio_id.clone(),
+        req.reservation_id.clone(),
     )
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(map_app_error)?;
 
     Ok(
         Json(
@@ -59,27 +51,24 @@ pub async fn open_folio(
     )
 }
 
-pub async fn post_room_charge(
+pub async fn post_room_charge_handler(
     State(state): State<AppState>,
     Path(folio_id): Path<String>,
     Json(req): Json<PostRoomChargeRequest>,
 ) -> Result<Json<FolioResponse>, StatusCode> {
 
-    let entry =
-        FolioEntry::new(
-            format!("charge-{}", Utc::now().timestamp_millis()),
-            folio_id.clone(),
-            EntryType::RoomCharge,
-            req.amount,
-            Some(req.description),
-        );
-
-    SqliteFolioEntryRepository::save(
-        &state.db.pool,
-        &entry,
+    post_room_charge(
+        &state.db,
+        format!(
+            "charge-{}",
+            Utc::now().timestamp_millis()
+        ),
+        &folio_id,
+        req.amount,
+        Some(req.description),
     )
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(map_app_error)?;
 
     Ok(
         Json(
@@ -91,27 +80,24 @@ pub async fn post_room_charge(
     )
 }
 
-pub async fn post_payment(
+pub async fn post_payment_handler(
     State(state): State<AppState>,
     Path(folio_id): Path<String>,
     Json(req): Json<PostPaymentRequest>,
 ) -> Result<Json<FolioResponse>, StatusCode> {
 
-    let entry =
-        FolioEntry::new(
-            format!("payment-{}", Utc::now().timestamp_millis()),
-            folio_id.clone(),
-            EntryType::Payment,
-            req.amount,
-            Some(req.description),
-        );
-
-    SqliteFolioEntryRepository::save(
-        &state.db.pool,
-        &entry,
+    post_room_charge(
+        &state.db,
+        format!(
+            "payment-{}",
+            Utc::now().timestamp_millis()
+        ),
+        &folio_id,
+        -req.amount,
+        Some(req.description),
     )
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(map_app_error)?;
 
     Ok(
         Json(
@@ -123,7 +109,7 @@ pub async fn post_payment(
     )
 }
 
-pub async fn get_balance(
+pub async fn get_balance_handler(
     State(state): State<AppState>,
     Path(folio_id): Path<String>,
 ) -> Result<Json<BalanceResponse>, StatusCode> {
@@ -134,7 +120,7 @@ pub async fn get_balance(
             &folio_id,
         )
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(map_app_error)?;
 
     Ok(
         Json(
@@ -146,16 +132,24 @@ pub async fn get_balance(
     )
 }
 
-pub async fn get_entries(
+pub async fn get_entries_handler(
     State(state): State<AppState>,
     Path(folio_id): Path<String>,
 ) -> Result<Json<Vec<FolioEntryResponse>>, StatusCode> {
 
+    let mut tx =
+        state.db.begin_tx().await;
+
     let entries =
-        SqliteFolioEntryRepository::find_by_folio_id(
-            &state.db.pool,
-            &folio_id,
-        )
+        crate::repository::sqlite::operational::
+            folio_entry_repository::SqliteFolioEntryRepository::find_by_folio_id(
+                &mut tx,
+                &folio_id,
+            )
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    tx.rollback()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -166,12 +160,20 @@ pub async fn get_entries(
 
                 FolioEntryResponse {
                     id: entry.id,
+
                     entry_type:
-                        format!("{:?}", entry.entry_type),
+                        format!(
+                            "{:?}",
+                            entry.entry_type
+                        ),
 
                     amount: entry.amount,
-                    description: entry.description,
-                    occurred_at: entry.occurred_at,
+
+                    description:
+                        entry.description,
+
+                    occurred_at:
+                        entry.occurred_at,
                 }
 
             })

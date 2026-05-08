@@ -1,175 +1,438 @@
 # pms-rs
 
-A hotel Property Management System (PMS) core implemented in Rust.
+pms-rs is a hospitality operational platform implemented in Rust.
 
-## Overview
+The system started as a transactional PMS core and is evolving toward a behavioral hospitality operating system.
 
-This project aims to build a reliable and extensible hospitality backend focusing on:
+The platform combines:
 
-* reservation lifecycle
-* room operations
-* billing events
-* transactional consistency
-* operational reproducibility
+* transactional PMS operations
+* behavioral reconstruction
+* CRM projection foundations
+* forecasting-oriented behavioral modeling
+* operational decision reproducibility
 
-The system is designed with:
+The architecture explicitly separates:
 
-* clean architecture
-* event-oriented thinking
-* append-only billing
-* strong transactional guarantees
+* operational truth
+* append-only behavioral/accounting history
+* derived behavioral projections
 
----
-
-## Architecture
-
-```plaintext
-domain      - core business entities
-usecase     - application logic
-repository  - persistence abstraction
-db          - database connection / transaction
-adapter     - input normalization
-tests       - integration & transaction tests
-```
-
-### Design Principles
-
-* domain contains core business rules
-* usecase orchestrates state transitions
-* repository isolates SQL access
-* append-only operations are preferred where reasonable
-* balance is derived from ledger entries
-* operational consistency is prioritized over premature abstraction
+Operational correctness and reproducibility are prioritized over premature abstraction.
 
 ---
 
-## Current Status
+# Core Direction
 
-See:
+The long-term direction is layered operational intelligence:
 
-* `roadmap.md`
-* `requirements.md`
-* `domain.md`
-* `decisions.md`
-* `testing.md`
+Operational Core
+↓
+Behavioral Reconstruction
+↓
+CRM / Segmentation
+↓
+Forecast / Intelligence
+↓
+Operational Decision Support
 
-### M1 - Reservation & Inventory
+Behavioral projections are intentionally non-authoritative.
 
-* [x] Reservation create
-* [x] Reservation modify
-* [x] Reservation cancel
-* [x] Inventory persistence
-* [x] Transaction rollback handling
-
-### M2 - Room & Assignment
-
-* [x] Room entity
-* [x] Occupancy status
-* [x] Housekeeping status
-* [x] Room assignment
-* [x] Room class validation
-
-### M3 - Stay Operations
-
-* [x] Check-in
-* [x] Check-out
-* [x] Housekeeping lifecycle
-
-### M4 - Billing Core
-
-* [x] Folio core
-* [x] Folio entry core
-* [x] Balance calculation
-* [x] Room charge posting
-
-### M5 - API Layer
-
-* [x] HTTP server
-* [x] Reservation API
-* [x] Room / Stay API
-* [x] Billing API
+Operational workflows remain owned by mutable operational aggregates.
 
 ---
 
-## Billing Design
+# Current Stack
 
-Billing is modeled as append-only ledger entries.
+## Backend
 
-### Core Components
+### Language
 
-* `Folio`
-* `FolioEntry`
+* Rust
 
-### Principles
+### Frameworks
 
-* entries are append-only
-* balance is derived from entries
-* operational history is treated as first-class data
+* axum
+* tokio
 
----
-
-## Development Workflow
-
-```plaintext
-Issue
-→ Branch
-→ PR
-→ Review
-→ Merge
-```
-
-### Example
-
-```bash
-git checkout -b feature/folio-entry-core
-```
-
----
-
-## Testing
-
-Run all tests:
-
-```bash
-cargo test
-```
-
-### Testing Focus
-
-* state transition validation
-* transactional consistency
-* repository persistence
-* append-only ledger behavior
-
----
-
-## Setup
-
-```bash
-git clone <repo>
-cd pms-rs
-cargo test
-```
-
----
-
-## Database
-
-### Development
+### Database
 
 * SQLite
+* sqlx
 
-### Planned
+### Testing
+
+* cargo test
+* integration-first testing
+
+---
+
+## Planned Frontend Stack
+
+* TypeScript
+
+The frontend layer is currently planned as a lightweight workflow validation UI for operational testing.
+
+---
+
+## Planned Database Direction
+
+The long-term operational database target is:
 
 * MySQL
 
+SQLite is currently used for:
+
+* rapid iteration
+* transactional workflow validation
+* integration-focused development
+
+The architecture is intentionally designed to minimize future database migration costs.
+
 ---
 
-## Future Considerations
+## Architectural Style
 
-* RMS integration
-* operational analytics
-* cleaning optimization
-* IoT integration
-* smart lock support
-* event-driven operational modeling
+* transactional operational core
+* append-only behavioral history
+* rebuildable projection layer
+* orchestration-oriented usecases
+
+---
+
+# Transaction Boundaries
+
+Transaction boundaries are owned by:
+
+* usecases
+* orchestration services
+
+Repositories and projection components consume existing transactions only.
+
+This guarantees:
+
+* workflow consistency
+* projection synchronization
+* replay compatibility
+
+Projection components must never own transactional consistency.
+
+---
+
+# Current Capabilities
+
+## Reservation & Inventory
+
+Implemented:
+
+* reservation create
+* reservation modify
+* reservation cancel
+* inventory persistence
+* transactional rollback consistency
+
+---
+
+## Room & Stay Operations
+
+Implemented:
+
+* room assignment
+* occupancy management
+* housekeeping lifecycle
+* check-in
+* check-out
+
+---
+
+## Billing Core
+
+Implemented:
+
+* folio management
+* append-only folio entries
+* balance derivation
+* room charge posting
+
+Billing history preserves accounting reproducibility while operational state remains mutable where necessary.
+
+---
+
+## Guest & Participant Model
+
+Implemented:
+
+* guest aggregate
+* guest profile
+* participant-authoritative reservation model
+* reservation_guest_relations
+* accompany guest foundation
+
+Reservation ownership is participant-authoritative rather than direct single-guest ownership.
+
+Reservation aggregates are reconstructed from operational relations.
+
+---
+
+## Behavioral Foundation
+
+Implemented:
+
+* guest timeline
+* guest metrics
+* guest summary projection
+* participant-aware behavioral propagation
+* projection rebuild flow
+
+Behavioral layers are projection-oriented and non-authoritative.
+
+Behavioral projections derive from:
+
+* operational truth
+* append-only accounting/behavioral history
+
+Examples:
+
+* guest timeline
+* guest metrics
+* guest summary projection
+* future segmentation
+* forecasting features
+
+Behavioral projections are intentionally rebuildable from authoritative operational and behavioral history.
+
+Projection loss must not compromise operational correctness.
+
+Behavioral projections may be rebuilt independently from operational state.
+
+---
+
+# Architecture Philosophy
+
+## Operational Truth
+
+Operational truth represents mutable authoritative state.
+
+Examples:
+
+* reservations
+* reservation_guest_relations
+* rooms
+* folios
+
+Operational entities may be:
+
+* modified
+* corrected
+* reassigned
+* cancelled
+
+Operational truth remains authoritative for current-state workflows.
+
+---
+
+## Behavioral History
+
+Behavioral/accounting history preserves reproducibility.
+
+Examples:
+
+* guest timeline
+* folio entries
+
+Behavioral history is append-only where operationally meaningful.
+
+Behavioral history supports:
+
+* behavioral reconstruction
+* analytics
+* CRM interpretation
+* forecasting foundations
+
+Behavioral history is not operational authority.
+
+---
+
+## Derived Behavioral Projections
+
+Derived projections support:
+
+* CRM
+* segmentation
+* forecasting
+* personalization
+* operational intelligence
+
+Behavioral projections are:
+
+* rebuildable
+* disposable
+* versionable
+* non-authoritative
+
+Projection consistency must never override operational correctness.
+
+---
+
+# Repository Structure
+
+## domain
+
+Core business entities and invariants.
+
+Examples:
+
+* Reservation
+* ReservationGuestRelation
+* Room
+* Folio
+* Guest
+* GuestTimelineEvent
+
+---
+
+## usecase
+
+Transactional orchestration layer.
+
+Responsibilities:
+
+* transaction boundaries
+* operational workflows
+* cross-aggregate coordination
+* behavioral propagation
+
+---
+
+## repository
+
+Persistence boundary.
+
+Responsibilities:
+
+* SQL access
+* persistence isolation
+* row mapping
+
+Repositories must not contain business rules.
+
+---
+
+## projection
+
+Rebuildable query model layer.
+
+Responsibilities:
+
+* projection materialization
+* projection refresh
+* projection rebuild
+* operational query optimization
+
+Projections must not:
+
+* own transactions
+* become operational authority
+* bypass behavioral history
+
+---
+
+## api
+
+HTTP layer.
+
+Responsibilities:
+
+* request/response mapping
+* DTO conversion
+* error mapping
+
+---
+
+## tests
+
+Integration-first validation layer.
+
+```bash
+cargo test
+```
+
+Focus areas:
+
+* transactional consistency
+* aggregate reconstruction
+* behavioral consistency
+* projection correctness
+* rebuild correctness
+
+---
+
+# Architectural Principles
+
+The architecture prioritizes:
+
+* operational reproducibility
+* behavioral reproducibility
+* projection rebuildability
+* transactional correctness
+* realistic hospitality workflows
+
+The system intentionally avoids:
+
+* premature abstraction
+* unnecessary framework-style indirection
+* projection-driven operational ownership
+* pseudo-event-sourcing authority models
+
+---
+
+# Current Focus
+
+Current architectural focus areas:
+
+* CRM projection boundaries
+* segmentation foundation
+* behavioral reconstruction consistency
+* forecasting-oriented behavioral modeling
+* operational intelligence foundation
+
+---
+
+# Next Phase
+
+## Div3 - Workflow Validation UI
+
+The next phase focuses on validating operational workflows through a lightweight UI layer.
+
+Primary objectives:
+
+* verify workflow consistency
+* validate operational usability
+* verify projection usefulness
+* evaluate search responsiveness
+* identify missing query models/projections
+* pressure test aggregate boundaries
+
+The Div3 UI layer exists for operational validation rather than frontend completeness.
+
+---
+
+# Long-Term Vision
+
+The long-term goal is a hospitality behavioral operating system capable of:
+
+* CRM
+* forecasting
+* guest intelligence
+* behavioral analytics
+* operational decision support
+* revenue intelligence
+* reproducible operational analysis
+
+The system is designed to evolve incrementally while preserving operational correctness and architectural clarity.
+
+Before implementing new features, review:
+
+* docs/architecture/*
+* docs/workflow/*
+* docs/core/*

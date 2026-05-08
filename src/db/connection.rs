@@ -103,6 +103,91 @@ impl Db {
         .await
         .unwrap();
 
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS guests (
+                id TEXT PRIMARY KEY,
+                last_name TEXT NOT NULL,
+                first_name TEXT NOT NULL,
+                phone TEXT,
+                email TEXT,
+                nationality TEXT,
+                birth_date TEXT,
+                gender TEXT,
+                membership_code TEXT,
+                marketing_opt_in INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS reservation_guest_relations (
+                reservation_id TEXT NOT NULL,
+                guest_id TEXT NOT NULL,
+                relation_type TEXT NOT NULL,
+                UNIQUE(reservation_id, guest_id)
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+        r#"
+            CREATE TABLE IF NOT EXISTS guest_timeline_events (
+                id TEXT PRIMARY KEY,
+                guest_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                reference_id TEXT NOT NULL,
+                occurred_at TEXT NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_guest_timeline_guest
+            ON guest_timeline_events (
+                guest_id,
+                occurred_at DESC
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            r#"
+            CREATE TABLE guest_summary_projections (
+                guest_id TEXT PRIMARY KEY,
+
+                total_stays INTEGER NOT NULL,
+                total_nights INTEGER NOT NULL,
+                total_spending INTEGER NOT NULL,
+
+                last_stay_at TEXT,
+
+                projection_version INTEGER NOT NULL,
+
+                updated_at TEXT NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
         Self { pool }
     }
 

@@ -1,5 +1,7 @@
 use crate::db::connection::Db;
 
+use uuid::Uuid;
+
 use crate::domain::guest::Guest;
 
 use crate::error::app_error::{
@@ -7,11 +9,12 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::guest_repository::SqliteGuestRepository;
+use crate::repository::sqlite::operational::
+    guest_repository::SqliteGuestRepository;
 
 pub async fn get_guest(
     db: &Db,
-    guest_id: &str,
+    guest_id: Uuid,
 ) -> AppResult<Option<Guest>> {
 
     let mut tx =
@@ -24,8 +27,7 @@ pub async fn get_guest(
                 &mut tx,
                 guest_id,
             )
-            .await
-            .map_err(AppError::Infrastructure)?;
+            .await?;
 
         Ok(guest)
 

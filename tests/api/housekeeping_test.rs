@@ -24,7 +24,7 @@ async fn should_mark_dirty() {
             "room_class": "STD"
         });
 
-    app.clone()
+    app.app.clone()
         .oneshot(
             Request::builder()
                 .method("POST")
@@ -44,7 +44,7 @@ async fn should_mark_dirty() {
         .unwrap();
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()
@@ -76,7 +76,7 @@ async fn should_finish_cleaning_flow() {
             "room_class": "STD"
         });
 
-    app.clone()
+    app.app.clone()
         .oneshot(
             Request::builder()
                 .method("POST")
@@ -95,7 +95,7 @@ async fn should_finish_cleaning_flow() {
         .await
         .unwrap();
 
-    app.clone()
+    app.app.clone()
         .oneshot(
             Request::builder()
                 .method("POST")
@@ -108,7 +108,7 @@ async fn should_finish_cleaning_flow() {
         .await
         .unwrap();
 
-    app.clone()
+    app.app.clone()
         .oneshot(
             Request::builder()
                 .method("POST")
@@ -121,7 +121,7 @@ async fn should_finish_cleaning_flow() {
         .await
         .unwrap();
 
-    app.clone()
+    app.app.clone()
         .oneshot(
             Request::builder()
                 .method("POST")
@@ -135,7 +135,7 @@ async fn should_finish_cleaning_flow() {
         .unwrap();
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()

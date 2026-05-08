@@ -7,6 +7,8 @@ use axum::{
     Router,
 };
 
+use uuid::Uuid;
+
 use serde_json::json;
 
 use tower::ServiceExt;
@@ -14,7 +16,7 @@ use tower::ServiceExt;
 #[allow(dead_code)]
 pub async fn create_timeline_event(
     app: &Router,
-    guest_id: &str,
+    guest_id: Uuid,
 ) {
 
     let payload =

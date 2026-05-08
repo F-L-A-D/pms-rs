@@ -7,6 +7,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use uuid::Uuid;
 
 use crate::api::dto::guest::{
     CreateGuestRequest,
@@ -36,7 +37,7 @@ pub async fn create_guest_handler(
 
     let guest =
         Guest::new(
-            req.id,
+            Uuid::new_v4(),
             req.last_name,
             req.first_name,
             req.phone,
@@ -68,10 +69,20 @@ pub async fn get_guest_handler(
     Path(id): Path<String>,
 ) -> Result<Json<GuestResponse>, StatusCode> {
 
+    let guest_id =
+    Uuid::parse_str(&id)
+        .map_err(|e| {
+            map_app_error(
+                AppError::Validation(
+                    e.to_string()
+                )
+            )
+        })?;
+
     let guest =
         get_guest(
             &state.db,
-            &id,
+            guest_id,
         )
         .await
         .map_err(map_app_error)?
@@ -108,10 +119,20 @@ pub async fn update_guest_handler(
     Json(req): Json<UpdateGuestRequest>,
 ) -> Result<Json<GuestResponse>, StatusCode> {
 
+    let guest_id =
+    Uuid::parse_str(&id)
+        .map_err(|e| {
+            map_app_error(
+                AppError::Validation(
+                    e.to_string()
+                )
+            )
+        })?;
+
     let guest =
         update_guest(
             &state.db,
-            &id,
+            guest_id,
             req.last_name,
             req.first_name,
             req.phone,

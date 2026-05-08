@@ -29,7 +29,7 @@ impl SqliteReservationGuestRelationRepository {
             "#
         )
         .bind(&relation.reservation_id)
-        .bind(&relation.guest_id)
+        .bind(relation.guest_id.to_string())
         .bind(
             relation
                 .relation_type
@@ -80,7 +80,11 @@ impl SqliteReservationGuestRelationRepository {
                 row.get("reservation_id"),
 
             guest_id:
-                row.get("guest_id"),
+                uuid::Uuid::parse_str(
+                    row.get::<String, _>("guest_id")
+                        .as_str()
+                )
+                .unwrap(),
 
             relation_type:
                 ReservationGuestRelationType

@@ -10,8 +10,10 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::inventory_repository::SqliteInventoryRepository;
-use crate::repository::sqlite::reservation_repository::SqliteReservationRepository;
+use crate::repository::sqlite::operational::{
+    inventory_repository::SqliteInventoryRepository,
+    reservation_repository::SqliteReservationRepository,
+};
 
 pub async fn modify_reservation(
     db: &Db,

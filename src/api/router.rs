@@ -54,8 +54,8 @@ use crate::api::handlers::timeline::{
     get_guest_timeline_handler,
 };
 
-use crate::api::handlers::guest_metrics::{
-    get_guest_metrics_handler,
+use crate::api::handlers::guest_summary::{
+    get_guest_summary_handler,
 };
 use crate::api::state::AppState;
 
@@ -200,8 +200,8 @@ pub fn create_router(
         )
 
         .route(
-            "/guests/:id/metrics",
-            get(get_guest_metrics_handler),
+            "/guests/:id/summary",
+            get(get_guest_summary_handler),
         )
 
         .with_state(state)

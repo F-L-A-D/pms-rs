@@ -141,12 +141,13 @@ pub async fn get_entries_handler(
         state.db.begin_tx().await;
 
     let entries =
-        crate::repository::sqlite::folio_entry_repository::SqliteFolioEntryRepository::find_by_folio_id(
-            &mut tx,
-            &folio_id,
-        )
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        crate::repository::sqlite::operational::
+            folio_entry_repository::SqliteFolioEntryRepository::find_by_folio_id(
+                &mut tx,
+                &folio_id,
+            )
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     tx.rollback()
         .await

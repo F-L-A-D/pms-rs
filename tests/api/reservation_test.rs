@@ -1,5 +1,7 @@
 use chrono::NaiveDate;
 
+use uuid::Uuid;
+
 use pms_rs::db::connection::Db;
 
 use pms_rs::domain::guest::Guest;
@@ -11,9 +13,8 @@ use pms_rs::domain::reservation_guest_relation::{
     ReservationGuestRelationType,
 };
 
-use pms_rs::repository::sqlite::
-    reservation_repository::
-        SqliteReservationRepository;
+use pms_rs::repository::sqlite::operational::
+    reservation_repository::SqliteReservationRepository;
 
 use pms_rs::usecase::guest::
     create_guest::create_guest;
@@ -28,9 +29,11 @@ async fn should_create_reservation_with_primary_participant() {
         Db::new("sqlite::memory:")
             .await;
 
+    let guest_id = Uuid::new_v4();
+
     let guest =
         Guest::new(
-            "guest-1".into(),
+            guest_id,
             "Yamada".into(),
             "Taro".into(),
             None,
@@ -72,7 +75,7 @@ async fn should_create_reservation_with_primary_participant() {
                         "res-1".into(),
 
                     guest_id:
-                        "guest-1".into(),
+                        guest_id,
 
                     relation_type:
                         ReservationGuestRelationType::Primary,
@@ -109,7 +112,7 @@ async fn should_create_reservation_with_primary_participant() {
     assert_eq!(
         loaded.participants[0]
             .guest_id,
-        "guest-1",
+        guest_id,
     );
 
     assert!(
@@ -120,6 +123,8 @@ async fn should_create_reservation_with_primary_participant() {
 
 #[tokio::test]
 async fn should_fail_when_duplicate_participants_exist() {
+
+    let guest_id = Uuid::new_v4();
 
     let reservation =
         Reservation::new(
@@ -143,7 +148,7 @@ async fn should_fail_when_duplicate_participants_exist() {
                         "res-1".into(),
 
                     guest_id:
-                        "guest-1".into(),
+                        guest_id,
 
                     relation_type:
                         ReservationGuestRelationType::Primary,
@@ -154,7 +159,7 @@ async fn should_fail_when_duplicate_participants_exist() {
                         "res-1".into(),
 
                     guest_id:
-                        "guest-1".into(),
+                        guest_id,
 
                     relation_type:
                         ReservationGuestRelationType::Accompany,
@@ -170,6 +175,8 @@ async fn should_fail_when_duplicate_participants_exist() {
 #[tokio::test]
 async fn should_fail_when_primary_participant_missing() {
 
+    let guest_id = Uuid::new_v4();
+
     let reservation =
         Reservation::new(
             "res-1".into(),
@@ -192,7 +199,7 @@ async fn should_fail_when_primary_participant_missing() {
                         "res-1".into(),
 
                     guest_id:
-                        "guest-1".into(),
+                        guest_id,
 
                     relation_type:
                         ReservationGuestRelationType::Accompany,
@@ -211,10 +218,12 @@ async fn should_find_reservations_by_guest_id() {
     let db =
         Db::new("sqlite::memory:")
             .await;
+    
+    let guest_id = Uuid::new_v4();
 
     let guest =
         Guest::new(
-            "guest-1".into(),
+            guest_id,
             "Suzuki".into(),
             "Hanako".into(),
             None,
@@ -256,7 +265,7 @@ async fn should_find_reservations_by_guest_id() {
                         "res-1".into(),
 
                     guest_id:
-                        "guest-1".into(),
+                        guest_id,
 
                     relation_type:
                         ReservationGuestRelationType::Primary,
@@ -279,7 +288,7 @@ async fn should_find_reservations_by_guest_id() {
         SqliteReservationRepository
             ::find_by_guest_id(
                 &mut tx,
-                "guest-1",
+                guest_id,
             )
             .await
             .unwrap();

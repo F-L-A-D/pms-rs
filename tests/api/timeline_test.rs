@@ -21,28 +21,25 @@ async fn should_record_guest_timeline() {
 
     let app =
         test_app().await;
-
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    
+    let guest_id =
+        create_guest(&app.app).await;
 
     create_reservation(
-        &app,
+        &app.app,
         "reservation-001",
-        "guest-001",
+        guest_id,
     )
     .await;
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()
                     .method("GET")
                     .uri(
-                        "/guests/guest-001/timeline"
+                        format!("/guests/{guest_id}/timeline")
                     )
                     .body(Body::empty())
                     .unwrap()
@@ -92,20 +89,17 @@ async fn should_return_empty_timeline() {
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app.app).await;
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()
                     .method("GET")
                     .uri(
-                        "/guests/guest-001/timeline"
+                        format!("/guests/{guest_id}/timeline")
                     )
                     .body(Body::empty())
                     .unwrap()

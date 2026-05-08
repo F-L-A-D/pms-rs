@@ -7,7 +7,8 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::guest_repository::SqliteGuestRepository;
+use crate::repository::sqlite::operational::
+    guest_repository::SqliteGuestRepository;
 
 pub async fn create_guest(
     db: &Db,
@@ -23,8 +24,7 @@ pub async fn create_guest(
             &mut tx,
             &guest,
         )
-        .await
-        .map_err(AppError::Infrastructure)?;
+        .await?;
 
         Ok(())
 

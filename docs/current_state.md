@@ -8,8 +8,8 @@ The system started as a transactional PMS core and is evolving toward a behavior
 
 The architecture separates:
 
-- operational facts
-- behavioral events
+- operational truth
+- behavioral history
 - behavioral projections
 
 Operational consistency is prioritized over premature abstraction.
@@ -61,6 +61,8 @@ Implemented:
 - balance derivation
 - room charge posting
 
+Billing history preserves accounting reproducibility while operational state remains mutable where operationally necessary.
+
 ---
 
 ## M5 - API Layer
@@ -91,6 +93,10 @@ Guest profile currently supports:
 - membership_code
 - marketing_opt_in
 
+Guest aggregates represent operational guest identity.
+
+Behavioral interpretation belongs to projection layers rather than operational ownership.
+
 ---
 
 ## M7 - Reservation / Guest Relation
@@ -105,6 +111,8 @@ Implemented:
 - billing linkage foundation
 
 Reservation authority is participant-driven rather than direct guest ownership.
+
+Reservation aggregates are reconstructed from operational relations.
 
 ---
 
@@ -123,9 +131,19 @@ Behavioral events:
 - RoomChargePosted
 
 Timeline is a behavioral projection layer derived from operational truth.
-Timeline exists for behavioral reconstruction and guest-centric interpretation.
+
+Timeline exists for:
+
+- behavioral reconstruction
+- guest-centric interpretation
+- CRM foundation
+- operational reproducibility
+
 Timeline is append-only but non-authoritative.
+
 Timeline must not replace operational truth.
+
+---
 
 ### Guest Metrics
 
@@ -143,7 +161,7 @@ Metrics are derived behavioral projections rebuilt from:
 
 Metrics are non-authoritative read models.
 
---- 
+---
 
 ## M9 - CRM Foundation
 
@@ -151,39 +169,55 @@ Metrics are non-authoritative read models.
 
 Implemented:
 
-* participant-authoritative reservation model
-* ReservationGuestRelation persistence
-* reservation aggregate reconstruction from relations
-* participant-based behavioral propagation
-* participant-aware guest metrics linkage
-* reservation read reconstruction foundation
+- participant-authoritative reservation model
+- ReservationGuestRelation persistence
+- reservation aggregate reconstruction from relations
+- participant-based behavioral propagation
+- participant-aware guest metrics linkage
+- reservation read reconstruction foundation
 
 Operational ownership was migrated from:
 
-* primary_guest_id
+- primary_guest_id
 
 to:
 
-* ReservationGuestRelation
+- ReservationGuestRelation
 
 Reservation state remains mutable operational truth.
 
 Behavioral history remains append-only through:
 
-* guest timeline
-* folio entries
+- guest timeline
+- folio entries
+
+---
 
 ### M9-b - CRM Projection Foundation
 
-Planned:
+Implemented:
 
-* event model formalization
-* CRM projection boundary refinement
-* segmentation foundation
-* behavioral projection architecture
-* guest behavioral reconstruction consistency
-* membership domain direction refinement
+- event model formalization
+- CRM projection boundary refinement
+- segmentation foundation
+- behavioral projection architecture
+- projection non-authority principles
+- guest behavioral reconstruction consistency
+- membership domain direction refinement
 
+Behavioral projections are explicitly defined as:
+
+- rebuildable
+- projection-oriented
+- non-authoritative
+
+Operational truth remains authoritative.
+
+The architecture explicitly separates:
+
+- mutable operational state
+- append-only behavioral/accounting history
+- derived behavioral intelligence
 
 ---
 
@@ -191,22 +225,34 @@ Planned:
 
 ## Operational Facts
 
-Source-of-truth entities:
+Source-of-truth operational entities:
 
 - reservations
 - reservation_guest_relations
+- rooms
 - folios
-- folio_entries
+
+Operational truth remains mutable where operational correction is required.
 
 ---
 
-## Behavioral Events
+## Behavioral History
 
-Guest-centric behavioral milestones.
+Append-only behavioral/accounting history.
 
-Timeline is append-only and projection-oriented.
+Examples:
 
-Timeline is NOT source-of-truth.
+- guest timeline
+- folio entries
+
+Behavioral history supports:
+
+- reproducibility
+- CRM interpretation
+- analytics
+- forecasting foundations
+
+Behavioral history is non-authoritative.
 
 ---
 
@@ -214,9 +260,19 @@ Timeline is NOT source-of-truth.
 
 Derived read models:
 
-- guest timeline
 - guest metrics
-- future CRM projections
+- segmentation
+- CRM projections
+- forecasting features
+
+Behavioral projections are:
+
+- rebuildable
+- disposable
+- versionable
+- non-authoritative
+
+Behavioral projections must not become operational authority.
 
 ---
 
@@ -229,7 +285,7 @@ Operational aggregates may be reconstructed from:
 
 Aggregates must preserve authoritative ownership boundaries.
 
-Behavioral projections must not become operational authority.
+Projection-derived state must not replace operational truth.
 
 ---
 
@@ -265,7 +321,7 @@ Responsibilities:
 - transaction boundaries
 - operational workflows
 - cross-aggregate coordination
-- behavioral event propagation
+- behavioral propagation
 
 ---
 
@@ -388,16 +444,16 @@ Current integration test count:
 
 # Current Focus
 
-Preparing next-stage behavioral architecture refinement.
+Preparing next-stage projection materialization and behavioral intelligence infrastructure.
 
 Potential next steps:
 
-- event model formalization
-- CRM projection boundaries
-- segmentation foundation
+- CRM projection materialization
+- segmentation materialization
+- projection rebuild pipeline
+- behavioral query optimization
+- forecasting feature foundation
 - corporate relation modeling
-- forecasting integration
-- behavioral reconstruction consistency
 
 ---
 
@@ -410,6 +466,7 @@ The long-term goal is not only PMS functionality, but a hospitality behavioral o
 - forecasting
 - behavioral analytics
 - operational decision support
+- revenue intelligence
 - behavioral reproducibility
 
 The system prioritizes:

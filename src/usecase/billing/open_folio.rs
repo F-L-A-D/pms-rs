@@ -7,8 +7,10 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::folio_repository::SqliteFolioRepository;
-use crate::repository::sqlite::reservation_repository::SqliteReservationRepository;
+use crate::repository::sqlite::operational::{
+    folio_repository::SqliteFolioRepository,
+    reservation_repository::SqliteReservationRepository,
+};
 
 pub async fn open_folio(
     db: &Db,

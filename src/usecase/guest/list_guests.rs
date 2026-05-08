@@ -7,7 +7,8 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::guest_repository::SqliteGuestRepository;
+use crate::repository::sqlite::operational::
+    guest_repository::SqliteGuestRepository;
 
 pub async fn list_guests(
     db: &Db,
@@ -28,8 +29,7 @@ pub async fn list_guests(
                         &mut tx,
                         &keyword,
                     )
-                    .await
-                    .map_err(AppError::Infrastructure)?
+                    .await?
                 }
 
                 None => {
@@ -37,8 +37,7 @@ pub async fn list_guests(
                     SqliteGuestRepository::find_all(
                         &mut tx,
                     )
-                    .await
-                    .map_err(AppError::Infrastructure)?
+                    .await?
                 }
             };
 

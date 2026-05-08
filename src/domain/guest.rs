@@ -9,6 +9,8 @@ use serde::{
     Deserialize,
 };
 
+use uuid::Uuid;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Gender {
     Male,
@@ -19,7 +21,7 @@ pub enum Gender {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Guest {
-    pub id: String,
+    pub id: Uuid,
     pub last_name: String,
     pub first_name: String,
     pub phone: Option<String>,
@@ -36,7 +38,7 @@ pub struct Guest {
 impl Guest {
 
     pub fn new(
-        id: String,
+        id: Uuid,
         last_name: String,
         first_name: String,
         phone: Option<String>,

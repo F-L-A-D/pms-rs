@@ -22,16 +22,13 @@ async fn should_assign_room() {
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app.app).await;
 
     create_reservation(
-        &app,
+        &app.app,
         "reservation-001",
-        "guest-001",
+        guest_id,
     )
     .await;
 
@@ -41,7 +38,7 @@ async fn should_assign_room() {
             "room_class": "STD"
         });
 
-    app.clone()
+    app.app.clone()
         .oneshot(
             Request::builder()
                 .method("POST")
@@ -61,7 +58,7 @@ async fn should_assign_room() {
         .unwrap();
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()
@@ -87,16 +84,13 @@ async fn should_check_in() {
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app.app).await;
 
     create_reservation(
-        &app,
+        &app.app,
         "reservation-001",
-        "guest-001",
+        guest_id,
     )
     .await;
 
@@ -106,7 +100,7 @@ async fn should_check_in() {
             "room_class": "STD"
         });
 
-    app.clone()
+    app.app.clone()
         .oneshot(
             Request::builder()
                 .method("POST")
@@ -125,7 +119,7 @@ async fn should_check_in() {
         .await
         .unwrap();
 
-    app.clone()
+    app.app.clone()
         .oneshot(
             Request::builder()
                 .method("POST")
@@ -139,7 +133,7 @@ async fn should_check_in() {
         .unwrap();
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()

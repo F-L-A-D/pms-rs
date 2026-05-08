@@ -9,7 +9,7 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::{
+use crate::repository::sqlite::operational::{
     inventory_repository::SqliteInventoryRepository,
     reservation_repository::SqliteReservationRepository
 };

@@ -5,12 +5,14 @@ use serde::{
 
 use chrono::NaiveDate;
 
+use uuid::Uuid;
+
 use crate::domain::reservation_guest_relation::
     ReservationGuestRelationType;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ReservationParticipantInput {
-    pub guest_id: String,
+    pub guest_id: Uuid,
     pub relation_type: ReservationGuestRelationType,
 }
 
@@ -33,7 +35,7 @@ pub struct UpdateReservationRequest {
 
 #[derive(Debug, Serialize)]
 pub struct ReservationParticipantResponse {
-    pub guest_id: String,
+    pub guest_id: Uuid,
     pub relation_type: String,
 }
 

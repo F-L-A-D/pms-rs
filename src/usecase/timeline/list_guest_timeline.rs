@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::db::connection::Db;
 
 use crate::domain::guest_timeline_event::GuestTimelineEvent;
@@ -7,11 +9,12 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::guest_timeline_event_repository::SqliteGuestTimelineEventRepository;
+use crate::repository::sqlite::operational::
+    guest_timeline_event_repository::SqliteGuestTimelineEventRepository;
 
 pub async fn list_guest_timeline(
     db: &Db,
-    guest_id: &str,
+    guest_id: Uuid,
 ) -> AppResult<Vec<GuestTimelineEvent>> {
 
     let mut tx =

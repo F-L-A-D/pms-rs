@@ -21,46 +21,43 @@ use crate::helpers::{
 };
 
 #[tokio::test]
-async fn should_get_guest_metrics() {
+async fn should_get_guest_summary() {
 
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app.app).await;
 
     create_reservation(
-        &app,
+        &app.app,
         "reservation-001",
-        "guest-001",
+        guest_id,
     )
     .await;
 
     open_folio(
-        &app,
+        &app.app,
         "folio-001",
         "reservation-001",
     )
     .await;
 
     post_room_charge(
-        &app,
+        &app.app,
         "folio-001",
         12000,
     )
     .await;
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()
                     .method("GET")
                     .uri(
-                        "/guests/guest-001/metrics"
+                        format!("/guests/{guest_id}/summary")
                     )
                     .body(Body::empty())
                     .unwrap()
@@ -112,20 +109,17 @@ async fn should_return_zero_metrics() {
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app.app).await;
 
     let response =
-        app
+        app.app
             .clone()
             .oneshot(
                 Request::builder()
                     .method("GET")
                     .uri(
-                        "/guests/guest-001/metrics"
+                        format!("/guests/{guest_id}/summary")
                     )
                     .body(Body::empty())
                     .unwrap()

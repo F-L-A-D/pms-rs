@@ -4,6 +4,8 @@ use sqlx::{
     Transaction,
 };
 
+use uuid::Uuid;
+
 use crate::domain::reservation::{
     Reservation,
     ReservationStatus,
@@ -187,7 +189,7 @@ impl SqliteReservationRepository {
             Some(r) => {
 
                 let participants =
-                    crate::repository::sqlite::
+                    crate::repository::sqlite::operational::
                         reservation_guest_relation_repository::
                         SqliteReservationGuestRelationRepository
                             ::list_by_reservation_id(
@@ -278,7 +280,7 @@ impl SqliteReservationRepository {
 
     pub async fn find_by_guest_id(
         tx: &mut Transaction<'_, Sqlite>,
-        guest_id: &str,
+        guest_id: Uuid,
     ) -> Result<Vec<Reservation>, String> {
 
         let rows =
@@ -299,7 +301,7 @@ impl SqliteReservationRepository {
                 WHERE rel.guest_id = ?1
                 "#
             )
-            .bind(guest_id)
+            .bind(guest_id.to_string())
             .fetch_all(&mut **tx)
             .await
             .map_err(|e| e.to_string())?;
@@ -312,7 +314,7 @@ impl SqliteReservationRepository {
                 row.get("id");
 
             let participants =
-                crate::repository::sqlite::
+                crate::repository::sqlite::operational::
                     reservation_guest_relation_repository::
                     SqliteReservationGuestRelationRepository
                         ::list_by_reservation_id(

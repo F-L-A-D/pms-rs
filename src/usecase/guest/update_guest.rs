@@ -1,5 +1,7 @@
 use chrono::NaiveDate;
 
+use uuid::Uuid;
+
 use crate::db::connection::Db;
 
 use crate::domain::guest::{
@@ -12,11 +14,12 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::guest_repository::SqliteGuestRepository;
+use crate::repository::sqlite::operational::
+    guest_repository::SqliteGuestRepository;
 
 pub async fn update_guest(
     db: &Db,
-    guest_id: &str,
+    guest_id: Uuid,
     last_name: String,
     first_name: String,
     phone: Option<String>,
@@ -33,18 +36,17 @@ pub async fn update_guest(
 
     let result = async {
 
-        let mut guest =
-            SqliteGuestRepository::find_by_id(
-                &mut tx,
-                guest_id,
+    let mut guest =
+        SqliteGuestRepository::find_by_id(
+            &mut tx,
+            guest_id,
+        )
+        .await?
+        .ok_or(
+            AppError::NotFound(
+                "guest not found".into()
             )
-            .await
-            .map_err(AppError::Infrastructure)?
-            .ok_or(
-                AppError::NotFound(
-                    "guest not found".into()
-                )
-            )?;
+        )?;
 
         guest.update_profile(
             last_name,
@@ -57,14 +59,13 @@ pub async fn update_guest(
             membership_code,
             marketing_opt_in,
         )
-        .map_err(AppError::Validation)?;
+        .map_err(AppError::Infrastructure)?;
 
         SqliteGuestRepository::update(
             &mut tx,
             &guest,
         )
-        .await
-        .map_err(AppError::Infrastructure)?;
+        .await?;
 
         Ok(guest)
 

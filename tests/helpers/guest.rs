@@ -11,17 +11,11 @@ use serde_json::json;
 
 use tower::ServiceExt;
 
+use uuid::Uuid;
+
 pub async fn create_guest(
     app: &Router,
-    guest_id: &str,
-) {
-
-    let payload =
-        json!({
-            "id": guest_id,
-            "last_name": "Yamada",
-            "first_name": "Taro"
-        });
+) -> Uuid {
 
     let response =
         app
@@ -36,7 +30,11 @@ pub async fn create_guest(
                     )
                     .body(
                         Body::from(
-                            payload.to_string()
+                            json!({
+                                "last_name": "Yamada",
+                                "first_name": "Taro"
+                            })
+                            .to_string()
                         )
                     )
                     .unwrap()
@@ -48,4 +46,23 @@ pub async fn create_guest(
         response.status(),
         StatusCode::OK,
     );
+
+    let body =
+        axum::body::to_bytes(
+            response.into_body(),
+            usize::MAX,
+        )
+        .await
+        .unwrap();
+
+    let json: serde_json::Value =
+        serde_json::from_slice(&body)
+            .unwrap();
+
+    Uuid::parse_str(
+        json["id"]
+            .as_str()
+            .unwrap()
+    )
+    .unwrap()
 }

@@ -7,9 +7,8 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::
-    reservation_repository::
-        SqliteReservationRepository;
+use crate::repository::sqlite::operational::
+    reservation_repository::SqliteReservationRepository;
 
 pub async fn get_reservation(
     db: &Db,

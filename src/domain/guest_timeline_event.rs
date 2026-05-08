@@ -3,6 +3,8 @@ use chrono::{
     Utc,
 };
 
+use uuid::Uuid;
+
 #[derive(Debug, Clone)]
 pub enum TimelineEventType {
     ReservationCreated,
@@ -15,7 +17,7 @@ pub enum TimelineEventType {
 #[derive(Debug, Clone)]
 pub struct GuestTimelineEvent {
     pub id: String,
-    pub guest_id: String,
+    pub guest_id: Uuid,
     pub event_type: TimelineEventType,
     pub reference_id: String,
     pub occurred_at: DateTime<Utc>,
@@ -25,7 +27,7 @@ impl GuestTimelineEvent {
 
     pub fn new(
         id: String,
-        guest_id: String,
+        guest_id: Uuid,
         event_type: TimelineEventType,
         reference_id: String,
     ) -> Self {

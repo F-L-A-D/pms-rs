@@ -74,7 +74,6 @@ pub async fn list_rooms_handler(
         rooms
             .into_iter()
             .map(|room| {
-
                 RoomResponse {
                     id: room.id,
                     room_class: room.room_class,

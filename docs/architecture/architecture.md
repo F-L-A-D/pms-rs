@@ -1,4 +1,4 @@
-# Operational Truth vs Behavioral Projection
+# PMS-RS Operational Truth vs Behavioral Projection
 
 The architecture explicitly separates:
 
@@ -187,3 +187,62 @@ CRM projections must not directly own:
 - operational workflow state
 
 CRM projections are intelligence layers rather than operational transaction layers.
+
+---
+
+## Transaction Ownership Policy
+
+Usecases and orchestration services own transaction boundaries.
+
+Repositories, projections, materializers, and rebuild flows consume existing transactions only.
+
+This policy exists to guarantee:
+
+* single workflow consistency
+* projection synchronization
+* replay compatibility
+* future event sourcing compatibility
+
+---
+
+## Projection Philosophy
+
+Projections are rebuildable query models.
+
+Projections:
+
+* may be deleted and rebuilt
+* are not the source of truth
+* exist for operational query optimization
+* exist for workflow support
+
+Operational entities and append-only history remain authoritative.
+
+---
+
+## UI Philosophy (Div3)
+
+The Div3 UI layer is intended for workflow validation, not frontend completion.
+
+The purpose of the UI is to:
+
+* validate workflow stability
+* validate operational usability
+* validate projection usefulness
+* identify missing query models
+* pressure test aggregate boundaries
+
+UI implementation quality is secondary to operational validation.
+
+---
+
+## Architectural Constraints
+
+The following are intentionally prohibited unless explicitly redesigned:
+
+* repositories owning transactions
+* projections committing transactions
+* projections becoming the source of truth
+* business logic inside API handlers
+* direct projection mutation without rebuildability
+* bypassing timeline/event recording for behavioral changes

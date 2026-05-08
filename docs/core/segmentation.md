@@ -1,4 +1,4 @@
-# Segmentation Foundation
+# PMS-RS Segmentation Foundation
 
 Segmentation is projection-driven behavioral classification derived from:
 

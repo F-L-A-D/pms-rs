@@ -1,4 +1,4 @@
-# Event Model
+# PMS-RS Event Model
 
 ## Purpose
 
@@ -107,3 +107,33 @@ Behavioral projections must not:
 - block operational correction
 
 Projection consistency is secondary to operational correctness. 
+
+---
+
+## Event Model Philosophy
+
+Operational entities are mutable.
+
+Behavioral history is append-only.
+
+Projections are rebuildable.
+
+This separation exists to:
+
+* preserve operational simplicity
+* preserve behavioral traceability
+* support future analytical systems
+* support future RMS integration
+* support future event sourcing migration
+
+---
+
+## Current Projection Flow
+
+Operational Mutation
+↓
+Timeline Event Recording
+↓
+Projection Refresh
+↓
+Queryable CRM State

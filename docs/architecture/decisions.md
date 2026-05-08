@@ -1,4 +1,4 @@
-# Architectural Decisions
+# PMS-RS Architectural Decisions
 
 ---
 

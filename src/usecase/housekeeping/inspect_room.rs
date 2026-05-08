@@ -5,7 +5,8 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::room_repository::SqliteRoomRepository;
+use crate::repository::sqlite::operational::
+    room_repository::SqliteRoomRepository;
 
 pub async fn inspect_room(
     db: &Db,

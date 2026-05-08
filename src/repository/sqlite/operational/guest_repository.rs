@@ -2,6 +2,8 @@ use sqlx::{Row, Sqlite, Transaction};
 
 use chrono::NaiveDate;
 
+use uuid::Uuid;
+
 use crate::domain::guest::{
     Gender,
     Guest,
@@ -48,7 +50,7 @@ impl SqliteGuestRepository {
             )
             "#
         )
-        .bind(&guest.id)
+        .bind(&guest.id.to_string())
         .bind(&guest.last_name)
         .bind(&guest.first_name)
         .bind(&guest.phone)
@@ -73,7 +75,7 @@ impl SqliteGuestRepository {
 
     pub async fn find_by_id(
         tx: &mut Transaction<'_, Sqlite>,
-        id: &str,
+        id: Uuid,
     ) -> Result<Option<Guest>, String> {
 
         let row =
@@ -96,7 +98,7 @@ impl SqliteGuestRepository {
                 WHERE id = ?1
                 "#
             )
-            .bind(id)
+            .bind(id.to_string())
             .fetch_optional(&mut **tx)
             .await
             .map_err(|e| e.to_string())?;
@@ -187,7 +189,7 @@ impl SqliteGuestRepository {
         .bind(&guest.membership_code)
         .bind(guest.marketing_opt_in)
         .bind(guest.updated_at.to_rfc3339())
-        .bind(&guest.id)
+        .bind(&guest.id.to_string())
         .execute(&mut **tx)
         .await
         .map_err(|e| e.to_string())?;
@@ -243,7 +245,12 @@ impl SqliteGuestRepository {
     ) -> Guest {
 
         Guest {
-            id: r.get("id"),
+            id:
+                Uuid::parse_str(
+                    r.get::<String, _>("id")
+                        .as_str()
+                )
+                .unwrap(),
             last_name: r.get("last_name"),
             first_name: r.get("first_name"),
             phone: r.get("phone"),

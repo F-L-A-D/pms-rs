@@ -167,6 +167,27 @@ impl Db {
         .await
         .unwrap();
 
+        sqlx::query(
+            r#"
+            CREATE TABLE guest_summary_projections (
+                guest_id TEXT PRIMARY KEY,
+
+                total_stays INTEGER NOT NULL,
+                total_nights INTEGER NOT NULL,
+                total_spending INTEGER NOT NULL,
+
+                last_stay_at TEXT,
+
+                projection_version INTEGER NOT NULL,
+
+                updated_at TEXT NOT NULL
+            )
+            "#
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
         Self { pool }
     }
 

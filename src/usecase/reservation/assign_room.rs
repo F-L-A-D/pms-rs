@@ -7,8 +7,10 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::reservation_repository::SqliteReservationRepository;
-use crate::repository::sqlite::room_repository::SqliteRoomRepository;
+use crate::repository::sqlite::operational::{
+    reservation_repository::SqliteReservationRepository,
+    room_repository::SqliteRoomRepository,
+};
 
 pub async fn assign_room(
     db: &Db,

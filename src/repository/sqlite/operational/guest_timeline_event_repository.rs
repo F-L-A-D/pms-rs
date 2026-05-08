@@ -9,6 +9,8 @@ use sqlx::{
     Transaction,
 };
 
+use uuid::Uuid;
+
 use crate::domain::guest_timeline_event::{
     GuestTimelineEvent,
     TimelineEventType,
@@ -41,7 +43,7 @@ impl SqliteGuestTimelineEventRepository {
             "#
         )
         .bind(&event.id)
-        .bind(&event.guest_id)
+        .bind(&event.guest_id.to_string())
         .bind(format!("{:?}", event.event_type))
         .bind(&event.reference_id)
         .bind(event.occurred_at.to_rfc3339())
@@ -58,7 +60,7 @@ impl SqliteGuestTimelineEventRepository {
 
     pub async fn find_by_guest_id(
         tx: &mut Transaction<'_, Sqlite>,
-        guest_id: &str,
+        guest_id: Uuid,
     ) -> AppResult<Vec<GuestTimelineEvent>> {
 
         let rows =
@@ -75,7 +77,7 @@ impl SqliteGuestTimelineEventRepository {
                 ORDER BY occurred_at DESC
                 "#
             )
-            .bind(guest_id)
+            .bind(guest_id.to_string())
             .fetch_all(&mut **tx)
             .await
             .map_err(|e| {
@@ -131,7 +133,11 @@ impl SqliteGuestTimelineEventRepository {
                     id: r.get("id"),
 
                     guest_id:
-                        r.get("guest_id"),
+                        Uuid::parse_str(
+                        r.get::<String, _>("guest_id")
+                            .as_str()
+                        )
+                        .unwrap(),
 
                     event_type,
 

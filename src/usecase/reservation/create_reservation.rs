@@ -7,10 +7,9 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::{
+use crate::repository::sqlite::operational::{
     guest_repository::SqliteGuestRepository,
-    reservation_guest_relation_repository::
-        SqliteReservationGuestRelationRepository,
+    reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
     reservation_repository::SqliteReservationRepository,
 };
 
@@ -33,7 +32,7 @@ pub async fn create_reservation(
             let guest =
                 SqliteGuestRepository::find_by_id(
                     &mut tx,
-                    &participant.guest_id,
+                    participant.guest_id,
                 )
                 .await
                 .map_err(AppError::Infrastructure)?;

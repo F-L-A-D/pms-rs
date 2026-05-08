@@ -25,16 +25,13 @@ async fn should_open_folio() {
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app).await;
 
     create_reservation(
         &app,
         "reservation-001",
-        "guest-001",
+        guest_id,
     )
     .await;
 
@@ -52,16 +49,13 @@ async fn should_post_room_charge() {
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app).await;
 
     create_reservation(
         &app,
         "reservation-001",
-        "guest-001",
+        guest_id,
     )
     .await;
 
@@ -86,16 +80,13 @@ async fn should_post_payment() {
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app).await;
 
     create_reservation(
         &app,
         "reservation-001",
-        "guest-001",
+        guest_id,
     )
     .await;
 
@@ -120,16 +111,13 @@ async fn should_get_balance() {
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app).await;
 
     create_reservation(
         &app,
         "reservation-001",
-        "guest-001",
+        guest_id,
     )
     .await;
 

@@ -1,5 +1,7 @@
 use serde::{Serialize, Deserialize};
 
+use uuid::Uuid;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ReservationGuestRelationType {
     Primary,
@@ -36,7 +38,7 @@ impl ReservationGuestRelationType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReservationGuestRelation {
     pub reservation_id: String,
-    pub guest_id: String,
+    pub guest_id: Uuid,
     pub relation_type: ReservationGuestRelationType,
 }
 

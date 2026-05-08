@@ -1,7 +1,9 @@
 use chrono::NaiveDate;
 
-#[derive(Debug, Clone)]
-pub struct GuestMetrics {
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct GuestSummaryResponse {
     pub total_stays: i64,
     pub total_nights: i64,
     pub total_spending: i64,

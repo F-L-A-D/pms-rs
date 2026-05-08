@@ -5,6 +5,8 @@ use serde::{
 
 use chrono::NaiveDate;
 
+use uuid::Uuid;
+
 use crate::domain::guest::{
     Guest,
     Gender,
@@ -12,7 +14,6 @@ use crate::domain::guest::{
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateGuestRequest {
-    pub id: String,
     pub last_name: String,
     pub first_name: String,
     pub phone: Option<String>,
@@ -28,7 +29,7 @@ pub struct CreateGuestRequest {
 
 #[derive(Debug, Serialize)]
 pub struct GuestResponse {
-    pub id: String,
+    pub id: Uuid,
     pub last_name: String,
     pub first_name: String,
     pub phone: Option<String>,

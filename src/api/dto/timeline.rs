@@ -8,10 +8,12 @@ use chrono::{
     Utc,
 };
 
+use uuid::Uuid;
+
 #[derive(Deserialize)]
 pub struct CreateTimelineEventRequest {
     pub id: String,
-    pub guest_id: String,
+    pub guest_id: Uuid,
     pub event_type: String,
     pub reference_id: String,
 }

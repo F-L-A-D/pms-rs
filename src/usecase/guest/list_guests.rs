@@ -7,7 +7,8 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::guest_repository::SqliteGuestRepository;
+use crate::repository::sqlite::operational::
+    guest_repository::SqliteGuestRepository;
 
 pub async fn list_guests(
     db: &Db,

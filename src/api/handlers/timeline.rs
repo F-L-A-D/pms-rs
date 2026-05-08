@@ -7,6 +7,8 @@ use axum::{
     Json,
 };
 
+use uuid::Uuid;
+
 use crate::api::dto::timeline::{
     CreateTimelineEventRequest,
     TimelineEventResponse,
@@ -19,7 +21,8 @@ use crate::domain::guest_timeline_event::{
     TimelineEventType,
 };
 
-use crate::repository::sqlite::guest_timeline_event_repository::SqliteGuestTimelineEventRepository;
+use crate::repository::sqlite::operational::
+    guest_timeline_event_repository::SqliteGuestTimelineEventRepository;
 
 use crate::usecase::timeline::list_guest_timeline::list_guest_timeline;
 
@@ -77,13 +80,17 @@ pub async fn create_timeline_event_handler(
 
 pub async fn get_guest_timeline_handler(
     State(state): State<AppState>,
-    Path(guest_id): Path<String>,
+    Path(id): Path<String>,
 ) -> Result<Json<Vec<TimelineEventResponse>>, StatusCode> {
+
+    let guest_id =
+        Uuid::parse_str(&id)
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
 
     let events =
         list_guest_timeline(
             &state.db,
-            &guest_id,
+            guest_id,
         )
         .await
         .map_err(|_| {

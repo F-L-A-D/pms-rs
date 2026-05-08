@@ -22,16 +22,13 @@ async fn should_assign_room() {
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app).await;
 
     create_reservation(
         &app,
         "reservation-001",
-        "guest-001",
+        guest_id,
     )
     .await;
 
@@ -87,16 +84,13 @@ async fn should_check_in() {
     let app =
         test_app().await;
 
-    create_guest(
-        &app,
-        "guest-001",
-    )
-    .await;
+    let guest_id =
+        create_guest(&app).await;
 
     create_reservation(
         &app,
         "reservation-001",
-        "guest-001",
+        guest_id,
     )
     .await;
 

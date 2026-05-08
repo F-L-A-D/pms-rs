@@ -5,7 +5,8 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::folio_repository::SqliteFolioRepository;
+use crate::repository::sqlite::operational::
+    folio_repository::SqliteFolioRepository;
 
 pub async fn close_folio(
     db: &Db,

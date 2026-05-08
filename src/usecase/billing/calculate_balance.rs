@@ -5,7 +5,8 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::folio_entry_repository::SqliteFolioEntryRepository;
+use crate::repository::sqlite::operational::
+    folio_entry_repository::SqliteFolioEntryRepository;
 
 pub async fn calculate_balance(
     db: &Db,

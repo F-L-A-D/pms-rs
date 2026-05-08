@@ -12,7 +12,7 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::{
+use crate::repository::sqlite::operational::{
     folio_entry_repository::SqliteFolioEntryRepository,
     folio_repository::SqliteFolioRepository,
     reservation_repository::SqliteReservationRepository,

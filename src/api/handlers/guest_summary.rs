@@ -7,30 +7,40 @@ use axum::{
     Json,
 };
 
-use crate::api::dto::guest_metrics::GuestMetricsResponse;
+use uuid::Uuid;
 
+use crate::api::dto::guest_summary::GuestSummaryResponse;
 use crate::api::error::map_app_error;
-
 use crate::api::state::AppState;
 
-use crate::usecase::timeline::get_guest_metrics::get_guest_metrics;
+use crate::error::app_error::AppError;
 
-pub async fn get_guest_metrics_handler(
+use crate::usecase::timeline::get_guest_summary::get_guest_summary;
+
+pub async fn get_guest_summary_handler(
     State(state): State<AppState>,
     Path(guest_id): Path<String>,
-) -> Result<Json<GuestMetricsResponse>, StatusCode> {
+) -> Result<Json<GuestSummaryResponse>, StatusCode> {
 
+    let guest_id =
+        Uuid::parse_str(&guest_id)
+            .map_err(|e| {
+                map_app_error(
+                    AppError::Validation(e.to_string())
+                )
+            })?;
+        
     let metrics =
-        get_guest_metrics(
+        get_guest_summary(
             &state.db,
-            &guest_id,
+            guest_id,
         )
         .await
         .map_err(map_app_error)?;
 
     Ok(
         Json(
-            GuestMetricsResponse {
+            GuestSummaryResponse {
                 total_stays:
                     metrics.total_stays,
 

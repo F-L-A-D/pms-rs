@@ -1,5 +1,7 @@
 use chrono::NaiveDate;
 
+use uuid::Uuid;
+
 use crate::db::connection::Db;
 
 use crate::domain::guest::{
@@ -12,11 +14,12 @@ use crate::error::app_error::{
     AppResult,
 };
 
-use crate::repository::sqlite::guest_repository::SqliteGuestRepository;
+use crate::repository::sqlite::operational::
+    guest_repository::SqliteGuestRepository;
 
 pub async fn update_guest(
     db: &Db,
-    guest_id: &str,
+    guest_id: Uuid,
     last_name: String,
     first_name: String,
     phone: Option<String>,

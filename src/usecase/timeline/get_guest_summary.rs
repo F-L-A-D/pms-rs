@@ -1,22 +1,26 @@
+use::chrono::Utc;
+
+use uuid::Uuid;
+
 use crate::db::connection::Db;
 
-use crate::domain::guest_metrics::GuestMetrics;
+use crate::projection::crm::guest_summary::GuestSummaryProjection;
 
 use crate::error::app_error::{
     AppError,
     AppResult,
 };
 
-use crate::repository::sqlite::{
+use crate::repository::sqlite::operational::{
     folio_entry_repository::SqliteFolioEntryRepository,
     folio_repository::SqliteFolioRepository,
     reservation_repository::SqliteReservationRepository,
 };
 
-pub async fn get_guest_metrics(
+pub async fn get_guest_summary(
     db: &Db,
-    guest_id: &str,
-) -> AppResult<GuestMetrics> {
+    guest_id: Uuid,
+) -> AppResult<GuestSummaryProjection> {
 
     let mut tx =
         db.begin_tx().await;
@@ -77,14 +81,15 @@ pub async fn get_guest_metrics(
             }
         }
 
-        Ok(
-            GuestMetrics {
-                total_stays,
-                total_nights,
-                total_spending,
-                last_stay_at,
-            }
-        )
+        Ok(GuestSummaryProjection {
+            guest_id,
+            total_stays,
+            total_nights,
+            total_spending,
+            last_stay_at,
+            projection_version: 1,
+            updated_at: Utc::now(),
+        })
 
     }.await;
 

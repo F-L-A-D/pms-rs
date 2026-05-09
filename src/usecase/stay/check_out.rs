@@ -49,7 +49,7 @@ pub async fn check_out(db: &Db, reservation_id: Uuid) -> AppResult<()> {
             .await
             .map_err(AppError::Infrastructure)?;
 
-        SqliteReservationRepository::update(&mut tx, &res)
+        SqliteReservationRepository::modify(&mut tx, &res)
             .await
             .map_err(AppError::Infrastructure)?;
 

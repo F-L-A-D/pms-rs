@@ -34,7 +34,7 @@ pub async fn assign_room(db: &Db, reservation_id: Uuid, room_id: &str) -> AppRes
 
         res.room_id = Some(room_id.to_string());
 
-        SqliteReservationRepository::update(&mut tx, &res)
+        SqliteReservationRepository::modify(&mut tx, &res)
             .await
             .map_err(AppError::Infrastructure)?;
 

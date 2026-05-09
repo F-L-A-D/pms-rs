@@ -6,7 +6,10 @@ use crate::helpers::{
     app::test_app,
     guest::create_guest,
     reservation::create_reservation,
-    projection::rebuild_guest_summary,
+    projection::{
+        materialize_guest_summary_projection,
+        rebuild_guest_summary,
+    },
 };
 
 use pms_rs::projection::rebuild::
@@ -75,12 +78,13 @@ async fn should_match_refresh_and_rebuild_projection() {
     let guest_id =
         create_guest(&app.app).await;
 
-    create_reservation(
-        &app.app,
-        "reservation-001",
-        guest_id,
-    )
-    .await;
+    let _reservation_id = 
+        create_reservation(
+            &app.app,
+            "reservation-001",
+            guest_id,
+        )
+        .await;
 
     let mut tx =
         app.db.begin_tx().await;
@@ -146,5 +150,89 @@ async fn should_match_refresh_and_rebuild_projection() {
     assert_eq!(
         refreshed.projection_version,
         rebuilt.projection_version,
+    );
+}
+
+#[tokio::test]
+async fn should_rebuild_guest_summary_after_reservation_created() {
+
+    let app =
+        test_app().await;
+
+    let guest_id =
+        create_guest(
+            &app.app,
+        )
+        .await;
+
+    let reservation_id =
+        create_reservation(
+            &app.app,
+            "res-1",
+            guest_id,
+        )
+        .await;
+
+    let before_rebuild =
+        materialize_guest_summary_projection(
+            &app.db,
+            guest_id,
+        )
+        .await;
+
+    assert_eq!(
+        before_rebuild.guest_id,
+        guest_id,
+    );
+
+    assert!(
+        before_rebuild.total_nights > 0,
+    );
+
+    rebuild_guest_summary(
+        &app.db,
+    )
+    .await;
+
+    let after_rebuild =
+        materialize_guest_summary_projection(
+            &app.db,
+            guest_id,
+        )
+        .await;
+
+    assert_eq!(
+        after_rebuild.guest_id,
+        guest_id,
+    );
+
+    assert_eq!(
+        before_rebuild.total_stays,
+        after_rebuild.total_stays,
+    );
+
+    assert_eq!(
+        before_rebuild.total_nights,
+        after_rebuild.total_nights,
+    );
+
+    assert_eq!(
+        before_rebuild.total_spending,
+        after_rebuild.total_spending,
+    );
+
+    assert_eq!(
+        before_rebuild.last_stay_at,
+        after_rebuild.last_stay_at,
+    );
+
+    assert_eq!(
+        before_rebuild.projection_version,
+        after_rebuild.projection_version,
+    );
+
+    assert_ne!(
+        reservation_id,
+        uuid::Uuid::nil(),
     );
 }

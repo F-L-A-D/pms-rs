@@ -105,4 +105,32 @@ impl Reservation {
     pub fn primary_participant(&self) -> Option<&ReservationGuestRelation> {
         self.participants.iter().find(|p| p.is_primary())
     }
+
+    pub fn is_active(&self) -> bool {
+        self.reservation_status
+            == ReservationStatus::Active
+    }
+
+    pub fn is_checked_in(&self) -> bool {
+        self.stay_status
+            == Some(StayStatus::CheckedIn)
+    }
+
+    pub fn contains_guest(
+        &self,
+        guest_id: Uuid,
+    ) -> bool {
+        self.participants
+            .iter()
+            .any(|p| p.guest_id == guest_id)
+    }
+
+    pub fn overlaps(
+        &self,
+        from: NaiveDate,
+        to: NaiveDate,
+    ) -> bool {
+        self.check_in < to
+            && self.check_out > from
+    }
 }

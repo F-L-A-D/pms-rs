@@ -22,12 +22,11 @@ pub struct CreateReservationRequest {
     pub participants: Vec<ReservationParticipantInput>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct UpdateReservationRequest {
-    pub check_in: NaiveDate,
-    pub check_out: NaiveDate,
-    pub room_class: String,
-    pub participants: Vec<ReservationParticipantInput>,
+#[derive(Debug, Deserialize)]
+pub struct ModifyReservationRequest {
+    pub check_in: Option<String>,
+    pub check_out: Option<String>,
+    pub room_class: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

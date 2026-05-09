@@ -7,15 +7,34 @@ use axum::{
     Router,
 };
 
-use serde_json::json;
-
 use tower::ServiceExt;
 
 use uuid::Uuid;
 
+use serde_json::Value;
+
+use crate::helpers::builders::
+    guest_builder::
+    GuestBuilder;
+
 pub async fn create_guest(
     app: &Router,
 ) -> Uuid {
+
+    create_guest_with(
+        app,
+        GuestBuilder::new(),
+    )
+    .await
+}
+
+pub async fn create_guest_with(
+    app: &Router,
+    builder: GuestBuilder,
+) -> Uuid {
+
+    let payload =
+        builder.build();
 
     let response =
         app
@@ -30,11 +49,7 @@ pub async fn create_guest(
                     )
                     .body(
                         Body::from(
-                            json!({
-                                "last_name": "Yamada",
-                                "first_name": "Taro"
-                            })
-                            .to_string()
+                            payload.to_string()
                         )
                     )
                     .unwrap()
@@ -55,9 +70,11 @@ pub async fn create_guest(
         .await
         .unwrap();
 
-    let json: serde_json::Value =
-        serde_json::from_slice(&body)
-            .unwrap();
+    let json: Value =
+        serde_json::from_slice(
+            &body
+        )
+        .unwrap();
 
     Uuid::parse_str(
         json["id"]

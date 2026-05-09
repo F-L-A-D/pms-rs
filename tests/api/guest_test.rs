@@ -8,12 +8,18 @@ use axum::{
 
 use tower::ServiceExt;
 
-use serde_json::{
-    json,
-    Value,
-};
+use serde_json::Value;
 
-use crate::helpers::app::test_app;
+use crate::helpers::{
+    app::test_app,
+
+    guest::{
+        create_guest_with,
+    },
+
+    builders::guest_builder::
+        GuestBuilder,
+};
 
 #[tokio::test]
 async fn should_search_guest_without_noise() {
@@ -21,54 +27,50 @@ async fn should_search_guest_without_noise() {
     let app =
         test_app().await;
 
-    let guests = vec![
+    create_guest_with(
+        &app.app,
 
-        json!({
-            "last_name": "Sato",
-            "first_name": "Takashi",
-            "phone": "09011111111",
-            "email": "takashi@example.com",
-            "nationality": null,
-            "birth_date": null,
-            "gender": null,
-            "membership_code": "TAKASHI-001",
-            "marketing_opt_in": false
-        }),
-
-        json!({
-            "last_name": "Sato",
-            "first_name": "Aoi",
-            "phone": "09022222222",
-            "email": "aoi@example.com",
-            "nationality": null,
-            "birth_date": null,
-            "gender": null,
-            "membership_code": "AOI-001",
-            "marketing_opt_in": false
-        }),
-    ];
-
-    for guest in guests {
-
-        app.app.clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/guests")
-                    .header(
-                        "content-type",
-                        "application/json",
-                    )
-                    .body(
-                        Body::from(
-                            guest.to_string()
-                        )
-                    )
-                    .unwrap(),
+        GuestBuilder::new()
+            .with_name(
+                "Sato",
+                "Takashi",
             )
-            .await
-            .unwrap();
-    }
+            .with_email(
+                "takashi@example.com",
+            )
+            .with_phone(
+                "09011111111",
+            )
+    )
+    .await;
+
+    create_guest_with(
+        &app.app,
+
+        GuestBuilder::new()
+            .with_name(
+                "Sato",
+                "Aoi",
+            )
+            .with_email(
+                "aoi@example.com",
+            )
+            .with_phone(
+                "09022222222",
+            )
+    )
+    .await;
+
+    create_guest_with(
+        &app.app,
+
+        GuestBuilder::new()
+            .with_name(
+                "Suzuki",
+                "Jiro",
+            )
+    )
+    .await;
 
     let response =
         app.app.clone()
@@ -100,12 +102,19 @@ async fn should_search_guest_without_noise() {
         .unwrap();
 
     let guests: Vec<Value> =
-        serde_json::from_slice(&body)
-            .unwrap();
+        serde_json::from_slice(
+            &body
+        )
+        .unwrap();
 
     assert_eq!(
         guests.len(),
         1,
+    );
+
+    assert_eq!(
+        guests[0]["last_name"],
+        "Sato",
     );
 
     assert_eq!(
@@ -120,69 +129,53 @@ async fn should_update_guest() {
     let app =
         test_app().await;
 
-    let create_payload =
-        json!({
-            "last_name": "Sato",
-            "first_name": "Takashi",
-            "phone": "09011111111",
-            "email": "takashi@example.com",
-            "nationality": null,
-            "birth_date": null,
-            "gender": null,
-            "membership_code": "TAKASHI-001",
-            "marketing_opt_in": false
-        });
-
-    let create_response =
-        app.app.clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/guests")
-                    .header(
-                        "content-type",
-                        "application/json",
-                    )
-                    .body(
-                        Body::from(
-                            create_payload.to_string()
-                        )
-                    )
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-
-    let create_body =
-        axum::body::to_bytes(
-            create_response.into_body(),
-            usize::MAX,
-        )
-        .await
-        .unwrap();
-
-    let created_guest: Value =
-        serde_json::from_slice(
-            &create_body
-        )
-        .unwrap();
-
     let guest_id =
-        created_guest["id"]
-            .as_str()
-            .unwrap();
+        create_guest_with(
+            &app.app,
+
+            GuestBuilder::new()
+                .with_name(
+                    "Sato",
+                    "Takashi",
+                )
+                .with_email(
+                    "takashi@example.com",
+                )
+                .with_phone(
+                    "09011111111",
+                )
+        )
+        .await;
 
     let update_payload =
-        json!({
-            "last_name": "Sato",
-            "first_name": "Updated",
-            "phone": "09099999999",
-            "email": "updated@example.com",
-            "nationality": "JP",
-            "birth_date": null,
-            "gender": null,
-            "membership_code": "UPDATED-001",
-            "marketing_opt_in": true
+        serde_json::json!({
+
+            "last_name":
+                "Sato",
+
+            "first_name":
+                "Updated",
+
+            "phone":
+                "09099999999",
+
+            "email":
+                "updated@example.com",
+
+            "nationality":
+                "JP",
+
+            "birth_date":
+                null,
+
+            "gender":
+                null,
+
+            "membership_code":
+                "UPDATED-001",
+
+            "marketing_opt_in":
+                true
         });
 
     let response =

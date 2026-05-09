@@ -1,1 +1,4 @@
 pub mod guest_summary_projection_repository;
+pub mod reservation_search_projection_repository;
+pub mod inventory_projection_repository;
+pub mod hotel_inventory_projection_repository;

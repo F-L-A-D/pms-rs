@@ -60,7 +60,7 @@ impl SqliteReservationRepository {
         Ok(())
     }
 
-    pub async fn update(
+    pub async fn modify(
         tx: &mut Transaction<'_, Sqlite>,
         reservation: &Reservation,
     ) -> Result<(), String> {
@@ -266,5 +266,62 @@ impl SqliteReservationRepository {
         }
 
         Ok(reservations)
+    }
+
+    pub async fn find_all(
+        tx: &mut Transaction<'_, Sqlite>,
+    ) -> Result<
+        Vec<Reservation>,
+        String,
+    > {
+
+        let rows =
+            sqlx::query(
+                r#"
+                SELECT id
+                FROM reservations
+                "#
+            )
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(|e| {
+                e.to_string()
+            })?;
+
+        let mut reservations =
+            vec![];
+
+        for row in rows {
+
+            let reservation_id =
+                Uuid::parse_str(
+                    row.get::<String, _>(
+                        "id"
+                    )
+                    .as_str()
+                )
+                .map_err(|e| {
+                    e.to_string()
+                })?;
+
+            let reservation =
+                Self::find_by_id(
+                    tx,
+                    reservation_id,
+                )
+                .await?
+                .ok_or(
+                    "reservation not found"
+                        .to_string()
+                )?;
+
+            reservations.push(
+                reservation
+            );
+        }
+
+        Ok(
+            reservations
+        )
     }
 }

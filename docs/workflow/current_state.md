@@ -116,19 +116,64 @@ Primary validation areas:
 
 Status: IN PROGRESS
 
-Div3 is no longer considered a UI implementation phase.
+### Completed
 
-The previous lightweight validation UI direction was intentionally reduced in scope after identifying that the highest architectural value comes from workflow-level validation rather than frontend completeness.
+Validated:
 
-Div3 now focuses on:
+* reservation_search projection consistency
+* projection refresh/rebuild equivalence
+* inventory projection rebuild flow
+* room_class × date inventory semantics
+* hotel-wide inventory aggregation projection
+* downstream projection chaining
+* projection-owned inventory consistency
+* realistic workflow-driven projection synchronization
+* projection model separation from operational domain models
 
-* realistic workflow pressure testing
-* search/query hardening
-* aggregate boundary validation
-* projection synchronization validation
-* operational reconstruction validation
-* workflow-driven integration testing
+The system now supports:
 
-UI components, if implemented, are considered temporary validation tooling only.
+reservation
+→ inventory projection
+→ hotel-wide inventory projection
 
-Frontend completeness is explicitly out of scope for Div3.
+as a rebuildable projection chain.
+
+Projection layers are now explicitly treated as:
+
+* derived state
+* rebuildable cache
+* non-authoritative operational views
+
+rather than operational source-of-truth models.
+
+---
+
+### Remaining Scope
+
+Div3 remaining focus areas:
+
+* operational query optimization
+* projection rebuild orchestration hardening
+* inventory availability policy separation
+* hotel-wide occupancy analytics
+* projection replay scalability
+* event-oriented projection migration preparation
+* query pagination/sorting validation
+* multi-projection consistency validation
+* search ranking/noise suppression refinement
+
+---
+
+### Explicitly Deferred
+
+Out of current Div3 scope:
+
+* production-grade frontend implementation
+* authorization/authentication
+* external OTA/channel integration
+* RMS implementation
+* pricing/revenue optimization
+* distributed/event-stream infrastructure
+* production observability stack
+
+UI remains validation-oriented tooling only.

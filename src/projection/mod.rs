@@ -1,3 +1,5 @@
+pub mod topology;
+pub mod orchestrator;
 pub mod crm;
 pub mod materializer;
 pub mod rebuild;

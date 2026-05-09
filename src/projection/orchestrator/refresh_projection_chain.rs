@@ -8,6 +8,14 @@ use crate::{
         AppResult,
 
     projection::{
+        invalidation::{
+            projection_invalidation::
+                ProjectionInvalidation,
+
+            projection_scope::
+                ProjectionScope,
+        },
+
         service::{
             hotel_inventory_projection_service::
                 refresh_hotel_inventory_projection,
@@ -18,7 +26,7 @@ use crate::{
                 ProjectionNode,
 
             projection_ordering::
-                downstream_of,
+                invalidation_traversal_plan,
         },
     },
 };
@@ -26,23 +34,56 @@ use crate::{
 async fn refresh_single_projection(
     tx: &mut Transaction<'_, Sqlite>,
     node: ProjectionNode,
-    date: &str,
+    scope: &ProjectionScope,
 ) -> AppResult<()>
 {
     match node {
 
         ProjectionNode::HotelInventory => {
 
-            refresh_hotel_inventory_projection(
-                tx,
-                date,
-            )
-            .await?;
+            match scope {
+
+                ProjectionScope::Date { date } => {
+
+                    refresh_hotel_inventory_projection(
+                        tx,
+                        date,
+                    )
+                    .await?;
+                }
+
+                ProjectionScope::Global => {
+                    // no-op
+                }
+            }
         }
 
         _ => {
             // no-op
         }
+    }
+
+    Ok(())
+}
+
+pub async fn propagate_invalidation(
+    tx: &mut Transaction<'_, Sqlite>,
+    invalidation: ProjectionInvalidation,
+) -> AppResult<()>
+{
+    let plan =
+        invalidation_traversal_plan(
+            &invalidation
+        );
+
+    for node in plan.ordered_nodes {
+
+        refresh_single_projection(
+            tx,
+            node,
+            &plan.scope,
+        )
+        .await?;
     }
 
     Ok(())
@@ -54,18 +95,16 @@ pub async fn refresh_projection_chain(
     date: &str,
 ) -> AppResult<()>
 {
-    let downstream =
-        downstream_of(start);
+    propagate_invalidation(
+        tx,
 
-    for node in downstream {
+        ProjectionInvalidation::new(
+            start,
 
-        refresh_single_projection(
-            tx,
-            node,
-            date,
-        )
-        .await?;
-    }
-
-    Ok(())
+            ProjectionScope::Date {
+                date: date.to_string(),
+            },
+        ),
+    )
+    .await
 }

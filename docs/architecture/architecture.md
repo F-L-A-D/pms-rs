@@ -220,19 +220,119 @@ Operational entities and append-only history remain authoritative.
 
 ---
 
-## UI Philosophy (Div3)
+## Projection Dependency Principles
 
-The Div3 UI layer is intended for workflow validation, not frontend completion.
+Projection dependencies are architecture primitives.
 
-The purpose of the UI is to:
+Projection dependency graphs must remain:
 
-* validate workflow stability
-* validate operational usability
-* validate projection usefulness
-* identify missing query models
-* pressure test aggregate boundaries
+* explicit
+* deterministic
+* rebuildable
+* topology-managed
+* orchestration-owned
 
-UI implementation quality is secondary to operational validation.
+Projection dependency traversal must never rely on implicit service-to-service propagation.
+
+---
+
+## Projection Topology
+
+Projection chains are modeled explicitly through topology definitions.
+
+Example:
+
+reservation
+→ inventory projection
+→ hotel inventory projection
+
+Traversal ordering is centrally managed through topology/orchestrator layers.
+
+---
+
+## Projection Refresh Semantics
+
+Refresh propagation represents incremental downstream synchronization.
+
+Refresh traversal is downstream-only.
+
+Example:
+
+InventoryProjection refresh
+→ HotelInventoryProjection refresh
+
+The originating projection is assumed already updated.
+
+---
+
+## Projection Rebuild Semantics
+
+Rebuild traversal represents full reconstruction from operational authority.
+
+Rebuild traversal includes:
+
+* self rebuild
+* downstream rebuild
+
+Example:
+
+InventoryProjection rebuild
+→ HotelInventoryProjection rebuild
+
+Rebuilds always originate from operational source-of-truth state.
+
+---
+
+## Refresh/Rebuild Symmetry
+
+Incremental propagation and full rebuild traversal must converge to identical projection state.
+
+This is treated as an architectural invariant.
+
+Equivalent operational state must always produce equivalent projection chain state.
+
+---
+
+## Projection Authority Boundary
+
+Projections are not operational authorities.
+
+Downstream projections must never become canonical operational state.
+
+Operational entities remain authoritative.
+
+Projection layers are treated as:
+
+* derived
+* disposable
+* rebuildable
+* query-oriented
+
+---
+
+## Projection Orchestration Ownership
+
+Projection dependency propagation is owned by topology/orchestrator layers.
+
+Projection services should only manage:
+
+* local projection refresh
+* local projection materialization
+* local projection persistence
+
+Services must not directly own downstream dependency propagation semantics.
+
+---
+
+## Projection Consistency Guarantees
+
+The architecture guarantees:
+
+* deterministic projection reconstruction
+* rebuildable projection chains
+* topology-consistent traversal ordering
+* refresh/rebuild equivalence
+* transaction-scoped propagation consistency
 
 ---
 

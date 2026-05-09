@@ -1,8 +1,4 @@
-pub mod guest_summary_projection_test;
-pub mod guest_summary_rebuild_test;
-pub mod guest_summary_refresh_test;
-pub mod reservation_search_projection_test;
-pub mod reservation_search_rebuild_test;
-pub mod inventory_projection_rebuild_test;
-pub mod inventory_projection_semantics_test;
-pub mod hotel_inventory_projection_test;
+pub mod chain;
+pub mod guest_summary;
+pub mod inventory;
+pub mod reservation_search;

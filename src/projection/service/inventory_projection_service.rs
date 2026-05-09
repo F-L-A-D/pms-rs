@@ -10,8 +10,11 @@ use crate::error::app_error::{
 use crate::repository::sqlite::projection::
     inventory_projection_repository::SqliteInventoryProjectionRepository;
 
-use crate::projection::service::
-    hotel_inventory_projection_service::refresh_hotel_inventory_projection;
+use crate::projection::orchestrator::
+    refresh_projection_chain::refresh_projection_chain;
+
+use crate::projection::topology::
+    projection_node::ProjectionNode;
     
 pub async fn apply_reservation_projection(
     tx: &mut Transaction<'_, Sqlite>,
@@ -31,8 +34,9 @@ pub async fn apply_reservation_projection(
             AppError::Infrastructure
         )?;
 
-        refresh_hotel_inventory_projection(
+        refresh_projection_chain(
             tx,
+            ProjectionNode::Inventory,
             &d.to_string(),
         )
         .await?;
@@ -59,8 +63,9 @@ pub async fn remove_reservation_projection(
             AppError::Infrastructure
         )?;
     
-        refresh_hotel_inventory_projection(
+        refresh_projection_chain(
             tx,
+            ProjectionNode::Inventory,
             &d.to_string(),
         )
         .await?;

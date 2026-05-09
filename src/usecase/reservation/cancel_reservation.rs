@@ -8,41 +8,41 @@ use crate::domain::guest_timeline_event::TimelineEventType;
 
 use crate::error::app_error::{AppError, AppResult};
 
-use crate::repository::sqlite::operational::{
-    inventory_repository::SqliteInventoryRepository,
-    reservation_repository::SqliteReservationRepository,
-};
+use crate::repository::sqlite::operational::
+    reservation_repository::SqliteReservationRepository;
 
 use crate::usecase::timeline::record_event::record_event;
+
+use crate::projection::service::
+    inventory_projection_service::remove_reservation_projection;
 
 pub async fn cancel_reservation(db: &Db, id: Uuid) -> AppResult<()> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
-        let mut res = SqliteReservationRepository::find_by_id(&mut tx, id)
+        let mut reservation = SqliteReservationRepository::find_by_id(&mut tx, id)
             .await
             .map_err(AppError::Infrastructure)?
             .ok_or(AppError::NotFound("reservation not found".into()))?;
 
-        if res.reservation_status == ReservationStatus::Cancelled {
+        if reservation.reservation_status == ReservationStatus::Cancelled {
             return Ok(());
         }
 
-        let dates = res.nights();
+        remove_reservation_projection(
+            &mut tx,
+            &reservation,
+        )
+        .await?;
 
-        for d in dates {
-            SqliteInventoryRepository::add(&mut tx, &d.to_string(), -1, 10)
-                .await
-                .map_err(AppError::Infrastructure)?;
-        }
+        reservation.reservation_status = ReservationStatus::Cancelled;
 
-        res.reservation_status = ReservationStatus::Cancelled;
+        reservation.stay_status = None;
 
-        res.stay_status = None;
+        let primary_guest_id = 
+            reservation.primary_participant().map(|p| p.guest_id.clone());
 
-        let primary_guest_id = res.primary_participant().map(|p| p.guest_id.clone());
-
-        SqliteReservationRepository::update(&mut tx, &res)
+        SqliteReservationRepository::modify(&mut tx, &reservation)
             .await
             .map_err(AppError::Infrastructure)?;
 
@@ -51,7 +51,7 @@ pub async fn cancel_reservation(db: &Db, id: Uuid) -> AppResult<()> {
                 &mut tx,
                 guest_id.clone(),
                 TimelineEventType::ReservationCancelled,
-                res.id,
+                reservation.id,
             )
             .await?;
         }

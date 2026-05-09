@@ -36,6 +36,8 @@ use crate::api::handlers::reservation::{
     cancel_reservation,
     create_reservation,
     modify_reservation,
+    get_reservation_by_id,
+    get_guest_reservations_handler,
 };
 
 use crate::api::handlers::room::{
@@ -85,6 +87,15 @@ pub fn create_router(
         .route(
             "/reservations/:id",
             delete(cancel_reservation),
+        )
+
+        .route(
+            "/reservations/:id",
+            get(get_reservation_by_id)
+        )
+        .route(
+            "/guests/:id/reservations",
+            get(get_guest_reservations_handler),
         )
 
         // stay

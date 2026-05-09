@@ -14,7 +14,10 @@ use crate::domain::guest_timeline_event::TimelineEventType;
 
 use crate::usecase::timeline::record_event::record_event;
 
-use crate::projection::service::guest_summary_projection_service::refresh_guest_summary_projection;
+use crate::projection::service::{
+    guest_summary_projection_service::refresh_guest_summary_projection,
+    inventory_projection_service::apply_reservation_projection,
+};
 
 pub async fn create_reservation(db: &Db, reservation: Reservation) -> AppResult<()> {
     let mut tx = db.begin_tx().await;
@@ -34,6 +37,12 @@ pub async fn create_reservation(db: &Db, reservation: Reservation) -> AppResult<
         SqliteReservationRepository::save(&mut tx, &reservation)
             .await
             .map_err(AppError::Infrastructure)?;
+
+        apply_reservation_projection(
+            &mut tx,
+            &reservation,
+        )
+        .await?;
 
         for participant in &reservation.participants {
             SqliteReservationGuestRelationRepository::save(&mut tx, participant)
@@ -69,7 +78,6 @@ pub async fn create_reservation(db: &Db, reservation: Reservation) -> AppResult<
 
             Ok(())
         }
-
         Err(e) => {
             tx.rollback()
                 .await

@@ -9,7 +9,7 @@ use crate::usecase::reservation::stay_input::{normalize, StayInput};
 
 use crate::api::dto::reservation::{
     CreateReservationRequest, ReservationParticipantResponse, ReservationResponse,
-    UpdateReservationRequest,
+    ModifyReservationRequest,
 };
 
 use crate::api::error::{map_app_error, ApiError};
@@ -22,8 +22,10 @@ use crate::domain::reservation_guest_relation::ReservationGuestRelation;
 
 use crate::usecase::reservation::{
     cancel_reservation::cancel_reservation as cancel,
-    create_reservation::create_reservation as create, get_reservation::get_reservation,
-    modify_reservation::modify_reservation as modify,
+    create_reservation::create_reservation as create, 
+    modify_reservation::modify_reservation as modify, 
+    get_reservation::get_reservation,
+    get_guest_reservations::get_guest_reservations,
 };
 
 pub async fn create_reservation(
@@ -71,29 +73,114 @@ pub async fn create_reservation(
 pub async fn modify_reservation(
     State(state): State<AppState>,
     Path(id): Path<String>,
-    Json(req): Json<UpdateReservationRequest>,
+    Json(req): Json<ModifyReservationRequest>,
 ) -> Result<Json<ReservationResponse>, ApiError> {
-    let reservation_id = Uuid::parse_str(&id)
-        .map_err(|e| ApiError::new(axum::http::StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let reservation_id =
+        Uuid::parse_str(&id)
+            .map_err(|e| {
+                ApiError::new(
+                    axum::http::StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                )
+            })?;
+
+    let reservation =
+        get_reservation(
+            &state.db,
+            reservation_id,
+        )
+        .await
+        .map_err(map_app_error)?
+        .ok_or_else(|| {
+            ApiError::new(
+                axum::http::StatusCode::NOT_FOUND,
+                "reservation not found",
+            )
+        })?;
+
+    let check_in =
+        match req.check_in {
+
+            Some(v) => {
+                chrono::NaiveDate
+                    ::parse_from_str(
+                        &v,
+                        "%Y-%m-%d",
+                    )
+                    .map_err(|e| {
+                        ApiError::new(
+                            axum::http::StatusCode
+                                ::BAD_REQUEST,
+                            e.to_string(),
+                        )
+                    })?
+            }
+
+            None => reservation.check_in,
+        };
+
+    let check_out =
+        match req.check_out {
+
+            Some(v) => {
+                chrono::NaiveDate
+                    ::parse_from_str(
+                        &v,
+                        "%Y-%m-%d",
+                    )
+                    .map_err(|e| {
+                        ApiError::new(
+                            axum::http::StatusCode
+                                ::BAD_REQUEST,
+                            e.to_string(),
+                        )
+                    })?
+            }
+
+            None => reservation.check_out,
+        };
+
+    let room_class =
+        req.room_class
+            .unwrap_or(
+                reservation.room_class
+            );
 
     modify(
         &state.db,
         reservation_id,
+
         StayInput::CheckInAndCheckOut {
-            check_in: req.check_in,
-            check_out: req.check_out,
-            room_class: req.room_class.clone(),
+            check_in,
+            check_out,
+            room_class,
         },
     )
     .await
     .map_err(map_app_error)?;
 
-    let reservation = get_reservation(&state.db, reservation_id)
+    let updated =
+        get_reservation(
+            &state.db,
+            reservation_id,
+        )
         .await
         .map_err(map_app_error)?
-        .ok_or_else(|| ApiError::new(axum::http::StatusCode::NOT_FOUND, "reservation not found"))?;
+        .ok_or_else(|| {
+            ApiError::new(
+                axum::http::StatusCode::NOT_FOUND,
+                "reservation not found",
+            )
+        })?;
 
-    Ok(Json(reservation_to_response(reservation)))
+    Ok(
+        Json(
+            reservation_to_response(
+                updated
+            )
+        )
+    )
 }
 
 pub async fn cancel_reservation(
@@ -116,6 +203,80 @@ pub async fn cancel_reservation(
             })?;
 
     Ok(Json(reservation_to_response(reservation)))
+}
+
+pub async fn get_reservation_by_id(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<ReservationResponse>, ApiError> {
+
+    let reservation_id =
+        Uuid::parse_str(&id)
+            .map_err(|e| {
+                ApiError::new(
+                    axum::http::StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                )
+            })?;
+
+    let reservation =
+        get_reservation(
+            &state.db,
+            reservation_id,
+        )
+        .await
+        .map_err(map_app_error)?
+        .ok_or_else(|| {
+            ApiError::new(
+                axum::http::StatusCode::NOT_FOUND,
+                "reservation not found",
+            )
+        })?;
+
+    Ok(
+        Json(
+            reservation_to_response(
+                reservation
+            )
+        )
+    )
+}
+
+pub async fn get_guest_reservations_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<
+    Json<Vec<ReservationResponse>>,
+    ApiError,
+> {
+
+    let guest_id =
+        Uuid::parse_str(&id)
+            .map_err(|e| {
+                ApiError::new(
+                    axum::http::StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                )
+            })?;
+
+    let reservations =
+        get_guest_reservations(
+            &state.db,
+            guest_id,
+        )
+        .await
+        .map_err(map_app_error)?;
+
+    Ok(
+        Json(
+            reservations
+                .into_iter()
+                .map(
+                    reservation_to_response
+                )
+                .collect()
+        )
+    )
 }
 
 fn reservation_to_response(reservation: Reservation) -> ReservationResponse {

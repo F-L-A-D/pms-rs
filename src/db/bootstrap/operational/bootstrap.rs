@@ -12,13 +12,6 @@ pub async fn bootstrap(
     .unwrap();
 
     sqlx::query(
-        include_str!("inventory.sql"),
-    )
-    .execute(pool)
-    .await
-    .unwrap();
-
-    sqlx::query(
         include_str!("rooms.sql"),
     )
     .execute(pool)

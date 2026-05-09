@@ -13,6 +13,7 @@ use crate::repository::sqlite::operational::
 pub async fn list_guests(
     db: &Db,
     keyword: Option<String>,
+    field: Option<String>,
 ) -> AppResult<Vec<Guest>> {
 
     let mut tx =
@@ -25,16 +26,17 @@ pub async fn list_guests(
 
                 Some(keyword) => {
 
-                    SqliteGuestRepository::find_by_name(
+                    SqliteGuestRepository::search(
                         &mut tx,
                         &keyword,
+                        field.as_deref(),
                     )
                     .await?
                 }
 
                 None => {
 
-                    SqliteGuestRepository::find_all(
+                    SqliteGuestRepository::list(
                         &mut tx,
                     )
                     .await?

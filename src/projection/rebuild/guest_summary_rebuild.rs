@@ -26,7 +26,7 @@ pub async fn rebuild_guest_summary_projection(
 
     let guests =
         SqliteGuestRepository
-            ::find_all(tx)
+            ::list(tx)
             .await?;
 
     for guest in guests {

@@ -3,8 +3,6 @@ use sqlx::{
     Transaction,
 };
 
-use chrono::Utc;
-
 use uuid::Uuid;
 
 use crate::domain::guest_timeline_event::{
@@ -21,15 +19,12 @@ pub async fn record_event(
     tx: &mut Transaction<'_, Sqlite>,
     guest_id: Uuid,
     event_type: TimelineEventType,
-    reference_id: String,
+    reference_id: Uuid,
 ) -> AppResult<()> {
 
     let event =
         GuestTimelineEvent::new(
-            format!(
-                "timeline-{}",
-                Utc::now().timestamp_millis()
-            ),
+            Uuid::new_v4(),
             guest_id,
             event_type,
             reference_id,

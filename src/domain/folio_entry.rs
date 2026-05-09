@@ -1,5 +1,7 @@
 use chrono::{DateTime, Utc};
 
+use uuid::Uuid;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum EntryType {
     RoomCharge,
@@ -9,8 +11,8 @@ pub enum EntryType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolioEntry {
-    pub id: String,
-    pub folio_id: String,
+    pub id: Uuid,
+    pub folio_id: Uuid,
     pub entry_type: EntryType,
     pub amount: i64,
     pub occurred_at: DateTime<Utc>,
@@ -19,8 +21,8 @@ pub struct FolioEntry {
 
 impl FolioEntry {
     pub fn new(
-        id: String,
-        folio_id: String,
+        id: Uuid,
+        folio_id: Uuid,
         entry_type: EntryType,
         amount: i64,
         description: Option<String>,

@@ -7,19 +7,22 @@ use axum::{
     Router,
 };
 
-use serde_json::json;
+use serde_json::{
+    json,
+    Value,
+};
 
 use tower::ServiceExt;
 
+use uuid::Uuid;
+
 pub async fn open_folio(
     app: &Router,
-    folio_id: &str,
-    reservation_id: &str,
-) {
+    reservation_id: Uuid,
+) -> Uuid {
 
     let payload =
         json!({
-            "folio_id": folio_id,
             "reservation_id": reservation_id
         });
 
@@ -48,11 +51,33 @@ pub async fn open_folio(
         response.status(),
         StatusCode::OK,
     );
+
+    let body =
+        axum::body::to_bytes(
+            response.into_body(),
+            usize::MAX,
+        )
+        .await
+        .unwrap();
+
+    let folio: Value =
+        serde_json::from_slice(
+            &body
+        )
+        .unwrap();
+
+    Uuid::parse_str(
+        folio["folio_id"]
+            .as_str()
+            .unwrap()
+    )
+    .unwrap()
+    
 }
 
 pub async fn post_room_charge(
     app: &Router,
-    folio_id: &str,
+    folio_id: Uuid,
     amount: i64,
 ) {
 
@@ -96,7 +121,7 @@ pub async fn post_room_charge(
 
 pub async fn post_payment(
     app: &Router,
-    folio_id: &str,
+    folio_id: Uuid,
     amount: i64,
 ) {
 

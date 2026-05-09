@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::db::connection::Db;
 
 use crate::error::app_error::{
@@ -10,7 +12,7 @@ use crate::repository::sqlite::operational::
 
 pub async fn close_folio(
     db: &Db,
-    folio_id: &str,
+    folio_id: Uuid,
 ) -> AppResult<()> {
 
     let mut tx =

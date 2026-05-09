@@ -1,6 +1,6 @@
-use crate::db::connection::Db;
-
 use uuid::Uuid;
+
+use crate::db::connection::Db;
 
 use crate::domain::guest::Guest;
 

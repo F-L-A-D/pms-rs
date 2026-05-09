@@ -134,7 +134,7 @@ impl SqliteGuestRepository {
         }
     }
 
-    pub async fn find_all(
+    pub async fn list(
         tx: &mut Transaction<'_, Sqlite>,
     ) -> AppResult<Vec<Guest>> {
 
@@ -155,7 +155,10 @@ impl SqliteGuestRepository {
                     created_at,
                     updated_at
                 FROM guests
-                ORDER BY last_name, first_name
+                ORDER BY
+                    last_name,
+                    first_name
+                LIMIT 50
                 "#
             )
             .fetch_all(&mut **tx)
@@ -165,6 +168,161 @@ impl SqliteGuestRepository {
                     e.to_string()
                 )
             })?;
+
+        Ok(
+            rows
+                .into_iter()
+                .map(Self::row_to_guest)
+                .collect()
+        )
+    }
+
+    pub async fn search(
+        tx: &mut Transaction<'_, Sqlite>,
+        keyword: &str,
+        field: Option<&str>,
+    ) -> AppResult<Vec<Guest>> {
+
+        let tokens =
+            keyword
+                .split_whitespace()
+                .collect::<Vec<_>>();
+
+        let rows =
+
+            if field.is_none()
+                && tokens.len() >= 2 {
+
+                let last_name =
+                    format!(
+                        "%{}%",
+                        tokens[0],
+                    );
+
+                let first_name =
+                    format!(
+                        "%{}%",
+                        tokens[1],
+                    );
+
+                sqlx::query(
+                    r#"
+                    SELECT
+                        id,
+                        last_name,
+                        first_name,
+                        phone,
+                        email,
+                        nationality,
+                        birth_date,
+                        gender,
+                        membership_code,
+                        marketing_opt_in,
+                        created_at,
+                        updated_at
+                    FROM guests
+                    WHERE
+                        last_name LIKE ?1
+                        AND first_name LIKE ?2
+                    ORDER BY
+                        last_name,
+                        first_name
+                    LIMIT 50
+                    "#
+                )
+                .bind(&last_name)
+                .bind(&first_name)
+                .fetch_all(&mut **tx)
+                .await
+                .map_err(|e| {
+                    AppError::Infrastructure(
+                        e.to_string()
+                    )
+                })?
+
+            } else {
+
+                let pattern =
+                    format!(
+                        "%{}%",
+                        keyword,
+                    );
+
+                let sql =
+                    match field {
+
+                        Some("first_name") => {
+                            r#"
+                            SELECT * FROM guests
+                            WHERE first_name LIKE ?1
+                            ORDER BY last_name, first_name
+                            LIMIT 50
+                            "#
+                        }
+
+                        Some("last_name") => {
+                            r#"
+                            SELECT * FROM guests
+                            WHERE last_name LIKE ?1
+                            ORDER BY last_name, first_name
+                            LIMIT 50
+                            "#
+                        }
+
+                        Some("email") => {
+                            r#"
+                            SELECT * FROM guests
+                            WHERE email LIKE ?1
+                            ORDER BY last_name, first_name
+                            LIMIT 50
+                            "#
+                        }
+
+                        Some("phone") => {
+                            r#"
+                            SELECT * FROM guests
+                            WHERE phone LIKE ?1
+                            ORDER BY last_name, first_name
+                            LIMIT 50
+                            "#
+                        }
+
+                        Some("membership_code") => {
+                            r#"
+                            SELECT * FROM guests
+                            WHERE membership_code LIKE ?1
+                            ORDER BY last_name, first_name
+                            LIMIT 50
+                            "#
+                        }
+
+                        _ => {
+                            r#"
+                            SELECT * FROM guests
+                            WHERE
+                                first_name LIKE ?1
+                                OR last_name LIKE ?1
+                                OR email LIKE ?1
+                                OR phone LIKE ?1
+                                OR membership_code LIKE ?1
+                            ORDER BY
+                                last_name,
+                                first_name
+                            LIMIT 50
+                            "#
+                        }
+                    };
+
+                sqlx::query(sql)
+                    .bind(&pattern)
+                    .fetch_all(&mut **tx)
+                    .await
+                    .map_err(|e| {
+                        AppError::Infrastructure(
+                            e.to_string()
+                        )
+                    })?
+            };
 
         Ok(
             rows
@@ -222,59 +380,12 @@ impl SqliteGuestRepository {
         Ok(())
     }
 
-    pub async fn find_by_name(
-        tx: &mut Transaction<'_, Sqlite>,
-        keyword: &str,
-    ) -> AppResult<Vec<Guest>> {
-
-        let pattern =
-            format!("%{}%", keyword);
-
-        let rows =
-            sqlx::query(
-                r#"
-                SELECT
-                    id,
-                    last_name,
-                    first_name,
-                    phone,
-                    email,
-                    nationality,
-                    birth_date,
-                    gender,
-                    membership_code,
-                    marketing_opt_in,
-                    created_at,
-                    updated_at
-                FROM guests
-                WHERE
-                    last_name LIKE ?1
-                    OR first_name LIKE ?1
-                ORDER BY last_name, first_name
-                "#
-            )
-            .bind(pattern)
-            .fetch_all(&mut **tx)
-            .await
-            .map_err(|e| {
-                AppError::Infrastructure(
-                    e.to_string()
-                )
-            })?;
-
-        Ok(
-            rows
-                .into_iter()
-                .map(Self::row_to_guest)
-                .collect()
-        )
-    }
-
     fn row_to_guest(
         r: sqlx::sqlite::SqliteRow,
     ) -> Guest {
 
         Guest {
+
             id:
                 Uuid::parse_str(
                     r.get::<String, _>("id")
@@ -303,34 +414,22 @@ impl SqliteGuestRepository {
                 ),
 
             gender:
-                match r.get::<Option<String>, _>(
+                r.get::<Option<String>, _>(
                     "gender"
-                ) {
+                )
+                .map(|v| {
+                    match v.as_str() {
 
-                    Some(v) => {
-                        match v.as_str() {
+                        "Male" =>
+                            Gender::Male,
 
-                            "Male" =>
-                                Some(Gender::Male),
+                        "Female" =>
+                            Gender::Female,
 
-                            "Female" =>
-                                Some(Gender::Female),
-
-                            "Other" =>
-                                Some(Gender::Other),
-
-                            "Unspecified" => {
-                                Some(
-                                    Gender::Unspecified
-                                )
-                            }
-
-                            _ => None,
-                        }
+                        _ =>
+                            Gender::Other,
                     }
-
-                    None => None,
-                },
+                }),
 
             membership_code:
                 r.get("membership_code"),
@@ -339,14 +438,24 @@ impl SqliteGuestRepository {
                 r.get("marketing_opt_in"),
 
             created_at:
-                r.get::<String, _>("created_at")
-                    .parse()
-                    .unwrap(),
+                chrono::DateTime::parse_from_rfc3339(
+                    r.get::<String, _>(
+                        "created_at"
+                    )
+                    .as_str()
+                )
+                .unwrap()
+                .with_timezone(&chrono::Utc),
 
             updated_at:
-                r.get::<String, _>("updated_at")
-                    .parse()
-                    .unwrap(),
+                chrono::DateTime::parse_from_rfc3339(
+                    r.get::<String, _>(
+                        "updated_at"
+                    )
+                    .as_str()
+                )
+                .unwrap()
+                .with_timezone(&chrono::Utc),
         }
     }
 }

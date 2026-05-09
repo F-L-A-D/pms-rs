@@ -1,14 +1,10 @@
-use serde::{
-    Serialize,
-    Deserialize,
-};
+use serde::{Deserialize, Serialize};
 
 use chrono::NaiveDate;
 
 use uuid::Uuid;
 
-use crate::domain::reservation_guest_relation::
-    ReservationGuestRelationType;
+use crate::domain::reservation_guest_relation::ReservationGuestRelationType;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ReservationParticipantInput {
@@ -18,7 +14,8 @@ pub struct ReservationParticipantInput {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateReservationRequest {
-    pub id: String,
+    #[serde(alias = "id")]
+    pub external_id: String,
     pub check_in: NaiveDate,
     pub check_out: NaiveDate,
     pub room_class: String,
@@ -41,7 +38,8 @@ pub struct ReservationParticipantResponse {
 
 #[derive(Debug, Serialize)]
 pub struct ReservationResponse {
-    pub id: String,
+    pub id: Uuid,
+    pub external_id: String,
     pub check_in: NaiveDate,
     pub check_out: NaiveDate,
     pub reservation_status: String,

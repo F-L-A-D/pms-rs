@@ -1,7 +1,6 @@
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
+
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct AssignRoomRequest {
@@ -10,6 +9,6 @@ pub struct AssignRoomRequest {
 
 #[derive(Serialize)]
 pub struct StayResponse {
-    pub id: String,
+    pub id: Uuid,
     pub status: String,
 }

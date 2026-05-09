@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum FolioStatus {
     Open,
@@ -6,16 +8,13 @@ pub enum FolioStatus {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Folio {
-    pub id: String,
-    pub reservation_id: String,
+    pub id: Uuid,
+    pub reservation_id: Uuid,
     pub status: FolioStatus,
 }
 
 impl Folio {
-    pub fn new(
-        id: String,
-        reservation_id: String,
-    ) -> Self {
+    pub fn new(id: Uuid, reservation_id: Uuid) -> Self {
         Self {
             id,
             reservation_id,
@@ -28,7 +27,7 @@ impl Folio {
             return Err("folio already closed".into());
         }
         self.status = FolioStatus::Closed;
-        
+
         Ok(())
     }
 }

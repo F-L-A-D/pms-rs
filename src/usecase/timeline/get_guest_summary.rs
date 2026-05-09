@@ -55,7 +55,7 @@ pub async fn get_guest_summary(
         let folios =
             SqliteFolioRepository::find_by_reservation_id(
                 tx,
-                &reservation.id,
+                reservation.id,
             )
             .await
             .map_err(AppError::Infrastructure)?;
@@ -65,7 +65,7 @@ pub async fn get_guest_summary(
             let entries =
                 SqliteFolioEntryRepository::find_by_folio_id(
                     tx,
-                    &folio.id,
+                    folio.id,
                 )
                 .await
                 .map_err(AppError::Infrastructure)?;

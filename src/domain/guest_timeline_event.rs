@@ -16,20 +16,20 @@ pub enum TimelineEventType {
 
 #[derive(Debug, Clone)]
 pub struct GuestTimelineEvent {
-    pub id: String,
+    pub id: Uuid,
     pub guest_id: Uuid,
     pub event_type: TimelineEventType,
-    pub reference_id: String,
+    pub reference_id: Uuid,
     pub occurred_at: DateTime<Utc>,
 }
 
 impl GuestTimelineEvent {
 
     pub fn new(
-        id: String,
+        id: Uuid,
         guest_id: Uuid,
         event_type: TimelineEventType,
-        reference_id: String,
+        reference_id: Uuid,
     ) -> Self {
 
         Self {

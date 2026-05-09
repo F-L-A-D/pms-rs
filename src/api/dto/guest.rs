@@ -75,7 +75,8 @@ pub struct UpdateGuestRequest {
     pub marketing_opt_in: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct GuestSearchQuery {
-    pub name: Option<String>,
+    pub query: Option<String>,
+    pub field: Option<String>,
 }

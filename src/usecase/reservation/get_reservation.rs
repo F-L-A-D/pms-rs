@@ -2,40 +2,22 @@ use crate::db::connection::Db;
 
 use crate::domain::reservation::Reservation;
 
-use crate::error::app_error::{
-    AppError,
-    AppResult,
-};
+use uuid::Uuid;
 
-use crate::repository::sqlite::operational::
-    reservation_repository::SqliteReservationRepository;
+use crate::error::app_error::{AppError, AppResult};
 
-pub async fn get_reservation(
-    db: &Db,
-    reservation_id: &str,
-) -> AppResult<Option<Reservation>> {
+use crate::repository::sqlite::operational::reservation_repository::SqliteReservationRepository;
 
-    let mut tx =
-        db.begin_tx().await;
+pub async fn get_reservation(db: &Db, reservation_id: Uuid) -> AppResult<Option<Reservation>> {
+    let mut tx = db.begin_tx().await;
 
-    let result =
-        SqliteReservationRepository
-            ::find_by_id(
-                &mut tx,
-                reservation_id,
-            )
-            .await
-            .map_err(
-                AppError::Infrastructure
-            );
+    let result = SqliteReservationRepository::find_by_id(&mut tx, reservation_id)
+        .await
+        .map_err(AppError::Infrastructure);
 
     tx.rollback()
         .await
-        .map_err(|e| {
-            AppError::Infrastructure(
-                e.to_string()
-            )
-        })?;
+        .map_err(|e| AppError::Infrastructure(e.to_string()))?;
 
     result
 }

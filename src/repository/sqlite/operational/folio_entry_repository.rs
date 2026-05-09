@@ -9,6 +9,8 @@ use sqlx::{
     Transaction,
 };
 
+use uuid::Uuid;
+
 use crate::domain::folio_entry::{
     EntryType,
     FolioEntry,
@@ -36,8 +38,8 @@ impl SqliteFolioEntryRepository {
             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
             "#
         )
-        .bind(&entry.id)
-        .bind(&entry.folio_id)
+        .bind(&entry.id.to_string())
+        .bind(&entry.folio_id.to_string())
         .bind(format!("{:?}", entry.entry_type))
         .bind(entry.amount)
         .bind(entry.occurred_at.to_rfc3339())
@@ -51,7 +53,7 @@ impl SqliteFolioEntryRepository {
 
     pub async fn find_by_folio_id(
         tx: &mut Transaction<'_, Sqlite>,
-        folio_id: &str,
+        folio_id: Uuid,
     ) -> Result<Vec<FolioEntry>, String> {
 
         let rows =
@@ -69,7 +71,7 @@ impl SqliteFolioEntryRepository {
                 ORDER BY occurred_at
                 "#
             )
-            .bind(folio_id)
+            .bind(folio_id.to_string())
             .fetch_all(&mut **tx)
             .await
             .map_err(|e| e.to_string())?;
@@ -109,10 +111,17 @@ impl SqliteFolioEntryRepository {
 
             entries.push(
                 FolioEntry {
-                    id: r.get("id"),
+                    id: Uuid::parse_str(
+                        r.get::<String, _>("id")
+                            .as_str()
+                    )
+                    .unwrap(),
 
-                    folio_id:
-                        r.get("folio_id"),
+                    folio_id: Uuid::parse_str(
+                        r.get::<String, _>("folio_id")
+                            .as_str()
+                    )
+                    .unwrap(),
 
                     entry_type,
 

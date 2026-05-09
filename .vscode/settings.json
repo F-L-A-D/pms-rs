@@ -7,7 +7,7 @@
     "**/target/**": true
   },
 
-  "rust-analyzer.checkOnSave.command": "clippy",
+  "rust-analyzer.checkOnSave.command": "check",
   "rust-analyzer.cargo.buildScripts.enable": false,
   "rust-analyzer.procMacro.enable": false,
   "rust-analyzer.cargo.loadOutDirsFromCheck": false

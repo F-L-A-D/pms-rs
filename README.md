@@ -390,6 +390,8 @@ The system intentionally avoids:
 
 Current architectural focus areas:
 
+* workflow validation
+* query hardening
 * CRM projection boundaries
 * segmentation foundation
 * behavioral reconstruction consistency
@@ -398,22 +400,41 @@ Current architectural focus areas:
 
 ---
 
-# Next Phase
+# Div3 - Workflow Validation & Query Hardening
 
-## Div3 - Workflow Validation UI
-
-The next phase focuses on validating operational workflows through a lightweight UI layer.
+The current phase focuses on workflow-level validation rather than frontend completeness.
 
 Primary objectives:
 
 * verify workflow consistency
-* validate operational usability
+* validate projection synchronization
+* validate realistic operational search behavior
 * verify projection usefulness
-* evaluate search responsiveness
 * identify missing query models/projections
 * pressure test aggregate boundaries
+* validate workflow reconstruction consistency
 
-The Div3 UI layer exists for operational validation rather than frontend completeness.
+Current validation targets:
+
+* guest workflow validation
+* reservation workflow validation
+* billing workflow validation
+* projection rebuild/refresh equivalence
+* UUID-based identity propagation
+* aggregate boundary validation
+* search precision validation
+* false-positive suppression
+
+UI tooling may be introduced temporarily for validation purposes, but frontend implementation is not considered a primary architectural objective at this stage.
+
+The project intentionally prioritizes:
+
+* operational correctness
+* workflow reproducibility
+* projection consistency
+* realistic integration behavior
+
+over frontend completeness.
 
 ---
 

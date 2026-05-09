@@ -1,42 +1,89 @@
 # PMS-RS Current State
 
-### Completed
+## Completed
 
-#### Div1 - Operational PMS Core
+### Div1 - Operational PMS Core
 
-* Reservation lifecycle
-* Room assignment
-* Check-in / check-out
-* Folio management
-* Billing operations
-* Housekeeping operations
-* Transaction consistency
-* Timeline event recording
+Implemented:
 
-#### Div2 - CRM / Projection Layer
+* reservation lifecycle
+* reservation modification
+* reservation cancellation
+* participant-authoritative reservation model
+* room assignment
+* room occupancy management
+* check-in / check-out
+* housekeeping lifecycle
+* folio management
+* append-only folio entries
+* room charge posting
+* payment posting
+* balance derivation
+* transactional rollback consistency
+* guest timeline event recording
 
-* Guest timeline aggregation
-* Guest summary projection
-* Projection materialization
-* Projection rebuild flow
-* Projection refresh flow
-* Projection integration tests
-* Transaction ownership unification
+---
 
-### Transaction Boundary Policy
+### Div2 - CRM / Projection Layer
 
-Usecases and orchestration services own transaction boundaries.
+Implemented:
+
+* guest timeline aggregation
+* guest summary projection
+* projection materialization
+* projection rebuild flow
+* projection refresh flow
+* projection integration tests
+* participant-aware behavioral propagation
+* transaction ownership unification
+
+---
+
+## Recently Validated
+
+The latest workflow hardening phase validated:
+
+* UUID-based aggregate identity propagation
+* application-owned identity generation
+* repository-level UUID serialization consistency
+* billing projection synchronization
+* rebuild/refresh equivalence
+* realistic workflow-driven integration testing
+* precise guest search behavior
+* false-positive suppression in search queries
+
+The architecture now consistently uses:
+
+* UUID-based internal aggregate identities
+* usecase-owned aggregate creation
+* repository-owned SQLite string mapping
+
+Workflow propagation is now validated through actual downstream aggregate usage rather than fixed test-generated identities.
+
+---
+
+## Transaction Boundary Policy
+
+Transaction boundaries are owned by:
+
+* usecases
+* orchestration services
 
 Repositories, projection services, materializers, and rebuild flows consume existing transactions only.
 
-This enables:
+This guarantees:
 
-* single workflow consistency
+* workflow consistency
 * projection synchronization
 * replay compatibility
-* future event sourcing support
+* rebuild compatibility
+* future event sourcing compatibility
 
-### Current Architecture Direction
+Projection layers must never own operational authority.
+
+---
+
+## Current Architecture Direction
 
 The system currently consists of:
 
@@ -44,18 +91,44 @@ The system currently consists of:
 * append-only behavioral/accounting history
 * rebuildable projection layer
 * projection-oriented CRM foundation
+* workflow-oriented orchestration layer
 
-### Next Phase
+---
 
-#### Div3 - Workflow Validation UI
+## Current Validation Focus
 
-The next phase focuses on validating operational workflows through a lightweight UI layer.
+The project focus has shifted from lightweight UI experimentation toward workflow validation and operational hardening.
 
-Primary objectives:
+Primary validation areas:
 
-* verify workflow consistency
-* validate operational usability
-* verify projection usefulness
-* evaluate search responsiveness
-* identify missing query models/projections
-* pressure test aggregate boundaries
+* transactional workflow consistency
+* aggregate boundary validation
+* projection synchronization consistency
+* realistic operational query behavior
+* workflow reconstruction consistency
+* downstream identity propagation
+* operational search precision
+* projection rebuild equivalence
+
+---
+
+## Div3 - Workflow Validation & Query Hardening
+
+Status: IN PROGRESS
+
+Div3 is no longer considered a UI implementation phase.
+
+The previous lightweight validation UI direction was intentionally reduced in scope after identifying that the highest architectural value comes from workflow-level validation rather than frontend completeness.
+
+Div3 now focuses on:
+
+* realistic workflow pressure testing
+* search/query hardening
+* aggregate boundary validation
+* projection synchronization validation
+* operational reconstruction validation
+* workflow-driven integration testing
+
+UI components, if implemented, are considered temporary validation tooling only.
+
+Frontend completeness is explicitly out of scope for Div3.

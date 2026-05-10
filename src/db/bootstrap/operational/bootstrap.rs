@@ -40,4 +40,40 @@ pub async fn bootstrap(
     .execute(pool)
     .await
     .unwrap();
+
+    sqlx::query(
+        include_str!(
+            "companies.sql"
+        )
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        include_str!(
+            "billing_accounts.sql"
+        )
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        include_str!(
+            "invoices.sql"
+        )
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        include_str!(
+            "receivables.sql"
+        )
+    )
+    .execute(pool)
+    .await
+    .unwrap();
 }

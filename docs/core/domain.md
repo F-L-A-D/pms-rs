@@ -54,6 +54,65 @@ FolioEntry represents append-only billing events.
 
 ---
 
+## BillingAccount
+
+### Definition
+
+BillingAccount represents settlement responsibility ownership.
+
+### Principles
+
+* billing responsibility is independent from guest identity
+* billing responsibility is independent from reservation participation
+* billing responsibility may represent corporate liability
+* billing responsibility may outlive operational stay workflows
+
+---
+
+## Invoice
+
+### Definition
+
+Invoice represents immutable settlement snapshot generation derived from operational folio state.
+
+### Principles
+
+* invoice issuance establishes settlement cutoff
+* invoices are immutable
+* invoices derive from operational billing state
+* invoices are not operational billing containers
+
+---
+
+## Receivable
+
+### Definition
+
+Receivable represents outstanding settlement liability.
+
+### Principles
+
+* receivables track outstanding settlement state
+* receivables are operational/accounting authorities
+* receivables are independent from behavioral projections
+* receivables support future settlement lifecycle workflows
+
+---
+
+## Billing Responsibility Separation
+
+The architecture explicitly separates:
+
+* guest identity
+* reservation participation
+* operational stay ownership
+* billing responsibility
+* settlement liability
+
+These responsibilities must not collapse into a single aggregate ownership model.
+
+---
+
 ## Guest
 
 

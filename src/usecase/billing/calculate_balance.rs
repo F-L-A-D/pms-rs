@@ -1,50 +1,64 @@
-use uuid::Uuid;
-
-use crate::db::connection::Db;
-
-use crate::error::app_error::{
-    AppError,
-    AppResult,
+use sqlx::{
+    Sqlite,
+    Transaction,
 };
 
-use crate::repository::sqlite::operational::
-    folio_entry_repository::SqliteFolioEntryRepository;
+use uuid::Uuid;
+
+use crate::{
+    db::connection::Db,
+
+    error::app_error::AppError,
+
+    repository::sqlite::operational::
+        folio_entry_repository::
+            SqliteFolioEntryRepository,
+};
+
+pub async fn calculate_balance_in_tx(
+    tx: &mut Transaction<'_, Sqlite>,
+    folio_id: Uuid,
+) -> Result<i64, String> {
+
+    let entries =
+        SqliteFolioEntryRepository::find_by_folio_id(
+            tx,
+            folio_id,
+        )
+        .await?;
+
+    let balance =
+        entries
+            .iter()
+            .map(|entry| entry.amount)
+            .sum();
+
+    Ok(balance)
+}
 
 pub async fn calculate_balance(
     db: &Db,
     folio_id: Uuid,
-) -> AppResult<i64> {
+) -> Result<i64, AppError> {
 
     let mut tx =
         db.begin_tx().await;
 
-    let result = async {
-
-        let entries =
-            SqliteFolioEntryRepository::find_by_folio_id(
-                &mut tx,
-                folio_id,
-            )
-            .await
-            .map_err(AppError::Infrastructure)?;
-
-        let balance =
-            entries
-                .iter()
-                .map(|e| e.amount)
-                .sum();
-
-        Ok(balance)
-
-    }.await;
+    let balance =
+        calculate_balance_in_tx(
+            &mut tx,
+            folio_id,
+        )
+        .await
+        .map_err(AppError::Validation)?;
 
     tx.rollback()
         .await
         .map_err(|e| {
-            AppError::Infrastructure(
+            AppError::Validation(
                 e.to_string()
             )
         })?;
 
-    result
+    Ok(balance)
 }

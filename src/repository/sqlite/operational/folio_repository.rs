@@ -13,13 +13,18 @@ impl SqliteFolioRepository {
             INSERT OR REPLACE INTO folios (
                 id,
                 reservation_id,
+                billing_account_id,
                 status
             )
-            VALUES (?1, ?2, ?3)
+            VALUES (?1, ?2, ?3, ?4)
             "#,
         )
         .bind(&folio.id.to_string())
         .bind(folio.reservation_id.to_string())
+        .bind(
+            folio.billing_account_id
+                .map(|id| id.to_string())
+        )
         .bind(format!("{:?}", folio.status))
         .execute(&mut **tx)
         .await
@@ -37,6 +42,7 @@ impl SqliteFolioRepository {
                 SELECT
                     id,
                     reservation_id,
+                    billing_account_id,
                     status
                 FROM folios
                 WHERE id = ?1
@@ -65,7 +71,17 @@ impl SqliteFolioRepository {
                     r.get::<String, _>("reservation_id").as_str(),
                 )
                 .map_err(|e| e.to_string())?,
+
+                billing_account_id:
+                    r.get::<Option<String>, _>(
+                        "billing_account_id"
+                    )
+                    .map(|s| Uuid::parse_str(&s))
+                    .transpose()
+                    .map_err(|e| e.to_string())?,
+
                 status,
+                
             }))
         } else {
             Ok(None)
@@ -81,6 +97,7 @@ impl SqliteFolioRepository {
                 SELECT
                     id,
                     reservation_id,
+                    billing_account_id,
                     status
                 FROM folios
                 WHERE reservation_id = ?1
@@ -111,6 +128,14 @@ impl SqliteFolioRepository {
                     r.get::<String, _>("reservation_id").as_str(),
                 )
                 .map_err(|e| e.to_string())?,
+
+                billing_account_id:
+                    r.get::<Option<String>, _>(
+                        "billing_account_id"
+                    )
+                    .map(|s| Uuid::parse_str(&s))
+                    .transpose()
+                    .map_err(|e| e.to_string())?,
 
                 status,
             });

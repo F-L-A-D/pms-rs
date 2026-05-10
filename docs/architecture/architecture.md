@@ -346,3 +346,156 @@ The following are intentionally prohibited unless explicitly redesigned:
 * business logic inside API handlers
 * direct projection mutation without rebuildability
 * bypassing timeline/event recording for behavioral changes
+
+---
+
+## Operational Billing vs Settlement Responsibility
+
+The architecture explicitly separates:
+
+* operational billing activity
+* settlement responsibility
+* outstanding liability tracking
+
+These concerns must not collapse into a single authority model.
+
+---
+
+## Folio
+
+Folio represents an operational billing container.
+
+Folios exist to support:
+
+* operational stay billing
+* in-stay charge aggregation
+* operational payment handling
+* mutable operational correction workflows
+
+Folios are operational authorities.
+
+Folios may remain mutable while operational correction remains necessary.
+
+Examples:
+
+* charge correction
+* operational adjustment
+* reassignment
+* operational recovery
+
+Folio balance is derived from append-only folio entries.
+
+---
+
+## BillingAccount
+
+BillingAccount represents settlement responsibility ownership.
+
+Billing responsibility is explicitly separated from:
+
+* guest identity
+* reservation participation
+* operational stay ownership
+
+This separation exists to support:
+
+* corporate billing
+* agency billing
+* future split liability workflows
+* future external settlement ownership
+
+BillingAccount assignment does not transfer operational reservation ownership.
+
+---
+
+## Invoice
+
+Invoice represents settlement snapshot generation.
+
+Invoices are generated from operational folio state.
+
+Invoice issuance represents:
+
+* settlement finalization boundary
+* operational cutoff transition
+* accounting snapshot generation
+
+Invoices are immutable settlement artifacts.
+
+Invoices are not operational billing containers.
+
+Invoice issuance must not depend on projection authority.
+
+---
+
+## Receivable
+
+Receivable represents outstanding settlement liability.
+
+Receivables exist independently from folio operational workflows.
+
+Receivables support:
+
+* AR tracking
+* settlement workflows
+* aging analysis
+* payment reconciliation
+* future credit workflows
+
+Receivables are operational/accounting authorities.
+
+Receivables are not projections.
+
+---
+
+## Settlement Authority Boundary
+
+The architecture separates:
+
+* operational billing authority
+* settlement/accounting authority
+* behavioral/analytical projection layers
+
+Projection layers must never become settlement authority.
+
+Examples of non-authoritative projection usage:
+
+* AR aging analytics
+* payment risk analysis
+* corporate spend analysis
+* forecasting
+* segmentation
+
+Operational/accounting correctness remains authoritative over projection consistency.
+
+---
+
+## Transactional Billing Policy
+
+Operational settlement workflows own transaction boundaries.
+
+Examples:
+
+* folio closing
+* invoice issuance
+* receivable generation
+
+Repositories and derived query helpers consume existing transactions only.
+
+Read-oriented convenience queries may internally own local read transactions where operational consistency boundaries are not being coordinated.
+
+---
+
+## Derived Financial Queries
+
+Some financial queries are operationally derived but remain authoritative.
+
+Examples:
+
+* current folio balance
+* outstanding receivable balance
+* credit exposure
+
+These queries are not projections.
+
+These queries derive authoritative operational/accounting state from operational records within transaction boundaries.

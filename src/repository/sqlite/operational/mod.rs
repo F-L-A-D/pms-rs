@@ -5,3 +5,7 @@ pub mod folio_entry_repository;
 pub mod guest_repository;
 pub mod reservation_guest_relation_repository;
 pub mod guest_timeline_event_repository;
+pub mod billing_account_repository;
+pub mod company_repository;
+pub mod invoice_repository;
+pub mod receivable_repository;

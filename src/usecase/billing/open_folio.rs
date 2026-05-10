@@ -22,7 +22,11 @@ pub async fn open_folio(db: &Db, reservation_id: Uuid) -> AppResult<Folio> {
             return Err(AppError::NotFound("reservation not found".into()));
         }
 
-        let folio = Folio::new(Uuid::new_v4(), reservation_id);
+        let folio = Folio::new(
+            Uuid::new_v4(),
+            reservation_id,
+            None,
+        );
 
         SqliteFolioRepository::save(&mut tx, &folio)
             .await

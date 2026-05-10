@@ -12,8 +12,11 @@ use crate::api::handlers::billing::{
     get_balance_handler,
     get_entries_handler,
     open_folio_handler,
+    close_folio_handler,
     post_payment_handler,
     post_room_charge_handler,
+    assign_billing_account,
+    issue_invoice_handler,
 };
 
 use crate::api::handlers::guest::{
@@ -157,6 +160,11 @@ pub fn create_router(
         )
 
         .route(
+            "/folios/:id/close",
+            post(close_folio_handler),
+        )
+
+        .route(
             "/folios/:id/charges",
             post(post_room_charge_handler),
         )
@@ -213,6 +221,18 @@ pub fn create_router(
         .route(
             "/guests/:id/summary",
             get(get_guest_summary_handler),
+        )
+
+        // invoice
+
+        .route(
+            "/folios/:folio_id/billing-account",
+            post(assign_billing_account)
+        )
+        
+        .route(
+            "/invoices",
+            post(issue_invoice_handler)
         )
 
         .with_state(state)

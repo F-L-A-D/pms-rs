@@ -1,163 +1,80 @@
-# PMS-RS Current State
+## Projection Invalidation Semantics
 
-## Current Repository State
+Status: FOUNDATION COMPLETE
 
-Current branch baseline:
+Implemented:
 
-* mutable operational PMS core
-* append-only behavioral/accounting history
-* rebuildable projection architecture
-* projection-oriented reconstruction model
+* `ProjectionInvalidation`
+* `ProjectionScope`
+* `ProjectionRefreshTarget`
+* topology-owned invalidation propagation semantics
+* `InvalidationTraversalPlanner`
+* `AffectedProjectionSubgraph`
+* invalidation-aware orchestrator flow
+* dependency-level invalidation policies
+* rebuild / invalidation semantic separation
+* responsibility-oriented projection test structure
 
----
+Current semantics:
 
-## Projection Architecture State
+* propagation remains deterministic
+* propagation remains topology-owned
+* invalidation derives affected projection subgraph
+* refresh execution consumes affected subgraph traversal order
+* projections remain rebuildable/disposable/non-authoritative
+* operational correctness remains authoritative
 
-Projection layer is now topology-managed and orchestration-driven.
+Intentional non-features:
 
-Current projection dependency chain:
+* async propagation
+* distributed invalidation
+* traversal optimization
+* partial rebuild execution
+* incremental projection engine
+* cache-aware propagation pruning
 
-reservation
-→ inventory projection
-→ hotel inventory projection
+Current architecture direction:
 
-Projection dependencies are now:
+Projection invalidation is now modeled as semantic topology propagation rather than execution-side downstream refresh chaining.
 
-* explicit
-* deterministic
-* rebuildable
-* orchestration-owned
+Next target:
 
-Projection propagation semantics are centralized into topology/orchestrator layers rather than service-local propagation chains.
+## Scoped Rebuild Semantics
 
-### Projection Invalidation Foundation
+Focus areas:
 
-Projection invalidation semantics are now explicitly modeled.
+* refresh target semantics formalization
+* scope-aware rebuild compatibility
+* refresh / rebuild symmetry rules
+* authoritative rebuild compatibility with scoped invalidation
+* refresh boundary semantics
 
-Current architecture introduces:
+Constraints:
 
-* ProjectionInvalidation abstraction
-* ProjectionScope abstraction
-* topology-owned invalidation traversal planning
-* invalidation-aware orchestration entrypoints
-
-Projection invalidation is now separated from direct projection-centric refresh semantics.
-
-Current invalidation behavior remains intentionally simple:
-
-* downstream traversal is still topology-wide
-* invalidation policy evaluation is not yet implemented
-* selective propagation is not yet implemented
-
-This phase establishes the architectural foundation for:
-
-* selective downstream propagation
-* scoped invalidation traversal
-* partial rebuild compatibility
-* future multi-property traversal semantics
-
----
-
-## Completed Scope (Div3)
-
-### Operational Core
-
-* reservation lifecycle
-* stay workflow
-* folio/billing workflow
-* housekeeping workflow
-* guest linkage
-* transaction-scoped consistency
-
-### Projection Infrastructure
-
-* reservation search projection
-* guest summary projection
-* inventory projection
-* hotel inventory aggregation projection
-
-### Projection Stabilization
-
-* projection rebuild separation
-* projection refresh separation
-* projection model layer introduction
-* projection dependency topology
-* rebuild orchestration
-* refresh orchestration
-* deterministic projection traversal
-* projection chain rebuildability
-* refresh/rebuild equivalence validation
+* rebuild correctness over optimization
+* no projection authority leakage
+* topology/orchestrator owns propagation semantics
+* services remain local-only
+* no partial rebuild optimization yet
+* no async/distributed consistency concerns yet
 
 ---
 
-## Projection Guarantees
+## Parallel Exploration: AR Foundation
 
-The following guarantees are now established:
+Exploration in progress:
 
-### Rebuildability
+- BillingAccount
+- Invoice
+- Receivable
+- folio close workflow
+- invoice issuance workflow
+- operational settlement boundary modeling
 
-All projections are treated as disposable derived state.
+Current direction:
 
-Projection chains themselves are rebuildable.
+Maintain strict separation between:
 
-### Determinism
-
-Equivalent operational state must converge to equivalent projection state.
-
-### Refresh/Rebuild Symmetry
-
-Incremental refresh propagation must converge to the same state as full projection rebuild traversal.
-
-### Authority Boundary
-
-Projections never become operational source of truth.
-
-Operational entities remain authoritative.
-
----
-
-## Current Architectural Constraints
-
-### Transaction Ownership
-
-Transactions are owned by usecase/orchestration layers.
-
-Repositories and projections consume transactions but never own them.
-
-### Projection Ownership
-
-Projection dependency propagation is topology-managed.
-
-Services should not directly own downstream projection knowledge.
-
-### Projection Semantics
-
-Projection layers are:
-
-* derived
-* disposable
-* rebuildable
-* query-oriented
-
-not operational authorities.
-
----
-
-## Current Next Targets
-
-### Projection Invalidations
-
-Formalize which downstream projections require refresh propagation and why.
-
-### Workflow Reconstruction
-
-Strengthen timeline/event reconstruction guarantees.
-
-### Projection Intelligence
-
-Prepare projection infrastructure for:
-
-* analytics
-* forecasting
-* segmentation
-* CRM intelligence
+- operational billing authority
+- settlement/accounting authority
+- projection intelligence layers

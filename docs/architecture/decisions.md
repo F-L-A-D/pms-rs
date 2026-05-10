@@ -200,3 +200,97 @@ Tradeoffs:
 - behavioral consistency becomes eventual rather than transactional
 
 These tradeoffs are accepted in favor of operational reproducibility and realistic hospitality workflows.
+
+---
+
+# ADR: Operational Billing vs Settlement Separation
+
+## Status
+
+Accepted
+
+---
+
+## Context
+
+Hospitality billing workflows contain multiple distinct responsibilities:
+
+* operational stay billing
+* settlement ownership
+* liability tracking
+* accounting finalization
+
+Initially, folios represented both:
+
+* operational billing workflow
+* settlement responsibility
+
+This coupling becomes insufficient for:
+
+* corporate billing
+* agency billing
+* future AR workflows
+* settlement tracking
+* receivable lifecycle management
+
+Operational billing correction workflows also require continued operational mutability before settlement finalization.
+
+---
+
+## Decision
+
+The architecture explicitly separates:
+
+* Folio
+* BillingAccount
+* Invoice
+* Receivable
+
+### Folio
+
+Folio represents operational billing workflow authority.
+
+Folio remains operationally mutable where correction workflows require it.
+
+### BillingAccount
+
+BillingAccount represents settlement responsibility ownership.
+
+Billing responsibility is independent from:
+
+* guest identity
+* reservation participation
+* operational reservation ownership
+
+### Invoice
+
+Invoice represents immutable settlement snapshot generation.
+
+Invoice issuance establishes operational/accounting cutoff boundaries.
+
+### Receivable
+
+Receivable represents outstanding settlement liability tracking.
+
+Receivables exist independently from operational folio mutation workflows.
+
+---
+
+## Consequences
+
+Benefits:
+
+* supports future AR workflows
+* supports corporate settlement ownership
+* preserves operational correction flexibility
+* preserves accounting reproducibility
+* avoids projection authority leakage
+* avoids premature accounting engine abstraction
+
+Tradeoffs:
+
+* lifecycle coordination complexity increases
+* operational/accounting boundaries become explicit
+* settlement workflows require additional orchestration
+
+These tradeoffs are accepted in favor of operational correctness and future extensibility.

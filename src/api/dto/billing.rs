@@ -41,3 +41,14 @@ pub struct FolioEntryResponse {
     pub description: Option<String>,
     pub occurred_at: DateTime<Utc>,
 }
+
+#[derive(Deserialize)]
+pub struct AssignBillingAccountRequest {
+    pub billing_account_id: String,
+}
+
+#[derive(Serialize)]
+pub struct IssueInvoiceResponse {
+    pub invoice_id: String,
+    pub receivable_id: String,
+}

@@ -1,78 +1,42 @@
 use uuid::Uuid;
 
-use crate::db::connection::Db;
+use crate::{
+    db::connection::Db,
 
-use crate::error::app_error::{
-    AppError,
-    AppResult,
+    repository::sqlite::operational::
+        folio_repository::
+            SqliteFolioRepository,
 };
-
-use crate::repository::sqlite::operational::
-    folio_repository::SqliteFolioRepository;
 
 pub async fn close_folio(
     db: &Db,
     folio_id: Uuid,
-) -> AppResult<()> {
+) -> Result<(), String> {
 
     let mut tx =
         db.begin_tx().await;
 
-    let result = async {
-
-        let mut folio =
-            SqliteFolioRepository::find_by_id(
-                &mut tx,
-                folio_id,
-            )
-            .await
-            .map_err(AppError::Infrastructure)?
-            .ok_or(
-                AppError::NotFound(
-                    "folio not found".into()
-                )
-            )?;
-
-        folio.close()
-            .map_err(AppError::Conflict)?;
-
-        SqliteFolioRepository::save(
+    let mut folio =
+        SqliteFolioRepository::find_by_id(
             &mut tx,
-            &folio,
+            folio_id,
         )
+        .await?
+        .ok_or(
+            "folio not found"
+        )?;
+
+    folio.close()?;
+
+    SqliteFolioRepository::save(
+        &mut tx,
+        &folio,
+    )
+    .await?;
+
+    tx.commit()
         .await
-        .map_err(AppError::Infrastructure)?;
+        .map_err(|e| e.to_string())?;
 
-        Ok(())
-
-    }.await;
-
-    match result {
-
-        Ok(_) => {
-
-            tx.commit()
-                .await
-                .map_err(|e| {
-                    AppError::Infrastructure(
-                        e.to_string()
-                    )
-                })?;
-
-            Ok(())
-        }
-
-        Err(e) => {
-
-            tx.rollback()
-                .await
-                .map_err(|e| {
-                    AppError::Infrastructure(
-                        e.to_string()
-                    )
-                })?;
-
-            Err(e)
-        }
-    }
+    Ok(())
 }

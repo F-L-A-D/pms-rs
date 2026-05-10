@@ -11,7 +11,7 @@ use pms_rs::projection::{
 
     topology::{
         invalidation_traversal_planner::
-            downstream_of,
+            invalidation_traversal_plan,
 
         projection_node::
             ProjectionNode,
@@ -19,7 +19,7 @@ use pms_rs::projection::{
 };
 
 #[test]
-fn should_return_downstream_dependencies()
+fn should_create_invalidation_traversal_plan()
 {
     let invalidation =
         ProjectionInvalidation::new(
@@ -34,24 +34,24 @@ fn should_return_downstream_dependencies()
             },
         );
 
-    let downstream =
-        downstream_of(
-            ProjectionNode::Inventory,
-            &invalidation,
+    let plan =
+        invalidation_traversal_plan(
+            &invalidation
         );
 
     assert_eq!(
-        downstream.len(),
-        1,
+        plan
+            .affected_subgraph
+            .nodes,
+
+        vec![
+            ProjectionNode::Inventory,
+            ProjectionNode::HotelInventory,
+        ]
     );
 
     assert_eq!(
-        downstream[0].upstream,
-        ProjectionNode::Inventory,
-    );
-
-    assert_eq!(
-        downstream[0].downstream,
-        ProjectionNode::HotelInventory,
+        plan.scope,
+        ProjectionScope::Inventory,
     );
 }

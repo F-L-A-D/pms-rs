@@ -1,179 +1,163 @@
 # PMS-RS Current State
 
-## Completed
+## Current Repository State
 
-### Div1 - Operational PMS Core
-
-Implemented:
-
-* reservation lifecycle
-* reservation modification
-* reservation cancellation
-* participant-authoritative reservation model
-* room assignment
-* room occupancy management
-* check-in / check-out
-* housekeeping lifecycle
-* folio management
-* append-only folio entries
-* room charge posting
-* payment posting
-* balance derivation
-* transactional rollback consistency
-* guest timeline event recording
-
----
-
-### Div2 - CRM / Projection Layer
-
-Implemented:
-
-* guest timeline aggregation
-* guest summary projection
-* projection materialization
-* projection rebuild flow
-* projection refresh flow
-* projection integration tests
-* participant-aware behavioral propagation
-* transaction ownership unification
-
----
-
-## Recently Validated
-
-The latest workflow hardening phase validated:
-
-* UUID-based aggregate identity propagation
-* application-owned identity generation
-* repository-level UUID serialization consistency
-* billing projection synchronization
-* rebuild/refresh equivalence
-* realistic workflow-driven integration testing
-* precise guest search behavior
-* false-positive suppression in search queries
-
-The architecture now consistently uses:
-
-* UUID-based internal aggregate identities
-* usecase-owned aggregate creation
-* repository-owned SQLite string mapping
-
-Workflow propagation is now validated through actual downstream aggregate usage rather than fixed test-generated identities.
-
----
-
-## Transaction Boundary Policy
-
-Transaction boundaries are owned by:
-
-* usecases
-* orchestration services
-
-Repositories, projection services, materializers, and rebuild flows consume existing transactions only.
-
-This guarantees:
-
-* workflow consistency
-* projection synchronization
-* replay compatibility
-* rebuild compatibility
-* future event sourcing compatibility
-
-Projection layers must never own operational authority.
-
----
-
-## Current Architecture Direction
-
-The system currently consists of:
+Current branch baseline:
 
 * mutable operational PMS core
 * append-only behavioral/accounting history
-* rebuildable projection layer
-* projection-oriented CRM foundation
-* workflow-oriented orchestration layer
+* rebuildable projection architecture
+* projection-oriented reconstruction model
 
 ---
 
-## Current Validation Focus
+## Projection Architecture State
 
-The project focus has shifted from lightweight UI experimentation toward workflow validation and operational hardening.
+Projection layer is now topology-managed and orchestration-driven.
 
-Primary validation areas:
-
-* transactional workflow consistency
-* aggregate boundary validation
-* projection synchronization consistency
-* realistic operational query behavior
-* workflow reconstruction consistency
-* downstream identity propagation
-* operational search precision
-* projection rebuild equivalence
-
----
-
-## Div3 - Workflow Validation & Query Hardening
-
-Status: IN PROGRESS
-
-### Completed
-
-Validated:
-
-* reservation_search projection consistency
-* projection refresh/rebuild equivalence
-* inventory projection rebuild flow
-* room_class × date inventory semantics
-* hotel-wide inventory aggregation projection
-* downstream projection chaining
-* projection-owned inventory consistency
-* realistic workflow-driven projection synchronization
-* projection model separation from operational domain models
-
-The system now supports:
+Current projection dependency chain:
 
 reservation
 → inventory projection
-→ hotel-wide inventory projection
+→ hotel inventory projection
 
-as a rebuildable projection chain.
+Projection dependencies are now:
 
-Projection layers are now explicitly treated as:
+* explicit
+* deterministic
+* rebuildable
+* orchestration-owned
 
-* derived state
-* rebuildable cache
-* non-authoritative operational views
+Projection propagation semantics are centralized into topology/orchestrator layers rather than service-local propagation chains.
 
-rather than operational source-of-truth models.
+### Projection Invalidation Foundation
+
+Projection invalidation semantics are now explicitly modeled.
+
+Current architecture introduces:
+
+* ProjectionInvalidation abstraction
+* ProjectionScope abstraction
+* topology-owned invalidation traversal planning
+* invalidation-aware orchestration entrypoints
+
+Projection invalidation is now separated from direct projection-centric refresh semantics.
+
+Current invalidation behavior remains intentionally simple:
+
+* downstream traversal is still topology-wide
+* invalidation policy evaluation is not yet implemented
+* selective propagation is not yet implemented
+
+This phase establishes the architectural foundation for:
+
+* selective downstream propagation
+* scoped invalidation traversal
+* partial rebuild compatibility
+* future multi-property traversal semantics
 
 ---
 
-### Remaining Scope
+## Completed Scope (Div3)
 
-Div3 remaining focus areas:
+### Operational Core
 
-* operational query optimization
-* projection rebuild orchestration hardening
-* inventory availability policy separation
-* hotel-wide occupancy analytics
-* projection replay scalability
-* event-oriented projection migration preparation
-* query pagination/sorting validation
-* multi-projection consistency validation
-* search ranking/noise suppression refinement
+* reservation lifecycle
+* stay workflow
+* folio/billing workflow
+* housekeeping workflow
+* guest linkage
+* transaction-scoped consistency
+
+### Projection Infrastructure
+
+* reservation search projection
+* guest summary projection
+* inventory projection
+* hotel inventory aggregation projection
+
+### Projection Stabilization
+
+* projection rebuild separation
+* projection refresh separation
+* projection model layer introduction
+* projection dependency topology
+* rebuild orchestration
+* refresh orchestration
+* deterministic projection traversal
+* projection chain rebuildability
+* refresh/rebuild equivalence validation
 
 ---
 
-### Explicitly Deferred
+## Projection Guarantees
 
-Out of current Div3 scope:
+The following guarantees are now established:
 
-* production-grade frontend implementation
-* authorization/authentication
-* external OTA/channel integration
-* RMS implementation
-* pricing/revenue optimization
-* distributed/event-stream infrastructure
-* production observability stack
+### Rebuildability
 
-UI remains validation-oriented tooling only.
+All projections are treated as disposable derived state.
+
+Projection chains themselves are rebuildable.
+
+### Determinism
+
+Equivalent operational state must converge to equivalent projection state.
+
+### Refresh/Rebuild Symmetry
+
+Incremental refresh propagation must converge to the same state as full projection rebuild traversal.
+
+### Authority Boundary
+
+Projections never become operational source of truth.
+
+Operational entities remain authoritative.
+
+---
+
+## Current Architectural Constraints
+
+### Transaction Ownership
+
+Transactions are owned by usecase/orchestration layers.
+
+Repositories and projections consume transactions but never own them.
+
+### Projection Ownership
+
+Projection dependency propagation is topology-managed.
+
+Services should not directly own downstream projection knowledge.
+
+### Projection Semantics
+
+Projection layers are:
+
+* derived
+* disposable
+* rebuildable
+* query-oriented
+
+not operational authorities.
+
+---
+
+## Current Next Targets
+
+### Projection Invalidations
+
+Formalize which downstream projections require refresh propagation and why.
+
+### Workflow Reconstruction
+
+Strengthen timeline/event reconstruction guarantees.
+
+### Projection Intelligence
+
+Prepare projection infrastructure for:
+
+* analytics
+* forecasting
+* segmentation
+* CRM intelligence

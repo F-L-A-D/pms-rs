@@ -16,6 +16,16 @@ Implemented:
 * transactional rollback consistency
 * append-only billing history
 * participant-aware reservation model
+* UUID-based aggregate identity propagation
+* transaction-scoped orchestration consistency
+
+Validated:
+
+* transactional rollback safety
+* operational authority consistency
+* append-only billing consistency
+* aggregate ownership boundaries
+* workflow mutation correctness
 
 ---
 
@@ -27,6 +37,9 @@ Implemented:
 
 * guest timeline aggregation
 * guest summary projection
+* reservation search projection
+* inventory projection
+* hotel inventory aggregation projection
 * projection materialization
 * projection rebuild flow
 * projection refresh flow
@@ -40,10 +53,13 @@ Validated:
 * participant-aware propagation
 * behavioral aggregation consistency
 * billing-driven projection refresh
+* reservation-search consistency
+* inventory rebuild consistency
+* projection disposal safety
 
 ---
 
-# Div3 - Workflow Validation & Query Hardening
+# Div3 - Workflow Validation & Projection Architecture Stabilization
 
 Status: IN PROGRESS
 
@@ -53,7 +69,7 @@ Validate whether operational workflows remain stable under realistic integration
 
 The project intentionally shifted away from frontend-first validation after workflow-level inconsistencies and query precision issues proved to be architecturally higher priority.
 
-Div3 focuses on operational hardening rather than UI implementation.
+Div3 focuses on operational hardening, projection determinism, and workflow reconstruction integrity rather than UI implementation.
 
 ---
 
@@ -68,6 +84,7 @@ Validate:
 * downstream propagation consistency
 * orchestration integrity
 * aggregate interaction correctness
+* workflow reconstruction consistency
 
 ---
 
@@ -89,6 +106,21 @@ Examples:
 
 ---
 
+### Projection Architecture Stabilization
+
+Validate:
+
+* projection dependency topology
+* deterministic traversal ordering
+* rebuild orchestration
+* refresh orchestration
+* projection chain rebuildability
+* refresh/rebuild equivalence
+* downstream propagation ownership
+* topology-managed dependency traversal
+
+---
+
 ### Projection Synchronization
 
 Validate:
@@ -98,6 +130,8 @@ Validate:
 * billing propagation
 * timeline propagation
 * behavioral synchronization
+* inventory propagation consistency
+* projection recovery consistency
 
 ---
 
@@ -120,6 +154,7 @@ Validate:
 * orchestration responsibilities
 * behavioral propagation boundaries
 * operational authority separation
+* projection authority boundaries
 
 ---
 
@@ -161,6 +196,20 @@ Validate:
 * refresh equivalence
 * projection disposal safety
 * projection recovery consistency
+* projection chain determinism
+* topology traversal consistency
+* downstream rebuild consistency
+
+---
+
+### Projection Invalidations
+
+Planned:
+
+* invalidation semantics
+* selective downstream propagation
+* propagation ownership guarantees
+* dependency invalidation policy
 
 ---
 
@@ -174,14 +223,13 @@ The following are intentionally excluded from Div3:
 * authentication
 * production frontend design
 * dashboard optimization
+* asynchronous distributed consistency
 
 UI layers are considered temporary validation tooling only.
 
 ---
 
-# Future Divisions
-
-## Div4 - Segmentation Foundation
+# Div4 - Segmentation Foundation
 
 Planned:
 
@@ -189,10 +237,12 @@ Planned:
 * guest clustering
 * CRM interpretation models
 * projection-oriented behavioral grouping
+* behavioral reconstruction models
+* projection-driven customer intelligence
 
 ---
 
-## Div5 - Forecasting & Intelligence
+# Div5 - Forecasting & Intelligence
 
 Planned:
 
@@ -201,3 +251,30 @@ Planned:
 * operational intelligence
 * revenue intelligence
 * operational decision support
+* occupancy analytics
+* pickup analytics
+* lead-time analytics
+* projection-driven forecasting infrastructure
+
+---
+
+# Long-Term Architecture Direction
+
+Target architecture:
+
+* mutable operational PMS core
+* append-only behavioral/accounting history
+* deterministic rebuildable projection system
+* projection-oriented reconstruction architecture
+* workflow-driven validation infrastructure
+* analytics-ready projection dependency topology
+
+Operational entities remain authoritative.
+
+Projection systems remain:
+
+* derived
+* disposable
+* rebuildable
+* topology-managed
+* orchestration-driven

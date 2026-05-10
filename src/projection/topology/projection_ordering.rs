@@ -11,23 +11,6 @@ use super::{
         projection_dependencies,
 };
 
-pub fn downstream_of(
-    node: ProjectionNode,
-) -> Vec<ProjectionNode>
-{
-    projection_dependencies()
-        .into_iter()
-        .filter(
-            |dependency|
-                dependency.upstream == node
-        )
-        .map(
-            |dependency|
-                dependency.downstream
-        )
-        .collect()
-}
-
 pub fn rebuild_order(
     start: ProjectionNode,
 ) -> Vec<ProjectionNode>
@@ -54,12 +37,16 @@ pub fn rebuild_order(
 
         ordered.push(current);
 
-        for downstream
-            in downstream_of(current)
+        for dependency in
+            projection_dependencies()
         {
-            queue.push_back(
-                downstream
-            );
+            if dependency.upstream
+                == current
+            {
+                queue.push_back(
+                    dependency.downstream
+                );
+            }
         }
     }
 

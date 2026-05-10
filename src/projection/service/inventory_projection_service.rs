@@ -10,11 +10,26 @@ use crate::error::app_error::{
 use crate::repository::sqlite::projection::
     inventory_projection_repository::SqliteInventoryProjectionRepository;
 
-use crate::projection::orchestrator::
-    refresh_projection_chain::refresh_projection_chain;
+use crate::projection::{
+    invalidation::{
+        projection_invalidation::
+            ProjectionInvalidation,
 
-use crate::projection::topology::
-    projection_node::ProjectionNode;
+        projection_scope::
+            ProjectionScope,
+
+        projection_invalidation::
+            ProjectionRefreshTarget,
+    },
+
+    orchestrator::
+        refresh_projection_chain::
+            propagate_invalidation,
+
+    topology::
+        projection_node::ProjectionNode,
+
+};
     
 pub async fn apply_reservation_projection(
     tx: &mut Transaction<'_, Sqlite>,
@@ -34,10 +49,18 @@ pub async fn apply_reservation_projection(
             AppError::Infrastructure
         )?;
 
-        refresh_projection_chain(
+        propagate_invalidation(
             tx,
-            ProjectionNode::Inventory,
-            &d.to_string(),
+
+ProjectionInvalidation::new(
+                ProjectionNode::Inventory,
+
+                ProjectionScope::Inventory,
+
+                ProjectionRefreshTarget::InventoryDate {
+                    date: d.to_string(),
+                },
+            )
         )
         .await?;
     }
@@ -63,10 +86,18 @@ pub async fn remove_reservation_projection(
             AppError::Infrastructure
         )?;
     
-        refresh_projection_chain(
+        propagate_invalidation(
             tx,
-            ProjectionNode::Inventory,
-            &d.to_string(),
+
+            ProjectionInvalidation::new(
+                ProjectionNode::Inventory,
+
+                ProjectionScope::Inventory,
+
+                ProjectionRefreshTarget::InventoryDate {
+                    date: d.to_string(),
+                },
+            )
         )
         .await?;
     }

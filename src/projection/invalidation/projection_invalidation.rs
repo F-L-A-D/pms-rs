@@ -17,6 +17,24 @@ pub struct ProjectionInvalidation {
 
     pub scope:
         ProjectionScope,
+
+    pub target:
+        ProjectionRefreshTarget,
+}
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+)]
+pub enum ProjectionRefreshTarget {
+
+    Global,
+
+    InventoryDate {
+        date: String,
+    },
 }
 
 impl ProjectionInvalidation {
@@ -24,11 +42,13 @@ impl ProjectionInvalidation {
     pub fn new(
         source: ProjectionNode,
         scope: ProjectionScope,
+        target: ProjectionRefreshTarget,
     ) -> Self {
 
         Self {
             source,
             scope,
+            target,
         }
     }
 }

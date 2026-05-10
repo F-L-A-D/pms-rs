@@ -17,6 +17,9 @@ use crate::projection::{
 
         projection_scope::
             ProjectionScope,
+
+        projection_invalidation::
+            ProjectionRefreshTarget,
     },
 
     orchestrator::
@@ -25,6 +28,7 @@ use crate::projection::{
 
     topology::
         projection_node::ProjectionNode,
+
 };
     
 pub async fn apply_reservation_projection(
@@ -48,13 +52,15 @@ pub async fn apply_reservation_projection(
         propagate_invalidation(
             tx,
 
-            ProjectionInvalidation::new(
+ProjectionInvalidation::new(
                 ProjectionNode::Inventory,
 
-                ProjectionScope::Date {
+                ProjectionScope::Inventory,
+
+                ProjectionRefreshTarget::InventoryDate {
                     date: d.to_string(),
                 },
-            ),
+            )
         )
         .await?;
     }
@@ -86,10 +92,12 @@ pub async fn remove_reservation_projection(
             ProjectionInvalidation::new(
                 ProjectionNode::Inventory,
 
-                ProjectionScope::Date {
+                ProjectionScope::Inventory,
+
+                ProjectionRefreshTarget::InventoryDate {
                     date: d.to_string(),
                 },
-            ),
+            )
         )
         .await?;
     }

@@ -9,8 +9,10 @@ use crate::{
 
     projection::{
         invalidation::{
-            projection_invalidation::
+            projection_invalidation::{
                 ProjectionInvalidation,
+                ProjectionRefreshTarget,
+            },
 
             projection_scope::
                 ProjectionScope,
@@ -25,7 +27,7 @@ use crate::{
             projection_node::
                 ProjectionNode,
 
-            projection_ordering::
+            invalidation_traversal_planner::
                 invalidation_traversal_plan,
         },
     },
@@ -34,16 +36,18 @@ use crate::{
 async fn refresh_single_projection(
     tx: &mut Transaction<'_, Sqlite>,
     node: ProjectionNode,
-    scope: &ProjectionScope,
+    target: &ProjectionRefreshTarget,
 ) -> AppResult<()>
 {
     match node {
 
         ProjectionNode::HotelInventory => {
 
-            match scope {
+            match target {
 
-                ProjectionScope::Date { date } => {
+                ProjectionRefreshTarget::InventoryDate {
+                    date
+                } => {
 
                     refresh_hotel_inventory_projection(
                         tx,
@@ -52,7 +56,7 @@ async fn refresh_single_projection(
                     .await?;
                 }
 
-                ProjectionScope::Global => {
+                ProjectionRefreshTarget::Global => {
                     // no-op
                 }
             }
@@ -76,12 +80,16 @@ pub async fn propagate_invalidation(
             &invalidation
         );
 
-    for node in plan.ordered_nodes {
+    for node in
+    plan
+        .affected_subgraph
+        .nodes
+    {
 
         refresh_single_projection(
             tx,
             node,
-            &plan.scope,
+            &invalidation.target,
         )
         .await?;
     }
@@ -101,7 +109,9 @@ pub async fn refresh_projection_chain(
         ProjectionInvalidation::new(
             start,
 
-            ProjectionScope::Date {
+            ProjectionScope::Inventory,
+
+            ProjectionRefreshTarget::InventoryDate {
                 date: date.to_string(),
             },
         ),

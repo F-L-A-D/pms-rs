@@ -1,8 +1,10 @@
-use crate::projection::topology::
-    projection_node::ProjectionNode;
+use super::{
+    affected_projection_subgraph::
+        AffectedProjectionSubgraph,
 
-use super::projection_scope::
-    ProjectionScope;
+    projection_scope::
+        ProjectionScope,
+};
 
 #[derive(
     Debug,
@@ -12,8 +14,8 @@ use super::projection_scope::
 )]
 pub struct InvalidationTraversalPlan {
 
-    pub ordered_nodes:
-        Vec<ProjectionNode>,
+    pub affected_subgraph:
+        AffectedProjectionSubgraph,
 
     pub scope:
         ProjectionScope,
@@ -22,12 +24,15 @@ pub struct InvalidationTraversalPlan {
 impl InvalidationTraversalPlan {
 
     pub fn new(
-        ordered_nodes: Vec<ProjectionNode>,
-        scope: ProjectionScope,
+        affected_subgraph:
+            AffectedProjectionSubgraph,
+
+        scope:
+            ProjectionScope,
     ) -> Self {
 
         Self {
-            ordered_nodes,
+            affected_subgraph,
             scope,
         }
     }

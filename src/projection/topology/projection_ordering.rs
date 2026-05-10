@@ -11,31 +11,6 @@ use super::{
         projection_dependencies,
 };
 
-use crate::projection::invalidation::{
-    invalidation_traversal_plan::
-        InvalidationTraversalPlan,
-
-    projection_invalidation::
-        ProjectionInvalidation,
-};
-
-pub fn downstream_of(
-    node: ProjectionNode,
-) -> Vec<ProjectionNode>
-{
-    projection_dependencies()
-        .into_iter()
-        .filter(
-            |dependency|
-                dependency.upstream == node
-        )
-        .map(
-            |dependency|
-                dependency.downstream
-        )
-        .collect()
-}
-
 pub fn rebuild_order(
     start: ProjectionNode,
 ) -> Vec<ProjectionNode>
@@ -62,29 +37,18 @@ pub fn rebuild_order(
 
         ordered.push(current);
 
-        for downstream
-            in downstream_of(current)
+        for dependency in
+            projection_dependencies()
         {
-            queue.push_back(
-                downstream
-            );
+            if dependency.upstream
+                == current
+            {
+                queue.push_back(
+                    dependency.downstream
+                );
+            }
         }
     }
 
     ordered
-}
-
-pub fn invalidation_traversal_plan(
-    invalidation: &ProjectionInvalidation,
-) -> InvalidationTraversalPlan {
-
-    let ordered =
-        rebuild_order(
-            invalidation.source
-        );
-
-    InvalidationTraversalPlan::new(
-        ordered,
-        invalidation.scope.clone(),
-    )
 }

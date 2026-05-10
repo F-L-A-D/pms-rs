@@ -30,6 +30,32 @@ Projection dependencies are now:
 
 Projection propagation semantics are centralized into topology/orchestrator layers rather than service-local propagation chains.
 
+### Projection Invalidation Foundation
+
+Projection invalidation semantics are now explicitly modeled.
+
+Current architecture introduces:
+
+* ProjectionInvalidation abstraction
+* ProjectionScope abstraction
+* topology-owned invalidation traversal planning
+* invalidation-aware orchestration entrypoints
+
+Projection invalidation is now separated from direct projection-centric refresh semantics.
+
+Current invalidation behavior remains intentionally simple:
+
+* downstream traversal is still topology-wide
+* invalidation policy evaluation is not yet implemented
+* selective propagation is not yet implemented
+
+This phase establishes the architectural foundation for:
+
+* selective downstream propagation
+* scoped invalidation traversal
+* partial rebuild compatibility
+* future multi-property traversal semantics
+
 ---
 
 ## Completed Scope (Div3)

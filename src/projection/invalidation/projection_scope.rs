@@ -8,8 +8,8 @@
 pub enum ProjectionScope {
 
     Global,
-
-    Date {
-        date: String,
-    },
+    Inventory,
+    Guest,
+    Billing,
+    Timeline,
 }

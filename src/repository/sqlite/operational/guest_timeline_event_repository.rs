@@ -11,14 +11,16 @@ use sqlx::{
 
 use uuid::Uuid;
 
-use crate::domain::guest_timeline_event::{
-    GuestTimelineEvent,
-    TimelineEventType,
-};
+use crate::{
+    domain::guest_timeline_event::{
+        GuestTimelineEvent,
+        TimelineEventType,
+    },
 
-use crate::error::app_error::{
-    AppError,
-    AppResult,
+    error::app_error::{
+        AppResult,
+        infra,
+    },
 };
 
 pub struct SqliteGuestTimelineEventRepository;
@@ -43,22 +45,36 @@ impl SqliteGuestTimelineEventRepository {
             "#
         )
         .bind(&event.id)
-        .bind(&event.guest_id.to_string())
-        .bind(format!("{:?}", event.event_type))
+        .bind(event.guest_id.to_string())
+        .bind(
+            match event.event_type {
+
+                TimelineEventType::ReservationCreated =>
+                    "ReservationCreated",
+
+                TimelineEventType::ReservationCancelled =>
+                    "ReservationCancelled",
+
+                TimelineEventType::CheckedIn =>
+                    "CheckedIn",
+
+                TimelineEventType::CheckedOut =>
+                    "CheckedOut",
+
+                TimelineEventType::RoomChargePosted =>
+                    "RoomChargePosted",
+            }
+        )
         .bind(&event.reference_id)
         .bind(event.occurred_at.to_rfc3339())
         .execute(&mut **tx)
         .await
-        .map_err(|e| {
-            AppError::Infrastructure(
-                e.to_string()
-            )
-        })?;
+        .map_err(infra)?;
 
         Ok(())
     }
 
-    pub async fn find_by_guest_id(
+    pub async fn list_by_guest_id(
         tx: &mut Transaction<'_, Sqlite>,
         guest_id: Uuid,
     ) -> AppResult<Vec<GuestTimelineEvent>> {
@@ -80,75 +96,77 @@ impl SqliteGuestTimelineEventRepository {
             .bind(guest_id.to_string())
             .fetch_all(&mut **tx)
             .await
-            .map_err(|e| {
-            AppError::Infrastructure(
-                e.to_string()
-            )
-        })?;
+            .map_err(infra)?;
 
-        let mut events = vec![];
+        Ok(
+            rows.iter()
+                .map(Self::row_to_event)
+                .collect::<AppResult<Vec<_>>>()?
+        )
+    }
 
-        for r in rows {
+    fn row_to_event(
+        row: &sqlx::sqlite::SqliteRow,
+    ) -> AppResult<GuestTimelineEvent> {
 
-            let event_type =
-                match r.get::<String, _>("event_type").as_str() {
+        let event_type =
+            match row
+                .get::<String, _>("event_type")
+                .as_str()
+            {
 
-                    "ReservationCreated" =>
-                        TimelineEventType::ReservationCreated,
+                "ReservationCreated" =>
+                    TimelineEventType::ReservationCreated,
 
-                    "ReservationCancelled" =>
-                        TimelineEventType::ReservationCancelled,
+                "ReservationCancelled" =>
+                    TimelineEventType::ReservationCancelled,
 
-                    "CheckedIn" =>
-                        TimelineEventType::CheckedIn,
+                "CheckedIn" =>
+                    TimelineEventType::CheckedIn,
 
-                    "CheckedOut" =>
-                        TimelineEventType::CheckedOut,
+                "CheckedOut" =>
+                    TimelineEventType::CheckedOut,
 
-                    "RoomChargePosted" =>
-                        TimelineEventType::RoomChargePosted,
+                "RoomChargePosted" =>
+                    TimelineEventType::RoomChargePosted,
 
-                    _ => {
-                        return Err(
-                            AppError::Validation(
-                                "invalid timeline event".into()
-                            )
+                _ => {
+                    return Err(
+                        infra(
+                            "invalid timeline event"
                         )
-                    }
-                };
-
-            let occurred_at =
-                DateTime::parse_from_rfc3339(
-                    &r.get::<String, _>("occurred_at")
-                )
-                .map_err(|e| {
-                    AppError::Infrastructure(
-                        e.to_string()
                     )
-                })?
-                .with_timezone(&Utc);
-
-            events.push(
-                GuestTimelineEvent {
-                    id: r.get("id"),
-
-                    guest_id:
-                        Uuid::parse_str(
-                        r.get::<String, _>("guest_id")
-                            .as_str()
-                        )
-                        .unwrap(),
-
-                    event_type,
-
-                    reference_id:
-                        r.get("reference_id"),
-
-                    occurred_at,
                 }
-            );
-        }
+            };
 
-        Ok(events)
+        let occurred_at =
+            DateTime::parse_from_rfc3339(
+                row.get::<String, _>("occurred_at")
+                    .as_str()
+            )
+            .map_err(infra)?
+            .with_timezone(&Utc);
+
+        Ok(
+            GuestTimelineEvent {
+
+                id:
+                    row.get("id"),
+
+                guest_id:
+                    Uuid::parse_str(
+                        row.get::<String, _>("guest_id")
+                            .as_str()
+                    )
+                    .map_err(infra)?,
+
+                event_type,
+
+                reference_id:
+                    row.get("reference_id"),
+
+                occurred_at,
+            }
+        )
     }
 }

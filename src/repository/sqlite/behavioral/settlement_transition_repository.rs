@@ -7,65 +7,28 @@ use uuid::Uuid;
 
 use sqlx::{
     Row,
-    SqliteConnection,
+    Transaction,
+    Sqlite,
 };
 
-use crate::error::app_error::{
-    AppError,
-    AppResult,
+use crate::{
+    error::app_error::{
+        AppResult,
+        infra,
+    },
+
+    domain::settlement_transition::{
+        SettlementTransition,
+        SettlementTransitionType,
+    },
 };
-
-use crate::domain::settlement_transition::{
-    SettlementTransition,
-    SettlementTransitionType,
-};
-
-impl SettlementTransitionType {
-
-    pub fn as_str(
-        &self
-    ) -> &'static str {
-
-        match self {
-
-            Self::InvoiceIssued =>
-                "InvoiceIssued",
-
-            Self::ReceivableOpened =>
-                "ReceivableOpened",
-        }
-    }
-
-    pub fn from_str(
-        value: &str
-    ) -> AppResult<Self> {
-
-        match value {
-
-            "InvoiceIssued" =>
-                Ok(Self::InvoiceIssued),
-
-            "ReceivableOpened" =>
-                Ok(Self::ReceivableOpened),
-
-            other => Err(
-                AppError::Infrastructure(
-                    format!(
-                        "unknown settlement transition type: {}",
-                        other
-                    )
-                )
-            )
-        }
-    }
-}
 
 pub struct SqliteSettlementTransitionRepository;
 
 impl SqliteSettlementTransitionRepository {
 
-    pub async fn insert(
-        tx: &mut SqliteConnection,
+    pub async fn save(
+        tx: &mut Transaction<'_, Sqlite>,
         transition: &SettlementTransition,
     ) -> AppResult<()> {
 
@@ -78,7 +41,7 @@ impl SqliteSettlementTransitionRepository {
                 amount,
                 occurred_at
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?1, ?2, ?3, ?4, ?5)
             "#
         )
         .bind(
@@ -99,19 +62,54 @@ impl SqliteSettlementTransitionRepository {
             transition.occurred_at
                 .to_rfc3339()
         )
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await
-        .map_err(|e| {
-            AppError::Infrastructure(
-                e.to_string()
-            )
-        })?;
+        .map_err(infra)?;
 
         Ok(())
     }
 
-    pub async fn list_by_receivable_id(
-        tx: &mut SqliteConnection,
+    pub async fn find_by_id(
+        tx: &mut Transaction<'_, Sqlite>,
+        id: Uuid,
+    ) -> AppResult<Option<SettlementTransition>> {
+
+        let row =
+            sqlx::query(
+                r#"
+                SELECT
+                    id,
+                    receivable_id,
+                    transition_type,
+                    amount,
+                    occurred_at
+                FROM settlement_transitions
+                WHERE id = ?1
+                "#
+            )
+            .bind(id.to_string())
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(infra)?;
+
+        match row {
+
+            Some(row) => {
+                Ok(
+                    Some(
+                        Self::row_to_transition(
+                            &row
+                        )?
+                    )
+                )
+            }
+
+            None => Ok(None),
+        }
+    }
+
+    pub async fn find_by_receivable_id(
+        tx: &mut Transaction<'_, Sqlite>,
         receivable_id: Uuid,
     ) -> AppResult<Vec<SettlementTransition>> {
 
@@ -125,81 +123,77 @@ impl SqliteSettlementTransitionRepository {
                     amount,
                     occurred_at
                 FROM settlement_transitions
-                WHERE receivable_id = ?
+                WHERE receivable_id = ?1
                 ORDER BY occurred_at ASC
                 "#
             )
             .bind(
                 receivable_id.to_string()
             )
-            .fetch_all(&mut *tx)
+            .fetch_all(&mut **tx)
             .await
-            .map_err(|e| {
-                AppError::Infrastructure(
-                    e.to_string()
+            .map_err(infra)?;
+
+        Ok(
+            rows.iter()
+                .map(
+                    Self::row_to_transition
                 )
-            })?;
+                .collect::<AppResult<Vec<_>>>()?
+        )
+    }
 
-        let mut transitions =
-            Vec::new();
+    fn row_to_transition(
+        row: &sqlx::sqlite::SqliteRow,
+    ) -> AppResult<SettlementTransition> {
 
-        for row in rows {
+    let transition_type =
+        SettlementTransitionType::from_str(
+            row.get::<String, _>(
+                "transition_type"
+            )
+            .as_str()
+        )
+        .map_err(infra)?;
 
-            let transition_type =
-                SettlementTransitionType::from_str(
-                    &row.get::<String, _>(
-                        "transition_type"
+        let occurred_at =
+            DateTime::parse_from_rfc3339(
+                row.get::<String, _>(
+                    "occurred_at"
+                )
+                .as_str()
+            )
+            .map_err(infra)?
+            .with_timezone(&Utc);
+
+        Ok(
+            SettlementTransition {
+
+                id:
+                    Uuid::parse_str(
+                        row.get::<String, _>(
+                            "id"
+                        )
+                        .as_str()
                     )
-                )?;
+                    .map_err(infra)?,
 
-            transitions.push(
-                SettlementTransition {
-
-                    id:
-                        Uuid::parse_str(
-                            &row.get::<String, _>(
-                                "id"
-                            )
+                receivable_id:
+                    Uuid::parse_str(
+                        row.get::<String, _>(
+                            "receivable_id"
                         )
-                        .map_err(|e| {
-                            AppError::Infrastructure(
-                                e.to_string()
-                            )
-                        })?,
+                        .as_str()
+                    )
+                    .map_err(infra)?,
 
-                    receivable_id:
-                        Uuid::parse_str(
-                            &row.get::<String, _>(
-                                "receivable_id"
-                            )
-                        )
-                        .map_err(|e| {
-                            AppError::Infrastructure(
-                                e.to_string()
-                            )
-                        })?,
+                transition_type,
 
-                    transition_type,
+                amount:
+                    row.get("amount"),
 
-                    amount:
-                        row.get("amount"),
-
-                    occurred_at:
-                        DateTime::parse_from_rfc3339(
-                            &row.get::<String, _>(
-                                "occurred_at"
-                            )
-                        )
-                        .map_err(|e| {
-                            AppError::Infrastructure(
-                                e.to_string()
-                            )
-                        })?
-                        .with_timezone(&Utc),
-                }
-            );
-        }
-
-        Ok(transitions)
+                occurred_at,
+            }
+        )
     }
 }

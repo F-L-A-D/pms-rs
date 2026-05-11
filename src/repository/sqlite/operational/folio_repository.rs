@@ -1,13 +1,32 @@
-use sqlx::{Row, Sqlite, Transaction};
+use sqlx::{
+    Row,
+    Sqlite,
+    Transaction,
+};
 
 use uuid::Uuid;
 
-use crate::domain::folio::{Folio, FolioStatus};
+use crate::{
+    domain::folio::{
+        Folio,
+        FolioStatus,
+    },
+
+    error::app_error::{
+        AppResult,
+        infra,
+    },
+};
 
 pub struct SqliteFolioRepository;
 
 impl SqliteFolioRepository {
-    pub async fn save(tx: &mut Transaction<'_, Sqlite>, folio: &Folio) -> Result<(), String> {
+
+    pub async fn save(
+        tx: &mut Transaction<'_, Sqlite>,
+        folio: &Folio,
+    ) -> AppResult<()> {
+
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO folios (
@@ -19,16 +38,25 @@ impl SqliteFolioRepository {
             VALUES (?1, ?2, ?3, ?4)
             "#,
         )
-        .bind(&folio.id.to_string())
+        .bind(folio.id.to_string())
         .bind(folio.reservation_id.to_string())
         .bind(
             folio.billing_account_id
                 .map(|id| id.to_string())
         )
-        .bind(format!("{:?}", folio.status))
+        .bind(
+            match folio.status {
+
+                FolioStatus::Open =>
+                    "Open",
+
+                FolioStatus::Closed =>
+                    "Closed",
+            }
+        )
         .execute(&mut **tx)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(infra)?;
 
         Ok(())
     }
@@ -36,9 +64,11 @@ impl SqliteFolioRepository {
     pub async fn find_by_id(
         tx: &mut Transaction<'_, Sqlite>,
         id: Uuid,
-    ) -> Result<Option<Folio>, String> {
-        let row = sqlx::query(
-            r#"
+    ) -> AppResult<Option<Folio>> {
+
+        let row =
+            sqlx::query(
+                r#"
                 SELECT
                     id,
                     reservation_id,
@@ -46,54 +76,35 @@ impl SqliteFolioRepository {
                     status
                 FROM folios
                 WHERE id = ?1
-            "#,
-        )
-        .bind(id.to_string())
-        .fetch_optional(&mut **tx)
-        .await
-        .map_err(|e| e.to_string())?;
+                "#,
+            )
+            .bind(id.to_string())
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(infra)?;
 
-        if let Some(r) = row {
-            let status = match r.get::<String, _>("status").as_str() {
-                "Open" => FolioStatus::Open,
-                "Closed" => FolioStatus::Closed,
-                _ => return Err("invalid folio status".into()),
-            };
+        match row {
 
-            Ok(Some(Folio {
-                id: Uuid::parse_str(
-                    r.get::<String, _>("id")
-                        .as_str()
-                )
-                .unwrap(),
-
-                reservation_id: Uuid::parse_str(
-                    r.get::<String, _>("reservation_id").as_str(),
-                )
-                .map_err(|e| e.to_string())?,
-
-                billing_account_id:
-                    r.get::<Option<String>, _>(
-                        "billing_account_id"
+            Some(row) => {
+                Ok(
+                    Some(
+                        Self::row_to_folio(&row)?
                     )
-                    .map(|s| Uuid::parse_str(&s))
-                    .transpose()
-                    .map_err(|e| e.to_string())?,
+                )
+            }
 
-                status,
-                
-            }))
-        } else {
-            Ok(None)
+            None => Ok(None),
         }
     }
 
-    pub async fn find_by_reservation_id(
+    pub async fn list_by_reservation_id(
         tx: &mut Transaction<'_, Sqlite>,
         reservation_id: Uuid,
-    ) -> Result<Vec<Folio>, String> {
-        let rows = sqlx::query(
-            r#"
+    ) -> AppResult<Vec<Folio>> {
+
+        let rows =
+            sqlx::query(
+                r#"
                 SELECT
                     id,
                     reservation_id,
@@ -102,45 +113,73 @@ impl SqliteFolioRepository {
                 FROM folios
                 WHERE reservation_id = ?1
                 "#,
+            )
+            .bind(reservation_id.to_string())
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(infra)?;
+
+        Ok(
+            rows.iter()
+                .map(Self::row_to_folio)
+                .collect::<AppResult<Vec<_>>>()?
         )
-        .bind(reservation_id.to_string())
-        .fetch_all(&mut **tx)
-        .await
-        .map_err(|e| e.to_string())?;
+    }
 
-        let mut folios = vec![];
+    fn row_to_folio(
+        row: &sqlx::sqlite::SqliteRow,
+    ) -> AppResult<Folio> {
 
-        for r in rows {
-            let status = match r.get::<String, _>("status").as_str() {
-                "Closed" => crate::domain::folio::FolioStatus::Closed,
+        let status =
+            match row
+                .get::<String, _>("status")
+                .as_str()
+            {
+                "Open" =>
+                    FolioStatus::Open,
 
-                _ => crate::domain::folio::FolioStatus::Open,
+                "Closed" =>
+                    FolioStatus::Closed,
+
+                _ =>
+                    return Err(
+                        infra(
+                            "invalid folio status"
+                        )
+                    ),
             };
 
-            folios.push(Folio {
-                id: Uuid::parse_str(
-                    r.get::<String, _>("id")
-                        .as_str()
-                )
-                .unwrap(),
+        Ok(
+            Folio {
 
-                reservation_id: Uuid::parse_str(
-                    r.get::<String, _>("reservation_id").as_str(),
-                )
-                .map_err(|e| e.to_string())?,
+                id:
+                    Uuid::parse_str(
+                        row.get::<String, _>("id")
+                            .as_str()
+                    )
+                    .map_err(infra)?,
+
+                reservation_id:
+                    Uuid::parse_str(
+                        row.get::<String, _>(
+                            "reservation_id"
+                        )
+                        .as_str()
+                    )
+                    .map_err(infra)?,
 
                 billing_account_id:
-                    r.get::<Option<String>, _>(
+                    row.get::<Option<String>, _>(
                         "billing_account_id"
                     )
-                    .map(|s| Uuid::parse_str(&s))
+                    .map(|s| {
+                        Uuid::parse_str(&s)
+                    })
                     .transpose()
-                    .map_err(|e| e.to_string())?,
+                    .map_err(infra)?,
 
                 status,
-            });
-        }
-
-        Ok(folios)
+            }
+        )
     }
 }

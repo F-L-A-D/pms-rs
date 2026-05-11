@@ -1,9 +1,21 @@
-use sqlx::{Row, Sqlite, Transaction};
+use sqlx::{
+    Row, 
+    Sqlite, 
+    Transaction
+};
 
 use uuid::Uuid;
 
-use crate::domain::reservation_guest_relation::{
-    ReservationGuestRelation, ReservationGuestRelationType,
+use crate::{
+    error::app_error::{
+        AppResult,
+        infra,
+    },
+
+    domain::reservation_guest_relation::{
+        ReservationGuestRelation, 
+        ReservationGuestRelationType,
+    },
 };
 
 pub struct SqliteReservationGuestRelationRepository;
@@ -12,7 +24,7 @@ impl SqliteReservationGuestRelationRepository {
     pub async fn save(
         tx: &mut Transaction<'_, Sqlite>,
         relation: &ReservationGuestRelation,
-    ) -> Result<(), String> {
+    ) -> AppResult<()>{
         sqlx::query(
             r#"
             INSERT INTO reservation_guest_relations (
@@ -28,44 +40,92 @@ impl SqliteReservationGuestRelationRepository {
         .bind(relation.relation_type.as_str())
         .execute(&mut **tx)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(infra)?;
 
         Ok(())
     }
 
+    fn row_to_relation(
+        row: &sqlx::sqlite::SqliteRow,
+    ) -> AppResult<ReservationGuestRelation> {
+
+        Ok(
+            ReservationGuestRelation {
+
+                reservation_id:
+                    Uuid::parse_str(
+                        row.get::<String, _>("reservation_id").as_str()
+                    )
+                    .map_err(infra)?,
+
+                guest_id:
+                    Uuid::parse_str(
+                        row.get::<String, _>("guest_id").as_str()
+                    )
+                    .map_err(infra)?,
+
+                relation_type:
+                    ReservationGuestRelationType::from_str(
+                        row.get::<String, _>("relation_type").as_str(),
+                    )
+                    .map_err(infra)?,
+            }
+        )
+    }
+
     pub async fn list_by_reservation_id(
         tx: &mut Transaction<'_, Sqlite>,
-        reservation_id: &uuid::Uuid,
-    ) -> Result<Vec<ReservationGuestRelation>, String> {
+        reservation_id: &Uuid,
+    ) -> AppResult<Vec<ReservationGuestRelation>> {
+
         let rows = sqlx::query(
             r#"
-                SELECT
-                    reservation_id,
-                    guest_id,
-                    relation_type
-                FROM reservation_guest_relations
-                WHERE reservation_id = ?1
-                "#,
+            SELECT
+                reservation_id,
+                guest_id,
+                relation_type
+            FROM reservation_guest_relations
+            WHERE reservation_id = ?1
+            "#,
         )
         .bind(reservation_id.to_string())
         .fetch_all(&mut **tx)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(infra)?;
 
-        Ok(rows.into_iter().map(Self::row_to_relation).collect())
+        let relations =
+            rows.into_iter()
+                .map(|row| Self::row_to_relation(&row))
+                .collect::<AppResult<Vec<_>>>()?;
+
+        Ok(relations)
     }
 
-    fn row_to_relation(row: sqlx::sqlite::SqliteRow) -> ReservationGuestRelation {
-        ReservationGuestRelation {
-            reservation_id: Uuid::parse_str(row.get::<String, _>("reservation_id").as_str())
-                .unwrap(),
+    pub async fn list_by_guest_id(
+        tx: &mut Transaction<'_, Sqlite>,
+        guest_id: &Uuid,
+    ) -> AppResult<Vec<ReservationGuestRelation>> {
 
-            guest_id: Uuid::parse_str(row.get::<String, _>("guest_id").as_str()).unwrap(),
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                reservation_id,
+                guest_id,
+                relation_type
+            FROM reservation_guest_relations
+            WHERE guest_id = ?1
+            "#,
+        )
+        .bind(guest_id.to_string())
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(infra)?;
 
-            relation_type: ReservationGuestRelationType::from_str(
-                row.get::<String, _>("relation_type").as_str(),
-            )
-            .unwrap(),
-        }
+        let relations =
+            rows.into_iter()
+                .map(|row| Self::row_to_relation(&row))
+                .collect::<AppResult<Vec<_>>>()?;
+
+        Ok(relations)
     }
 }

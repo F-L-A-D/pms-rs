@@ -1,10 +1,21 @@
-use sqlx::{Row, Sqlite, Transaction};
+use sqlx::{
+    Row,
+    Sqlite,
+    Transaction,
+};
 
 use uuid::Uuid;
 
-use crate::domain::billing_account::{
-    BillingAccount,
-    BillingAccountStatus,
+use crate::{
+    error::app_error::{
+        AppResult,
+        infra,
+    },
+
+    domain::billing_account::{
+        BillingAccount,
+        BillingAccountStatus,
+    },
 };
 
 pub struct SqliteBillingAccountRepository;
@@ -14,7 +25,7 @@ impl SqliteBillingAccountRepository {
     pub async fn save(
         tx: &mut Transaction<'_, Sqlite>,
         account: &BillingAccount,
-    ) -> Result<(), String> {
+    ) -> AppResult<()> {
 
         sqlx::query(
             r#"
@@ -33,10 +44,19 @@ impl SqliteBillingAccountRepository {
                 .map(|id| id.to_string())
         )
         .bind(&account.name)
-        .bind(format!("{:?}", account.status))
+        .bind(
+            match account.status {
+
+                BillingAccountStatus::Active =>
+                    "Active",
+
+                BillingAccountStatus::Suspended =>
+                    "Suspended",
+            }
+        )
         .execute(&mut **tx)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(infra)?;
 
         Ok(())
     }
@@ -44,7 +64,7 @@ impl SqliteBillingAccountRepository {
     pub async fn find_by_id(
         tx: &mut Transaction<'_, Sqlite>,
         id: Uuid,
-    ) -> Result<Option<BillingAccount>, String> {
+    ) -> AppResult<Option<BillingAccount>> {
 
         let row =
             sqlx::query(
@@ -61,47 +81,74 @@ impl SqliteBillingAccountRepository {
             .bind(id.to_string())
             .fetch_optional(&mut **tx)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(infra)?;
 
-        if let Some(r) = row {
+        match row {
 
-            let status =
-                match r.get::<String, _>("status").as_str() {
+            Some(row) => {
+                Ok(
+                    Some(
+                        Self::row_to_billing_account(
+                            &row
+                        )?
+                    )
+                )
+            }
 
-                    "Suspended" =>
-                        BillingAccountStatus::Suspended,
-
-                    _ =>
-                        BillingAccountStatus::Active,
-                };
-
-            Ok(Some(
-                BillingAccount {
-
-                    id:
-                        Uuid::parse_str(
-                            r.get::<String, _>("id")
-                                .as_str()
-                        )
-                        .unwrap(),
-
-                    company_id:
-                        r.get::<Option<String>, _>(
-                            "company_id"
-                        )
-                        .map(|s| Uuid::parse_str(&s))
-                        .transpose()
-                        .map_err(|e| e.to_string())?,
-
-                    name:
-                        r.get("name"),
-
-                    status,
-                }
-            ))
-
-        } else {
-            Ok(None)
+            None => Ok(None),
         }
+    }
+
+    fn row_to_billing_account(
+        row: &sqlx::sqlite::SqliteRow,
+    ) -> AppResult<BillingAccount> {
+
+        let status =
+            match row
+                .get::<String, _>("status")
+                .as_str()
+            {
+
+                "Active" =>
+                    BillingAccountStatus::Active,
+
+                "Suspended" =>
+                    BillingAccountStatus::Suspended,
+
+                _ => {
+                    return Err(
+                        infra(
+                            "invalid billing account status"
+                        )
+                    )
+                }
+            };
+
+        Ok(
+            BillingAccount {
+
+                id:
+                    Uuid::parse_str(
+                        row.get::<String, _>("id")
+                            .as_str()
+                    )
+                    .map_err(infra)?,
+
+                company_id:
+                    row.get::<Option<String>, _>(
+                        "company_id"
+                    )
+                    .map(|s| {
+                        Uuid::parse_str(&s)
+                    })
+                    .transpose()
+                    .map_err(infra)?,
+
+                name:
+                    row.get("name"),
+
+                status,
+            }
+        )
     }
 }

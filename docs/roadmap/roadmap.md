@@ -204,12 +204,17 @@ Validate:
 
 ### Projection Invalidations
 
-Planned:
+Implemented:
 
 * invalidation semantics
 * selective downstream propagation
 * propagation ownership guarantees
 * dependency invalidation policy
+* authoritative rebuild-equivalence boundaries
+* scoped rebuild convergence semantics
+* refresh/rebuild scoped symmetry
+* boundary-scoped correctness guarantees
+* execution consumption of semantic rebuild boundaries
 
 ---
 

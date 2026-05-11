@@ -47,6 +47,7 @@ impl ReservationRequestBuilder {
         self
     }
 
+    #[allow(dead_code)]
     pub fn with_dates(
         mut self,
         check_in: &str,

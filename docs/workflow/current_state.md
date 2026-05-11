@@ -41,22 +41,48 @@ Next target:
 
 ## Scoped Rebuild Semantics
 
-Focus areas:
+Status: FOUNDATION COMPLETE
 
-* refresh target semantics formalization
-* scope-aware rebuild compatibility
-* refresh / rebuild symmetry rules
-* authoritative rebuild compatibility with scoped invalidation
-* refresh boundary semantics
+Implemented:
 
-Constraints:
+* authoritative rebuild-equivalence boundary semantics
+* affected projection subgraph convergence semantics
+* scoped rebuild convergence contracts
+* refresh execution as rebuild-equivalence fulfillment
+* boundary-scoped correctness semantics
+* execution consumption of semantic rebuild boundaries
 
-* rebuild correctness over optimization
-* no projection authority leakage
-* topology/orchestrator owns propagation semantics
-* services remain local-only
-* no partial rebuild optimization yet
-* no async/distributed consistency concerns yet
+Current semantics:
+
+* affected projection subgraphs define authoritative rebuild boundaries
+* refresh propagation fulfills rebuild-equivalence contracts
+* refresh/rebuild symmetry is scoped to affected boundaries
+* rebuild equivalence guarantees are boundary-scoped
+* execution consumes semantic rebuild boundaries
+* topology remains authoritative for boundary derivation
+* projections remain rebuildable/disposable/non-authoritative
+* operational correctness remains authoritative
+
+Boundary semantics:
+
+* rebuild-equivalence guarantees apply only within affected boundaries
+* projection equivalence outside affected boundaries is intentionally undefined
+* scoped refresh correctness does not imply global projection convergence
+
+Intentional non-features:
+
+* no partial rebuild optimization
+* no incremental rebuild engine
+* no asynchronous convergence semantics
+* no distributed rebuild semantics
+* no cache-aware pruning
+* no execution heuristics
+
+Current architecture direction:
+
+Projection invalidation now derives authoritative rebuild-equivalence boundaries rather than execution-oriented refresh sets.
+
+Refresh propagation is modeled as scoped convergence toward authoritative rebuild-equivalent state.
 
 ---
 

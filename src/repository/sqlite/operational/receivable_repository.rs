@@ -1,11 +1,7 @@
-use sqlx::{Row, Sqlite, Transaction};
+use sqlx::{Sqlite, Transaction};
 
-use uuid::Uuid;
+use crate::domain::receivable::Receivable;
 
-use crate::domain::receivable::{
-    Receivable,
-    ReceivableStatus,
-};
 
 pub struct SqliteReceivableRepository;
 

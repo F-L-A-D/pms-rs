@@ -7,6 +7,9 @@ use pms_rs::projection::{
 
         projection_scope::
             ProjectionScope,
+
+        affected_projection_subgraph::
+            AffectedProjectionSubgraph,
     },
 
     topology::{
@@ -15,6 +18,9 @@ use pms_rs::projection::{
 
         projection_node::
             ProjectionNode,
+        
+        projection_dependency::
+              ProjectionDependency,
     },
 };
 
@@ -75,5 +81,115 @@ fn should_build_affected_projection_subgraph()
             .downstream,
 
         ProjectionNode::HotelInventory,
+    );
+}
+
+#[test]
+fn should_expose_boundary_nodes_as_rebuild_responsibility()
+{
+    let subgraph =
+        AffectedProjectionSubgraph::new(
+
+            vec![
+                ProjectionNode::Inventory,
+                ProjectionNode::HotelInventory,
+            ],
+
+            vec![],
+        );
+
+    assert_eq!(
+        subgraph
+            .rebuild_boundary_nodes(),
+
+        &[
+            ProjectionNode::Inventory,
+            ProjectionNode::HotelInventory,
+        ]
+    );
+}
+
+#[test]
+fn should_require_authoritative_rebuild_convergence()
+{
+    let subgraph =
+        AffectedProjectionSubgraph::new(
+
+            vec![
+                ProjectionNode::Inventory,
+                ProjectionNode::HotelInventory,
+            ],
+
+            vec![],
+        );
+
+    assert!(
+        subgraph
+            .must_converge_to_authoritative_rebuild(
+                ProjectionNode::Inventory
+            )
+    );
+
+    assert!(
+        subgraph
+            .must_converge_to_authoritative_rebuild(
+                ProjectionNode::HotelInventory
+            )
+    );
+}
+
+#[test]
+fn should_execute_refresh_only_for_nodes_requiring_rebuild_equivalence()
+{
+    let subgraph =
+        AffectedProjectionSubgraph::new(
+
+            vec![
+                ProjectionNode::Inventory,
+            ],
+
+            vec![],
+        );
+
+    assert!(
+        subgraph
+            .must_converge_to_authoritative_rebuild(
+                ProjectionNode::Inventory
+            )
+    );
+
+    assert!(
+        !subgraph
+            .must_converge_to_authoritative_rebuild(
+                ProjectionNode::HotelInventory
+            )
+    );
+}
+
+#[test]
+fn should_treat_authoritative_convergence_as_boundary_contract()
+{
+    let subgraph =
+        AffectedProjectionSubgraph::new(
+
+            vec![
+                ProjectionNode::Inventory,
+            ],
+
+            vec![],
+        );
+
+    assert!(
+        subgraph
+            .must_converge_to_authoritative_rebuild(
+                ProjectionNode::Inventory
+            )
+    );
+
+    assert!(
+        !subgraph
+            .must_converge_to_authoritative_rebuild(
+                ProjectionNode::HotelInventory
+            )
     );
 }

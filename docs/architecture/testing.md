@@ -110,3 +110,23 @@ The project prioritizes:
 * projection synchronization
 
 over isolated unit-level mocking.
+
+---
+
+### Scoped Rebuild Invariants
+
+Projection invalidation tests must verify:
+
+* authoritative rebuild-equivalence boundaries
+* scoped convergence semantics
+* refresh/rebuild symmetry
+* topology-owned boundary derivation
+* boundary-scoped correctness guarantees
+* execution consumption of semantic rebuild boundaries
+
+Scoped rebuild tests must guarantee that:
+
+* affected projection boundaries remain deterministic
+* refresh propagation fulfills rebuild-equivalence contracts
+* topology remains authoritative for boundary expansion
+* projection state outside affected boundaries remains intentionally outside scoped convergence guarantees

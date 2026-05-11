@@ -499,3 +499,70 @@ Examples:
 These queries are not projections.
 
 These queries derive authoritative operational/accounting state from operational records within transaction boundaries.
+
+---
+
+## Scoped Rebuild Semantics
+
+Affected projection subgraphs define authoritative rebuild-equivalence boundaries.
+
+Refresh propagation fulfills rebuild-equivalence contracts within affected boundaries rather than guaranteeing global projection convergence.
+
+Refresh/rebuild symmetry is treated as an architectural invariant.
+
+Equivalent operational state must converge to equivalent projection state within affected rebuild boundaries.
+
+Projection equivalence guarantees are intentionally boundary-scoped.
+
+Projection state outside affected rebuild boundaries is intentionally outside scoped convergence guarantees.
+
+This separation exists to support future:
+
+* partial rebuild execution
+* selective replay
+* asynchronous propagation
+* distributed rebuild orchestration
+* topology-aware execution optimization
+
+without introducing projection authority leakage.
+
+---
+
+## Affected Projection Boundaries
+
+Affected projection subgraphs represent semantic rebuild-equivalence boundaries rather than execution-oriented projection selection sets.
+
+Affected boundaries are topology-derived and orchestration-owned.
+
+Projection services must not determine downstream rebuild responsibility.
+
+Topology layers remain authoritative for:
+
+* dependency traversal
+* boundary derivation
+* propagation semantics
+* rebuild-equivalence scope determination
+
+---
+
+## Refresh/Rebuild Symmetry
+
+Refresh propagation and authoritative rebuild execution must converge to equivalent projection state within affected rebuild boundaries.
+
+This is treated as a core architectural invariant.
+
+Refresh execution fulfills rebuild-equivalence contracts derived from topology-managed affected projection boundaries.
+
+---
+
+## Boundary-Scoped Correctness
+
+Projection correctness guarantees are scoped to affected rebuild boundaries only.
+
+Scoped refresh correctness intentionally does not imply:
+
+* topology-wide projection convergence
+* global projection synchronization
+* full rebuild equivalence outside affected boundaries
+
+Boundary-external projection state is intentionally outside scoped equivalence guarantees until affected by future invalidation or rebuild flows.

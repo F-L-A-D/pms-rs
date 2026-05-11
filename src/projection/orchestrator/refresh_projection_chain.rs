@@ -81,21 +81,28 @@ pub async fn propagate_invalidation(
         );
 
     for node in
-    plan
-        .affected_subgraph
-        .nodes
+        plan
+            .affected_subgraph
+            .rebuild_boundary_nodes()
     {
+        if !plan
+            .affected_subgraph
+            .must_converge_to_authoritative_rebuild(
+                *node
+            )
+        {
+            continue;
+        }
 
         refresh_single_projection(
             tx,
-            node,
+            *node,
             &invalidation.target,
         )
         .await?;
     }
-
-    Ok(())
-}
+        Ok(())
+    }
 
 pub async fn refresh_projection_chain(
     tx: &mut Transaction<'_, Sqlite>,

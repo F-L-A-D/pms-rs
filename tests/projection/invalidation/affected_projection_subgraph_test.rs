@@ -1,28 +1,55 @@
 use pms_rs::projection::{
     invalidation::{
-        projection_invalidation::{
-            ProjectionInvalidation,
-            ProjectionRefreshTarget,
-        },
+        affected_projection_subgraph::
+            AffectedProjectionSubgraph,
 
         projection_scope::
             ProjectionScope,
 
-        affected_projection_subgraph::
-            AffectedProjectionSubgraph,
+        projection_invalidation::{
+            ProjectionInvalidation,
+            ProjectionRefreshTarget,
+        },
     },
 
+    orchestrator::
+        convergence_execution_result::{
+            ConvergenceExecutionResult,
+            ConvergenceExecutionStatus,
+        },
+
     topology::{
-        invalidation_traversal_planner::
-            invalidation_traversal_plan,
+        convergence_traversal_plan::
+            ConvergenceTraversalPlan,
 
         projection_node::
             ProjectionNode,
-        
-        projection_dependency::
-              ProjectionDependency,
+
+        invalidation_traversal_planner::
+            derive_convergence_plan,
     },
 };
+
+fn build_plan() -> ConvergenceTraversalPlan
+{
+    ConvergenceTraversalPlan::new(
+        AffectedProjectionSubgraph::new(
+            vec![
+                ProjectionNode::Inventory,
+                ProjectionNode::HotelInventory,
+            ],
+
+            vec![],
+        ),
+
+        vec![
+            ProjectionNode::Inventory,
+            ProjectionNode::HotelInventory,
+        ],
+
+        ProjectionScope::Inventory,
+    )
+}
 
 #[test]
 fn should_build_affected_projection_subgraph()
@@ -41,7 +68,7 @@ fn should_build_affected_projection_subgraph()
         );
 
     let plan =
-        invalidation_traversal_plan(
+        derive_convergence_plan(
             &invalidation
         );
 
@@ -85,111 +112,79 @@ fn should_build_affected_projection_subgraph()
 }
 
 #[test]
-fn should_expose_boundary_nodes_as_rebuild_responsibility()
+fn should_mark_aborted_convergence_execution()
 {
-    let subgraph =
-        AffectedProjectionSubgraph::new(
+    let plan =
+        build_plan();
+
+    let result =
+        ConvergenceExecutionResult::aborted(
+            plan,
 
             vec![
                 ProjectionNode::Inventory,
-                ProjectionNode::HotelInventory,
             ],
-
-            vec![],
         );
 
     assert_eq!(
-        subgraph
-            .rebuild_boundary_nodes(),
+        result.status,
+        ConvergenceExecutionStatus::Aborted,
+    );
 
-        &[
-            ProjectionNode::Inventory,
+    assert!(
+        !result.convergence_fulfilled()
+    );
+}
+
+#[test]
+fn should_allow_resume_after_abort()
+{
+    let plan =
+        build_plan();
+
+    let result =
+        ConvergenceExecutionResult::aborted(
+            plan,
+
+            vec![
+                ProjectionNode::Inventory,
+            ],
+        );
+
+    assert!(
+        result.resumable()
+    );
+
+    assert_eq!(
+        result.remaining_nodes(),
+
+        vec![
             ProjectionNode::HotelInventory,
-        ]
+        ],
     );
 }
 
 #[test]
-fn should_require_authoritative_rebuild_convergence()
+fn should_not_expose_aborted_convergence_as_visible()
 {
-    let subgraph =
-        AffectedProjectionSubgraph::new(
+    let plan =
+        build_plan();
 
-            vec![
-                ProjectionNode::Inventory,
-                ProjectionNode::HotelInventory,
-            ],
-
-            vec![],
-        );
-
-    assert!(
-        subgraph
-            .must_converge_to_authoritative_rebuild(
-                ProjectionNode::Inventory
-            )
-    );
-
-    assert!(
-        subgraph
-            .must_converge_to_authoritative_rebuild(
-                ProjectionNode::HotelInventory
-            )
-    );
-}
-
-#[test]
-fn should_execute_refresh_only_for_nodes_requiring_rebuild_equivalence()
-{
-    let subgraph =
-        AffectedProjectionSubgraph::new(
+    let result =
+        ConvergenceExecutionResult::aborted(
+            plan,
 
             vec![
                 ProjectionNode::Inventory,
             ],
-
-            vec![],
         );
 
     assert!(
-        subgraph
-            .must_converge_to_authoritative_rebuild(
-                ProjectionNode::Inventory
-            )
+        !result.authoritatively_visible()
     );
 
     assert!(
-        !subgraph
-            .must_converge_to_authoritative_rebuild(
-                ProjectionNode::HotelInventory
-            )
-    );
-}
-
-#[test]
-fn should_treat_authoritative_convergence_as_boundary_contract()
-{
-    let subgraph =
-        AffectedProjectionSubgraph::new(
-
-            vec![
-                ProjectionNode::Inventory,
-            ],
-
-            vec![],
-        );
-
-    assert!(
-        subgraph
-            .must_converge_to_authoritative_rebuild(
-                ProjectionNode::Inventory
-            )
-    );
-
-    assert!(
-        !subgraph
-            .must_converge_to_authoritative_rebuild(
-                ProjectionNode::HotelInventory
-            )
+        result
+            .aborted_before_boundary_visibility()
     );
 }

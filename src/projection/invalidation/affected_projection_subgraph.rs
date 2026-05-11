@@ -92,19 +92,4 @@ impl AffectedProjectionSubgraph {
                 }
             )
     }
-
-    pub fn rebuild_boundary_nodes(
-        &self,
-    ) -> &[ProjectionNode] {
-
-        &self.nodes
-    }
-
-    pub fn must_converge_to_authoritative_rebuild(
-        &self,
-        node: ProjectionNode,
-    ) -> bool {
-
-        self.contains_node(node)
-    }
 }

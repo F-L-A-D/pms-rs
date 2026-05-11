@@ -4,9 +4,6 @@ use std::collections::{
 };
 
 use crate::projection::invalidation::{
-    invalidation_traversal_plan::
-        InvalidationTraversalPlan,
-
     projection_invalidation::
         ProjectionInvalidation,
     
@@ -23,6 +20,9 @@ use super::{
 
     projection_topology::
         projection_dependencies,
+    
+    convergence_traversal_plan::
+        ConvergenceTraversalPlan,
 };
 
 pub fn downstream_of(
@@ -52,10 +52,10 @@ pub fn downstream_of(
         .collect()
 }
 
-pub fn invalidation_traversal_plan(
+pub fn derive_convergence_plan(
     invalidation:
         &ProjectionInvalidation,
-) -> InvalidationTraversalPlan {
+) -> ConvergenceTraversalPlan {
 
     let mut ordered =
         Vec::new();
@@ -100,13 +100,15 @@ pub fn invalidation_traversal_plan(
         }
     }
 
-    InvalidationTraversalPlan::new(
-
+    let affected_subgraph =
         AffectedProjectionSubgraph::new(
-            ordered,
+            ordered.clone(),
             traversed_dependencies,
-        ),
+        );
 
+    ConvergenceTraversalPlan::new(
+        affected_subgraph,
+        ordered,
         invalidation.scope.clone(),
     )
 }

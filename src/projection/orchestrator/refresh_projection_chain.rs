@@ -26,10 +26,14 @@ use crate::{
         topology::{
             projection_node::
                 ProjectionNode,
-
+                
             invalidation_traversal_planner::
-                invalidation_traversal_plan,
+                derive_convergence_plan,
         },
+
+        orchestrator::
+            convergence_execution_result::
+                ConvergenceExecutionResult,
     },
 };
 
@@ -73,42 +77,60 @@ async fn refresh_single_projection(
 pub async fn propagate_invalidation(
     tx: &mut Transaction<'_, Sqlite>,
     invalidation: ProjectionInvalidation,
-) -> AppResult<()>
+) ->AppResult<ConvergenceExecutionResult>
 {
     let plan =
-        invalidation_traversal_plan(
+        derive_convergence_plan(
             &invalidation
         );
 
-    for node in
-        plan
-            .affected_subgraph
-            .rebuild_boundary_nodes()
-    {
-        if !plan
-            .affected_subgraph
-            .must_converge_to_authoritative_rebuild(
-                *node
-            )
-        {
-            continue;
-        }
+    let mut completed =
+    Vec::new();
 
-        refresh_single_projection(
-            tx,
-            *node,
-            &invalidation.target,
-        )
-        .await?;
+    for node in
+        plan.convergence_nodes()
+    {
+        let result =
+            refresh_single_projection(
+                tx,
+                *node,
+                &invalidation.target,
+            )
+            .await;
+
+        match result {
+
+            Ok(_) => {
+
+                completed.push(*node);
+            }
+
+            Err(_error) => {
+
+                return Ok(
+                    ConvergenceExecutionResult::failed(
+                        plan.clone(),
+                        completed,
+                        *node,
+                    )
+                );
+            }
+        }
     }
-        Ok(())
+
+    Ok(
+        ConvergenceExecutionResult::fulfilled(
+            plan,
+            completed,
+        )
+    )
     }
 
 pub async fn refresh_projection_chain(
     tx: &mut Transaction<'_, Sqlite>,
     start: ProjectionNode,
     date: &str,
-) -> AppResult<()>
+) -> AppResult<ConvergenceExecutionResult>
 {
     propagate_invalidation(
         tx,

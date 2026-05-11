@@ -11,7 +11,7 @@ use pms_rs::projection::{
 
     topology::{
         invalidation_traversal_planner::
-            invalidation_traversal_plan,
+            derive_convergence_plan,
 
         projection_node::
             ProjectionNode,
@@ -35,7 +35,7 @@ fn should_create_invalidation_traversal_plan()
         );
 
     let plan =
-        invalidation_traversal_plan(
+        derive_convergence_plan(
             &invalidation
         );
 

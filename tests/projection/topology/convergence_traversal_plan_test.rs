@@ -10,16 +10,16 @@ use pms_rs::projection::{
     },
 
     topology::{
-        projection_node::
-            ProjectionNode,
-
         invalidation_traversal_planner::
             derive_convergence_plan,
+
+        projection_node::
+            ProjectionNode,
     },
 };
 
 #[test]
-fn should_propagate_when_scope_matches()
+fn should_derive_deterministic_convergence_order()
 {
     let invalidation =
         ProjectionInvalidation::new(
@@ -40,11 +40,9 @@ fn should_propagate_when_scope_matches()
         );
 
     assert_eq!(
-        plan
-            .affected_subgraph
-            .nodes,
+        plan.convergence_nodes(),
 
-        vec![
+        &[
             ProjectionNode::Inventory,
             ProjectionNode::HotelInventory,
         ]
@@ -52,13 +50,51 @@ fn should_propagate_when_scope_matches()
 }
 
 #[test]
-fn should_not_propagate_when_scope_mismatches()
+fn should_include_authoritative_boundary_in_convergence_plan()
 {
     let invalidation =
         ProjectionInvalidation::new(
             ProjectionNode::Inventory,
 
-            ProjectionScope::Guest,
+            ProjectionScope::Inventory,
+
+            ProjectionRefreshTarget::InventoryDate {
+                date:
+                    "2026-05-10"
+                        .to_string(),
+            },
+        );
+
+    let plan =
+        derive_convergence_plan(
+            &invalidation
+        );
+
+    assert!(
+        plan
+            .affected_subgraph
+            .contains_node(
+                ProjectionNode::Inventory
+            )
+    );
+
+    assert!(
+        plan
+            .affected_subgraph
+            .contains_node(
+                ProjectionNode::HotelInventory
+            )
+    );
+}
+
+#[test]
+fn should_preserve_topology_ordering_in_convergence_plan()
+{
+    let invalidation =
+        ProjectionInvalidation::new(
+            ProjectionNode::Inventory,
+
+            ProjectionScope::Inventory,
 
             ProjectionRefreshTarget::InventoryDate {
                 date:
@@ -73,12 +109,12 @@ fn should_not_propagate_when_scope_mismatches()
         );
 
     assert_eq!(
-        plan
-            .affected_subgraph
-            .nodes,
+        plan.convergence_nodes()[0],
+        ProjectionNode::Inventory,
+    );
 
-        vec![
-            ProjectionNode::Inventory,
-        ]
+    assert_eq!(
+        plan.convergence_nodes()[1],
+        ProjectionNode::HotelInventory,
     );
 }

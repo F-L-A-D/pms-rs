@@ -8,6 +8,16 @@ use crate::{
         AppResult,
 
     projection::{
+        invalidation::{
+            projection_invalidation::{
+                ProjectionInvalidation,
+                ProjectionRefreshTarget,
+            },
+
+            projection_scope::
+                ProjectionScope,
+        },
+
         rebuild::{
             guest_summary_rebuild::
                 rebuild_guest_summary_projection,
@@ -23,12 +33,16 @@ use crate::{
         },
 
         topology::{
+            invalidation_traversal_planner::
+                derive_convergence_plan,
+
             projection_node::
                 ProjectionNode,
-
-            projection_ordering::
-                rebuild_order,
         },
+
+        orchestrator::
+            convergence_execution_result::
+                ConvergenceExecutionResult,
     },
 };
 
@@ -78,19 +92,36 @@ async fn rebuild_single_projection(
 pub async fn rebuild_projection_chain(
     tx: &mut Transaction<'_, Sqlite>,
     start: ProjectionNode,
-) -> AppResult<()>
+) -> AppResult<ConvergenceExecutionResult>
 {
-    let ordered =
-        rebuild_order(start);
+    let plan =
+        derive_convergence_plan(
+            &ProjectionInvalidation::new(
+                start,
+                ProjectionScope::Global,
+                ProjectionRefreshTarget::Global,
+            ),
+        );
 
-    for node in ordered {
+    let mut completed =
+        Vec::new();
 
+    for node in
+        plan.convergence_nodes()
+    {
         rebuild_single_projection(
             tx,
-            node,
+            *node,
         )
         .await?;
+
+        completed.push(*node);
     }
 
-    Ok(())
+    Ok(
+        ConvergenceExecutionResult::fulfilled(
+            plan,
+            completed,
+        )
+    )
 }

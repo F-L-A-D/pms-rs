@@ -4,22 +4,28 @@ use crate::helpers::{
     reservation::create_reservation,
 };
 
-use pms_rs::projection::{
-    orchestrator::
-        rebuild_projection_chain::
-        rebuild_projection_chain,
+use pms_rs::{
+    projection::{
+        orchestrator::{
+            rebuild_projection_chain::
+                rebuild_projection_chain,
 
-    topology::
-        projection_node::
-        ProjectionNode,
-};
+            refresh_projection_chain::
+                refresh_projection_chain,
+        },
 
-use pms_rs::repository::sqlite::projection::{
-    hotel_inventory_projection_repository::
-        SqliteHotelInventoryProjectionRepository,
+        topology::
+            projection_node::
+                ProjectionNode,
+    },
 
-    inventory_projection_repository::
-        SqliteInventoryProjectionRepository,
+    repository::sqlite::projection::{
+        hotel_inventory_projection_repository::
+            SqliteHotelInventoryProjectionRepository,
+
+        inventory_projection_repository::
+            SqliteInventoryProjectionRepository,
+    },
 };
 
 #[tokio::test]
@@ -41,9 +47,14 @@ async fn should_match_incremental_refresh_and_full_chain_rebuild()
     let mut tx =
         app.db.begin_tx().await;
 
-    //
-    // incremental refresh result
-    //
+    let refresh_result =
+        refresh_projection_chain(
+            &mut tx,
+            ProjectionNode::Inventory,
+            "2026-05-10",
+        )
+        .await
+        .unwrap();
 
     let incremental =
         SqliteHotelInventoryProjectionRepository
@@ -53,10 +64,6 @@ async fn should_match_incremental_refresh_and_full_chain_rebuild()
             )
             .await
             .unwrap();
-
-    //
-    // delete projections
-    //
 
     SqliteInventoryProjectionRepository
         ::delete_all(&mut tx)
@@ -68,20 +75,13 @@ async fn should_match_incremental_refresh_and_full_chain_rebuild()
         .await
         .unwrap();
 
-    //
-    // full rebuild
-    //
-
-    rebuild_projection_chain(
-        &mut tx,
-        ProjectionNode::Inventory,
-    )
-    .await
-    .unwrap();
-
-    //
-    // rebuilt result
-    //
+    let rebuild_result =
+        rebuild_projection_chain(
+            &mut tx,
+            ProjectionNode::Inventory,
+        )
+        .await
+        .unwrap();
 
     let rebuilt =
         SqliteHotelInventoryProjectionRepository
@@ -92,12 +92,28 @@ async fn should_match_incremental_refresh_and_full_chain_rebuild()
             .await
             .unwrap();
 
-    //
-    // equivalence
-    //
-
     assert_eq!(
         incremental,
         rebuilt,
+    );
+
+    assert!(
+        refresh_result
+            .convergence_fulfilled()
+    );
+
+    assert!(
+        rebuild_result
+            .convergence_fulfilled()
+    );
+
+    assert!(
+        refresh_result
+            .completed_all_nodes()
+    );
+
+    assert!(
+        rebuild_result
+            .completed_all_nodes()
     );
 }

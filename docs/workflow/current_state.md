@@ -51,6 +51,13 @@ Implemented:
 * refresh execution as rebuild-equivalence fulfillment
 * boundary-scoped correctness semantics
 * execution consumption of semantic rebuild boundaries
+* refresh/rebuild orchestration symmetry
+* convergence visibility isolation semantics
+* authoritative convergence execution semantics
+* resumability boundary semantics
+* abort-safe convergence semantics
+* failed projection node isolation semantics
+* topology-owned convergence execution
 
 Current semantics:
 
@@ -62,6 +69,10 @@ Current semantics:
 * topology remains authoritative for boundary derivation
 * projections remain rebuildable/disposable/non-authoritative
 * operational correctness remains authoritative
+* partially converged projections never become authoritatively visible
+* failed projection nodes are excluded from authoritative convergence completion
+* convergence degradation remains boundary-scoped
+* topology owns convergence execution ordering
 
 Boundary semantics:
 
@@ -77,6 +88,9 @@ Intentional non-features:
 * no distributed rebuild semantics
 * no cache-aware pruning
 * no execution heuristics
+* no durable checkpoint persistence
+* no retry orchestration
+* no distributed convergence execution
 
 Current architecture direction:
 

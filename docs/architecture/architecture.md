@@ -322,6 +322,8 @@ Projection services should only manage:
 
 Services must not directly own downstream dependency propagation semantics.
 
+Projection-local services must not derive or mutate downstream convergence semantics.
+
 ---
 
 ## Projection Consistency Guarantees
@@ -526,6 +528,8 @@ This separation exists to support future:
 
 without introducing projection authority leakage.
 
+Projection convergence correctness must never override operational correctness requirements.
+
 ---
 
 ## Affected Projection Boundaries
@@ -542,6 +546,10 @@ Topology layers remain authoritative for:
 * boundary derivation
 * propagation semantics
 * rebuild-equivalence scope determination
+
+Failed projection nodes are intentionally excluded from authoritative convergence completion semantics.
+
+Execution layers consume topology-derived convergence semantics but must not redefine authoritative rebuild boundaries.
 
 ---
 
@@ -566,3 +574,9 @@ Scoped refresh correctness intentionally does not imply:
 * full rebuild equivalence outside affected boundaries
 
 Boundary-external projection state is intentionally outside scoped equivalence guarantees until affected by future invalidation or rebuild flows.
+
+Partially converged projection state must never become authoritatively visible.
+
+Authoritative visibility emerges only after affected rebuild boundary convergence fulfillment.
+
+Convergence degradation remains isolated to affected rebuild boundaries.

@@ -215,6 +215,9 @@ Implemented:
 * refresh/rebuild scoped symmetry
 * boundary-scoped correctness guarantees
 * execution consumption of semantic rebuild boundaries
+* authoritative visibility isolation semantics
+* convergence failure isolation semantics
+* topology-owned convergence execution ordering
 
 ---
 

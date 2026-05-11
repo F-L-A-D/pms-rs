@@ -157,7 +157,7 @@ pub async fn post_room_charge(
 
     assert_eq!(
         response.status(),
-        StatusCode::OK,
+        StatusCode::CREATED,
     );
 }
 
@@ -201,7 +201,7 @@ pub async fn post_payment(
 
     assert_eq!(
         response.status(),
-        StatusCode::OK,
+        StatusCode::CREATED,
     );
 }
 

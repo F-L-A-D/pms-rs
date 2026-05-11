@@ -12,7 +12,7 @@ use sqlx::{
 use uuid::Uuid;
 
 use crate::domain::folio_entry::{
-    EntryType,
+    FolioEntryType,
     FolioEntry,
 };
 
@@ -84,13 +84,13 @@ impl SqliteFolioEntryRepository {
                 match r.get::<String, _>("entry_type").as_str() {
 
                     "RoomCharge" =>
-                        EntryType::RoomCharge,
+                        FolioEntryType::RoomCharge,
 
                     "Payment" =>
-                        EntryType::Payment,
+                        FolioEntryType::Payment,
 
                     "Adjustment" =>
-                        EntryType::Adjustment,
+                        FolioEntryType::Adjustment,
 
                     _ => {
                         return Err(

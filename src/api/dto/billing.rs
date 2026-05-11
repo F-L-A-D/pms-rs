@@ -1,6 +1,12 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use chrono::{DateTime, Utc};
+use chrono::{
+    DateTime,
+    Utc,
+};
 
 use uuid::Uuid;
 
@@ -19,6 +25,16 @@ pub struct PostRoomChargeRequest {
 pub struct PostPaymentRequest {
     pub amount: i64,
     pub description: String,
+}
+
+#[derive(Deserialize)]
+pub struct AssignBillingAccountRequest {
+    pub billing_account_id: String,
+}
+
+#[derive(Deserialize)]
+pub struct IssueInvoiceRequest {
+    pub folio_id: Uuid,
 }
 
 #[derive(Serialize)]
@@ -42,13 +58,8 @@ pub struct FolioEntryResponse {
     pub occurred_at: DateTime<Utc>,
 }
 
-#[derive(Deserialize)]
-pub struct AssignBillingAccountRequest {
-    pub billing_account_id: String,
-}
-
 #[derive(Serialize)]
 pub struct IssueInvoiceResponse {
-    pub invoice_id: String,
-    pub receivable_id: String,
+    pub invoice_id: Uuid,
+    pub receivable_id: Uuid,
 }

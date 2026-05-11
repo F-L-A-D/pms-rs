@@ -19,4 +19,13 @@ pub async fn bootstrap(
     .execute(pool)
     .await
     .unwrap();
+
+    sqlx::query(
+        include_str!(
+            "settlement_transitions.sql"
+        ),
+    )
+    .execute(pool)
+    .await
+    .unwrap();
 }

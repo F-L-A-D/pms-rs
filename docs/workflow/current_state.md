@@ -118,3 +118,23 @@ Maintain strict separation between:
 - operational billing authority
 - settlement/accounting authority
 - projection intelligence layers
+
+Recent refinement:
+
+- billing handler decomposition completed
+- billing transport DTO separation refined
+- billing handlers separated into:
+  - folio authority
+  - payment mutation authority
+  - invoice / settlement authority
+- append-only billing mutations now intentionally return `201 CREATED`
+- settlement lifecycle transitions remain operational-command oriented
+- mechanical equivalence preservation prioritized during refactor
+- existing operational semantics/tree/usecase naming treated as authoritative during decomposition
+
+Implemented during exploration:
+
+- `post_payment` usecase
+- `get_folio_entries` usecase
+- billing handler modularization
+- invoice request/response DTO separation

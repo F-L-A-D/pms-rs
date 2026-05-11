@@ -8,15 +8,21 @@ use axum::{
     Router,
 };
 
-use crate::api::handlers::billing::{
-    get_balance_handler,
-    get_entries_handler,
+use crate::api::handlers::billing::folio::{
     open_folio_handler,
     close_folio_handler,
+    get_balance_handler,
+    get_entries_handler,
+};
+
+use crate::api::handlers::billing::payment::{
     post_payment_handler,
     post_room_charge_handler,
-    assign_billing_account,
+};  
+
+use crate::api::handlers::billing::invoice::{
     issue_invoice_handler,
+    assign_billing_account_handler,
 };
 
 use crate::api::handlers::guest::{
@@ -62,6 +68,7 @@ use crate::api::handlers::timeline::{
 use crate::api::handlers::guest_summary::{
     get_guest_summary_handler,
 };
+
 use crate::api::state::AppState;
 
 pub fn create_router(
@@ -227,7 +234,7 @@ pub fn create_router(
 
         .route(
             "/folios/:folio_id/billing-account",
-            post(assign_billing_account)
+            post(assign_billing_account_handler)
         )
         
         .route(

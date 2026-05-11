@@ -9,3 +9,4 @@ pub mod billing_account;
 pub mod company;
 pub mod invoice;
 pub mod receivable;
+pub mod settlement_transition;

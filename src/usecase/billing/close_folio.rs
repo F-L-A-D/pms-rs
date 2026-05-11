@@ -6,12 +6,17 @@ use crate::{
     repository::sqlite::operational::
         folio_repository::
             SqliteFolioRepository,
+
+    error::app_error::{
+        AppError,
+        AppResult,
+    },
 };
 
 pub async fn close_folio(
     db: &Db,
     folio_id: Uuid,
-) -> Result<(), String> {
+) -> AppResult<()> {
 
     let mut tx =
         db.begin_tx().await;
@@ -23,10 +28,15 @@ pub async fn close_folio(
         )
         .await?
         .ok_or(
-            "folio not found"
+            AppError::NotFound(
+                "folio not found".into()
+            )
         )?;
 
-    folio.close()?;
+    folio.close()   
+        .map_err(
+            AppError::Domain
+        )?;
 
     SqliteFolioRepository::save(
         &mut tx,
@@ -36,7 +46,11 @@ pub async fn close_folio(
 
     tx.commit()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            AppError::Infrastructure(
+                e.to_string()
+            )
+        })?;
 
     Ok(())
 }

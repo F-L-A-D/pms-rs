@@ -2,7 +2,10 @@ use uuid::Uuid;
 
 use crate::db::connection::Db;
 
-use crate::domain::folio_entry::{EntryType, FolioEntry};
+use crate::domain::folio_entry::{ 
+    FolioEntry,
+    FolioEntryType,
+};
 
 use crate::domain::guest_timeline_event::TimelineEventType;
 
@@ -34,7 +37,7 @@ pub async fn post_room_charge(
         let entry = FolioEntry::new(
             Uuid::new_v4(),
             folio_id,
-            EntryType::RoomCharge,
+            FolioEntryType::RoomCharge,
             amount,
             description,
         );

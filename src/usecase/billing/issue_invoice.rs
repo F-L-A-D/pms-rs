@@ -1,46 +1,59 @@
 use uuid::Uuid;
 
-use serde::Deserialize;
+use chrono::Utc;
 
 use crate::{
     db::connection::Db,
+
+    error::app_error::{
+        AppError,
+        AppResult,
+    },
+
     domain::{
         folio::FolioStatus,
+
         invoice::Invoice,
+
         receivable::Receivable,
+
+        settlement_transition::{
+            SettlementTransition,
+            SettlementTransitionType,
+        },
     },
-    repository::sqlite::operational::{
-        billing_account_repository::
-            SqliteBillingAccountRepository,
 
-        folio_repository::
-            SqliteFolioRepository,
+    repository::sqlite::{
 
-        invoice_repository::
-            SqliteInvoiceRepository,
+        operational::{
 
-        receivable_repository::
-            SqliteReceivableRepository,
+            billing_account_repository::
+                SqliteBillingAccountRepository,
+
+            folio_repository::
+                SqliteFolioRepository,
+
+            invoice_repository::
+                SqliteInvoiceRepository,
+
+            receivable_repository::
+                SqliteReceivableRepository,
+        },
+
+        behavioral::
+            settlement_transition_repository::
+                SqliteSettlementTransitionRepository,
     },
+
     usecase::billing::calculate_balance::
         calculate_balance_in_tx,
 };
 
-#[derive(Deserialize)]
-pub struct IssueInvoiceInput {
-    pub folio_id: Uuid,
-}
-
-pub struct IssueInvoiceOutput {
-    pub invoice_id: Uuid,
-    pub receivable_id: Uuid,
-}
-
 pub async fn issue_invoice(
     db: &Db,
-    input: IssueInvoiceInput,
+    folio_id: Uuid,
 
-) -> Result<IssueInvoiceOutput, String> {
+) -> AppResult<(Uuid, Uuid)> {
 
     let mut tx =
         db.begin_tx().await;
@@ -48,25 +61,32 @@ pub async fn issue_invoice(
     let folio =
         SqliteFolioRepository::find_by_id(
             &mut tx,
-            input.folio_id,
+            folio_id,
         )
         .await?
         .ok_or(
-            "folio not found"
+            AppError::NotFound(
+                "folio not found".into()
+            )
         )?;
 
     if folio.status != FolioStatus::Closed {
 
         return Err(
-            "cannot issue invoice for open folio"
-                .into()
+            AppError::Conflict(
+                "cannot issue invoice for open folio"
+                    .into()
+            )
         );
     }
 
     let billing_account_id =
         folio.billing_account_id
             .ok_or(
-                "billing account not assigned"
+                AppError::Conflict(
+                    "billing account not assigned"
+                        .into()
+                )
             )?;
 
     SqliteBillingAccountRepository::find_by_id(
@@ -75,7 +95,10 @@ pub async fn issue_invoice(
     )
     .await?
     .ok_or(
-        "billing account not found"
+        AppError::NotFound(
+            "billing account not found"
+                .into()
+        )
     )?;
 
     if SqliteInvoiceRepository::find_by_folio_id(
@@ -86,8 +109,10 @@ pub async fn issue_invoice(
     .is_some()
     {
         return Err(
-            "invoice already exists for folio"
-                .into()
+            AppError::Conflict(
+                "invoice already exists for folio"
+                    .into()
+            )
         );
     }
 
@@ -97,7 +122,11 @@ pub async fn issue_invoice(
             folio.id,
         )
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            AppError::Infrastructure(
+                e.to_string()
+            )
+        })?;
 
     let invoice =
         Invoice::issue(
@@ -105,6 +134,9 @@ pub async fn issue_invoice(
             folio.id,
             billing_account_id,
             issued_amount,
+        )
+        .map_err(
+            AppError::Validation
         )?;
 
     SqliteInvoiceRepository::save(
@@ -118,6 +150,9 @@ pub async fn issue_invoice(
             Uuid::new_v4(),
             invoice.id,
             invoice.issued_amount,
+        )
+        .map_err(
+            AppError::Validation
         )?;
 
     SqliteReceivableRepository::save(
@@ -126,16 +161,68 @@ pub async fn issue_invoice(
     )
     .await?;
 
+    let invoice_issued_transition =
+        SettlementTransition {
+
+            id:
+                Uuid::new_v4(),
+
+            receivable_id:
+                receivable.id,
+
+            transition_type:
+                SettlementTransitionType::
+                    InvoiceIssued,
+
+            amount:
+                invoice.issued_amount,
+
+            occurred_at:
+                Utc::now(),
+        };
+
+    SqliteSettlementTransitionRepository::insert(
+        &mut tx,
+        &invoice_issued_transition,
+    )
+    .await?;
+
+    let receivable_opened_transition =
+        SettlementTransition {
+
+            id:
+                Uuid::new_v4(),
+
+            receivable_id:
+                receivable.id,
+
+            transition_type:
+                SettlementTransitionType::
+                    ReceivableOpened,
+
+            amount:
+                invoice.issued_amount,
+
+            occurred_at:
+                Utc::now(),
+        };
+
+    SqliteSettlementTransitionRepository::insert(
+        &mut tx,
+        &receivable_opened_transition,
+    )
+    .await?;
+
     tx.commit()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            AppError::Infrastructure(
+                e.to_string()
+            )
+        })?;
 
-    Ok(IssueInvoiceOutput {
-
-        invoice_id:
-            invoice.id,
-
-        receivable_id:
-            receivable.id,
-    })
+    Ok((
+        invoice.id,
+        receivable.id,
+    ))
 }

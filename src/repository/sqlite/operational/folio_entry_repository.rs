@@ -108,7 +108,7 @@ impl SqliteFolioEntryRepository {
         }
     }
 
-    pub async fn list_by_folio_id(
+    pub async fn find_by_folio_id(
         tx: &mut Transaction<'_, Sqlite>,
         folio_id: Uuid,
     ) -> AppResult<Vec<FolioEntry>> {

@@ -10,6 +10,18 @@ use chrono::{
 
 use uuid::Uuid;
 
+use crate::domain::{
+    folio::{
+        Folio,
+        FolioStatus,
+    },
+
+    folio_entry::{
+        FolioEntryType,
+        FolioEntry,
+    },
+};
+
 #[derive(Deserialize)]
 pub struct OpenFolioRequest {
     pub reservation_id: Uuid,
@@ -62,4 +74,78 @@ pub struct FolioEntryResponse {
 pub struct IssueInvoiceResponse {
     pub invoice_id: Uuid,
     pub receivable_id: Uuid,
+}
+
+impl From<Folio>
+    for FolioResponse
+{
+    fn from(
+        folio: Folio,
+    ) -> Self {
+
+        Self {
+
+            folio_id:
+                folio.id,
+
+            status:
+                match folio.status {
+
+                    FolioStatus::Open =>
+                        "Open".into(),
+
+                    FolioStatus::Closed =>
+                        "Closed".into(),
+                },
+        }
+    }
+}
+
+impl From<FolioEntry>
+    for FolioEntryResponse
+{
+    fn from(
+        entry: FolioEntry,
+    ) -> Self {
+
+        Self {
+
+            id:
+                entry.id,
+
+            entry_type:
+                match entry.entry_type {
+
+                    FolioEntryType
+                        ::RoomCharge =>
+                    {
+                        "RoomCharge"
+                            .into()
+                    }
+
+                    FolioEntryType
+                        ::Payment =>
+                    {
+                        "Payment"
+                            .into()
+                    }
+
+                    FolioEntryType
+                        ::Adjustment =>
+                    {
+                        "Adjustment"
+                            .into()
+                    }
+                },
+
+            amount:
+                entry.amount,
+
+            description:
+                entry.description,
+
+            occurred_at:
+                entry.occurred_at,
+        }
+    }
 }

@@ -6,11 +6,6 @@ use axum::{
 
     http::StatusCode,
 
-    response::{
-        IntoResponse,
-        Response,
-    },
-
     Json,
 };
 
@@ -27,14 +22,11 @@ use crate::{
             ApiError,
             map_app_error,
         },
+
+        state::AppState,
     },
 
-    api::state::AppState,
-
-    error::app_error::AppError,
-
-    usecase::billing::{
-
+    usecase::billing::command::{
         post_payment::
             post_payment,
 
@@ -44,68 +36,56 @@ use crate::{
 };
 
 pub async fn post_payment_handler(
-
     State(state): State<AppState>,
-
     Path(folio_id): Path<String>,
-
     Json(request): Json<PostPaymentRequest>,
-
-) -> Result<Response, ApiError> {
+) -> Result<
+    StatusCode,
+    ApiError,
+> {
 
     let folio_id =
         Uuid::parse_str(&folio_id)
             .map_err(|e| {
-                map_app_error(
-                    AppError::Validation(
-                        e.to_string()
-                    )
+                ApiError::new(
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
                 )
             })?;
 
     post_payment(
         &state.db,
-
         folio_id,
-
         request.amount,
-
         request.description,
     )
     .await
     .map_err(map_app_error)?;
 
-    Ok(
-        StatusCode::CREATED
-            .into_response()
-    )
+    Ok(StatusCode::CREATED)
 }
 
 pub async fn post_room_charge_handler(
-
     State(state): State<AppState>,
-
     Path(folio_id): Path<String>,
-
     Json(request): Json<PostRoomChargeRequest>,
-
-) -> Result<Response, ApiError> {
+) -> Result<
+    StatusCode,
+    ApiError,
+> {
 
     let folio_id =
         Uuid::parse_str(&folio_id)
             .map_err(|e| {
-                map_app_error(
-                    AppError::Validation(
-                        e.to_string()
-                    )
+                ApiError::new(
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
                 )
             })?;
 
     post_room_charge(
         &state.db,
-
         folio_id,
-
         request.amount,
 
         Some(request.description),
@@ -113,8 +93,5 @@ pub async fn post_room_charge_handler(
     .await
     .map_err(map_app_error)?;
 
-    Ok(
-        StatusCode::CREATED
-            .into_response()
-    )
+    Ok(StatusCode::CREATED)
 }

@@ -4,6 +4,8 @@ use sqlx::{
     Transaction,
 };
 
+use uuid::Uuid;
+
 use crate::{
     error::app_error::{
         AppResult,
@@ -68,7 +70,7 @@ impl SqliteRoomRepository {
 
     pub async fn find_by_id(
         tx: &mut Transaction<'_, Sqlite>,
-        id: &str,
+        id: Uuid,
     ) -> AppResult<Option<Room>> {
 
         let row =
@@ -76,6 +78,7 @@ impl SqliteRoomRepository {
                 r#"
                 SELECT
                     id,
+                    room_no,
                     room_class,
                     occupancy_status,
                     housekeeping_status
@@ -83,7 +86,7 @@ impl SqliteRoomRepository {
                 WHERE id = ?
                 "#
             )
-            .bind(id)
+            .bind(id.to_string())
             .fetch_optional(&mut **tx)
             .await
             .map_err(infra)?;
@@ -102,7 +105,7 @@ impl SqliteRoomRepository {
         }
     }
 
-    pub async fn list_by_room_class(
+    pub async fn find_by_room_class(
         tx: &mut Transaction<'_, Sqlite>,
         room_class: &str,
     ) -> AppResult<Vec<Room>> {
@@ -112,6 +115,7 @@ impl SqliteRoomRepository {
                 r#"
                 SELECT
                     id,
+                    room_no,
                     room_class,
                     occupancy_status,
                     housekeeping_status
@@ -140,6 +144,7 @@ impl SqliteRoomRepository {
                 r#"
                 SELECT
                     id,
+                    room_no,
                     room_class,
                     occupancy_status,
                     housekeeping_status
@@ -208,7 +213,14 @@ impl SqliteRoomRepository {
         Ok(
             Room {
                 id:
-                    row.get("id"),
+                    Uuid::parse_str(
+                        row.get::<String, _>("id")
+                            .as_str()
+                    )
+                    .map_err(infra)?,
+
+                room_no:
+                    row.get("room_no"),
 
                 room_class:
                     row.get("room_class"),

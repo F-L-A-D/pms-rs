@@ -15,7 +15,7 @@ use crate::{
             SqliteRoomRepository,
 };
 
-pub async fn inspect_room(
+pub async fn start_cleaning(
     db: &Db,
     room_id: Uuid,
 ) -> AppResult<()> {

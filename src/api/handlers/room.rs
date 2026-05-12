@@ -1,50 +1,79 @@
-use axum::{extract::State, Json};
+use axum::{
+    extract::State,
+    Json,
+};
 
-use crate::api::dto::room::{CreateRoomRequest, RoomResponse};
+use uuid::Uuid;
 
-use crate::api::error::{map_app_error, ApiError};
-use crate::api::state::AppState;
+use crate::{
+    api::{
+        dto::room::{
+            CreateRoomRequest,
+            RoomResponse,
+        },
 
-use crate::domain::room::Room;
+        error::{
+            map_app_error,
+            ApiError,
+        },
 
-use crate::usecase::room::{create_room::create_room, list_rooms::list_rooms};
+        state::AppState,
+    },
+
+    domain::room::Room,
+
+    usecase::room::{
+        command::create_room::create_room,
+
+        search::get_rooms::get_rooms,
+    },
+};
 
 pub async fn create_room_handler(
     State(state): State<AppState>,
     Json(req): Json<CreateRoomRequest>,
 ) -> Result<Json<RoomResponse>, ApiError> {
-    let room = Room::new(req.id.clone(), req.room_class.clone());
 
-    create_room(&state.db, room.clone())
-        .await
-        .map_err(map_app_error)?;
+    let room =
+        Room::new(
+            Uuid::new_v4(),
+            req.room_no.clone(),
+            req.room_class.clone(),
+        );
 
-    Ok(Json(RoomResponse {
-        id: room.id,
-        room_class: room.room_class,
+    let response =
+        RoomResponse::from(
+            room.clone()
+    );
 
-        occupancy_status: format!("{:?}", room.occupancy_status),
+    create_room(
+        &state.db,
+        room,
+    )
+    .await
+    .map_err(map_app_error)?;
 
-        housekeeping_status: format!("{:?}", room.housekeeping_status),
-    }))
+    Ok(Json(response))
 }
 
-pub async fn list_rooms_handler(
+pub async fn get_rooms_handler(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<RoomResponse>>, ApiError> {
-    let rooms = list_rooms(&state.db).await.map_err(map_app_error)?;
 
-    let response = rooms
-        .into_iter()
-        .map(|room| RoomResponse {
-            id: room.id,
-            room_class: room.room_class,
+    let rooms =
+        get_rooms(&state.db)
+            .await
+            .map_err(map_app_error)?;
 
-            occupancy_status: format!("{:?}", room.occupancy_status),
-
-            housekeeping_status: format!("{:?}", room.housekeeping_status),
-        })
-        .collect();
+    let response =
+        rooms
+            .into_iter()
+            .map(|room| {
+                RoomResponse::from(
+                    room.clone()
+                )
+            })
+            .collect();
 
     Ok(Json(response))
 }

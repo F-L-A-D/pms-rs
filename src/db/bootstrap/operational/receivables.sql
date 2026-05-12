@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS receivables (
     id TEXT PRIMARY KEY,
-    invoice_id TEXT NOT NULL UNIQUE,
+    invoice_id TEXT NOT NULL,
     outstanding_amount INTEGER NOT NULL,
     status TEXT NOT NULL,
 

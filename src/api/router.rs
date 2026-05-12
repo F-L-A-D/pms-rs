@@ -28,7 +28,6 @@ use crate::api::handlers::billing::invoice::{
 use crate::api::handlers::guest::{
     create_guest_handler,
     get_guest_handler,
-    list_guests_handler,
     update_guest_handler,
 };
 
@@ -42,16 +41,16 @@ use crate::api::handlers::housekeeping::{
 };
 
 use crate::api::handlers::reservation::{
-    cancel_reservation,
-    create_reservation,
-    modify_reservation,
-    get_reservation_by_id,
+    cancel_reservation_handler,
+    create_reservation_handler,
+    modify_reservation_handler,
+    get_reservation_handler,
     get_guest_reservations_handler,
 };
 
 use crate::api::handlers::room::{
     create_room_handler,
-    list_rooms_handler,
+    get_rooms_handler,
 };
 
 use crate::api::handlers::stay::{
@@ -61,12 +60,7 @@ use crate::api::handlers::stay::{
 };
 
 use crate::api::handlers::timeline::{
-    create_timeline_event_handler,
-    get_guest_timeline_handler,
-};
-
-use crate::api::handlers::guest_summary::{
-    get_guest_summary_handler,
+    get_guest_timelines_handler,
 };
 
 use crate::api::state::AppState;
@@ -86,23 +80,24 @@ pub fn create_router(
 
         .route(
             "/reservations",
-            post(create_reservation),
+            post(create_reservation_handler),
         )
 
         .route(
             "/reservations/:id",
-            patch(modify_reservation),
+            patch(modify_reservation_handler),
         )
 
         .route(
             "/reservations/:id",
-            delete(cancel_reservation),
+            delete(cancel_reservation_handler),
         )
 
         .route(
             "/reservations/:id",
-            get(get_reservation_by_id)
+            get(get_reservation_handler)
         )
+
         .route(
             "/guests/:id/reservations",
             get(get_guest_reservations_handler),
@@ -111,17 +106,17 @@ pub fn create_router(
         // stay
 
         .route(
-            "/stays/:id/assign-room/:room_id",
+            "/reservations/:id/assign-room/:room_id",
             post(assign_room_handler),
         )
 
         .route(
-            "/stays/:id/check-in",
+            "/reservations/:id/check-in",
             post(check_in_handler),
         )
 
         .route(
-            "/stays/:id/check-out",
+            "/reservations/:id/check-out",
             post(check_out_handler),
         )
 
@@ -134,7 +129,7 @@ pub fn create_router(
 
         .route(
             "/rooms",
-            get(list_rooms_handler),
+            get(get_rooms_handler),
         )
 
         // housekeeping
@@ -199,11 +194,6 @@ pub fn create_router(
         )
 
         .route(
-            "/guests",
-            get(list_guests_handler),
-        )
-
-        .route(
             "/guests/:id",
             get(get_guest_handler),
         )
@@ -216,24 +206,14 @@ pub fn create_router(
         // timeline
 
         .route(
-            "/guests/:id/timeline",
-            get(get_guest_timeline_handler),
-        )
-
-        .route(
-            "/internal/timeline-events",
-            post(create_timeline_event_handler),
-        )
-
-        .route(
-            "/guests/:id/summary",
-            get(get_guest_summary_handler),
+            "/guests/:id/timelines",
+            get(get_guest_timelines_handler),
         )
 
         // invoice
 
         .route(
-            "/folios/:folio_id/billing-account",
+            "/folios/:id/billing-account",
             post(assign_billing_account_handler)
         )
         

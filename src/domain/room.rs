@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum OccupancyStatus {
     Vacant,
@@ -14,16 +16,22 @@ pub enum HousekeepingStatus {
 
 #[derive(Debug, Clone)]
 pub struct Room {
-    pub id: String,
+    pub id: Uuid,
+    pub room_no: String,
     pub room_class: String,
     pub occupancy_status: OccupancyStatus,
     pub housekeeping_status: HousekeepingStatus,
 }
 
 impl Room {
-    pub fn new(id: String, room_class: String) -> Self {
+    pub fn new(
+        id: Uuid,
+        room_no: String,
+        room_class: String
+    ) -> Self {
         Self {
             id,
+            room_no,
             room_class,
             occupancy_status: OccupancyStatus::Vacant,
             housekeeping_status: HousekeepingStatus::Inspected,

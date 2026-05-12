@@ -10,7 +10,6 @@ pub mod handlers {
     pub mod guest;
     pub mod housekeeping;
     pub mod timeline;
-    pub mod guest_summary;
 }
 pub mod dto{
     pub mod billing;

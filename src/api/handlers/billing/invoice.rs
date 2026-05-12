@@ -6,11 +6,6 @@ use axum::{
 
     http::StatusCode,
 
-    response::{
-        IntoResponse,
-        Response,
-    },
-
     Json,
 };
 
@@ -28,40 +23,34 @@ use crate::{
             ApiError,
             map_app_error,
         },
+
+        state::AppState,
     },
 
-    api::state::AppState,
-
-    error::app_error::AppError,
-
-    usecase::billing::{
-
-        assign_billing_account::{
+    usecase::billing::command::{
+        assign_billing_account::
             assign_billing_account,
-            AssignBillingAccountInput,
-        },
 
-        issue_invoice::issue_invoice,
+        issue_invoice::
+            issue_invoice,
     },
 };
 
 pub async fn assign_billing_account_handler(
-
     State(state): State<AppState>,
-
-    Path(folio_id): Path<String>,
-
+    Path(id): Path<String>,
     Json(request): Json<AssignBillingAccountRequest>,
-
-) -> Result<Response, ApiError> {
+) -> Result<
+    StatusCode,
+    ApiError,
+> {
 
     let folio_id =
-        Uuid::parse_str(&folio_id)
+        Uuid::parse_str(&id)
             .map_err(|e| {
-                map_app_error(
-                    AppError::Validation(
-                        e.to_string()
-                    )
+                ApiError::new(
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
                 )
             })?;
 
@@ -70,37 +59,30 @@ pub async fn assign_billing_account_handler(
             &request.billing_account_id
         )
         .map_err(|e| {
-            map_app_error(
-                AppError::Validation(
-                    e.to_string()
-                )
+            ApiError::new(
+                StatusCode::BAD_REQUEST,
+                e.to_string(),
             )
         })?;
 
     assign_billing_account(
         &state.db,
-
-        AssignBillingAccountInput {
-            folio_id,
-            billing_account_id,
-        },
+        folio_id,
+        billing_account_id,
     )
     .await
     .map_err(map_app_error)?;
 
-    Ok(
-        StatusCode::OK
-            .into_response()
-    )
+    Ok(StatusCode::OK)
 }
 
 pub async fn issue_invoice_handler(
-
     State(state): State<AppState>,
-
     Json(request): Json<IssueInvoiceRequest>,
-
-) -> Result<Response, ApiError> {
+) -> Result<
+    (StatusCode, Json<IssueInvoiceResponse>),
+    ApiError,
+> {
 
     let (
         invoice_id,
@@ -113,15 +95,15 @@ pub async fn issue_invoice_handler(
         .await
         .map_err(map_app_error)?;
 
-    Ok(
+    Ok((
+        StatusCode::CREATED,
+
         Json(
             IssueInvoiceResponse {
-
                 invoice_id,
 
                 receivable_id,
             }
         )
-        .into_response()
-    )
+    ))
 }

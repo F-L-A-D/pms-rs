@@ -74,7 +74,45 @@ impl SqliteGuestTimelineEventRepository {
         Ok(())
     }
 
-    pub async fn list_by_guest_id(
+    pub async fn find_by_id(
+        tx: &mut Transaction<'_, Sqlite>,
+        id: Uuid,
+    ) -> AppResult<Option<GuestTimelineEvent>> {
+
+        let row =
+            sqlx::query(
+                r#"
+                SELECT
+                    id,
+                    guest_id,
+                    event_type,
+                    reference_id,
+                    occurred_at
+                FROM guest_timeline_events
+                WHERE id = ?1
+                ORDER BY occurred_at DESC
+                "#
+            )
+            .bind(id.to_string())
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(infra)?;
+
+        match row {
+
+            Some(r) => {
+                Ok(
+                    Some(
+                        Self::row_to_event(&r)?
+                    )
+                )
+            }
+
+            None => Ok(None),
+        }
+    }
+
+    pub async fn find_by_guest_id(
         tx: &mut Transaction<'_, Sqlite>,
         guest_id: Uuid,
     ) -> AppResult<Vec<GuestTimelineEvent>> {

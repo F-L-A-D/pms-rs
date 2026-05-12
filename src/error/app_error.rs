@@ -10,12 +10,57 @@ pub enum AppError {
 pub type AppResult<T> =
     Result<T, AppError>;
 
-impl From<String> for AppError {
+pub fn validation<E>(
+    error: E
+) -> AppError
+where
+    E: ToString,
+{
+    AppError::Validation(
+        error.to_string()
+    )
+}
 
-    fn from(
-        value: String
-    ) -> Self {
+pub fn domain<E>(
+    error: E
+) -> AppError
+where
+    E: ToString,
+{
+    AppError::Domain(
+        error.to_string()
+    )
+}
 
-        AppError::Domain(value)
-    }
+pub fn not_found<E>(
+    error: E
+) -> AppError
+where
+    E: ToString,
+{
+    AppError::NotFound(
+        error.to_string()
+    )
+}
+
+pub fn conflict<E>(
+    error: E
+) -> AppError
+where
+    E: ToString,
+{
+    AppError::Conflict(
+        error.to_string()
+    )
+}
+
+pub fn infra<E>(
+    error: E
+) -> AppError
+where
+    E: ToString,
+{
+    AppError::Infrastructure(
+        error.to_string()
+    )
 }

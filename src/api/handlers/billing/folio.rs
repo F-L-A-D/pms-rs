@@ -6,11 +6,6 @@ use axum::{
 
     http::StatusCode,
 
-    response::{
-        IntoResponse,
-        Response,
-    },
-
     Json,
 };
 
@@ -20,37 +15,40 @@ use crate::{
     api::{
         dto::billing::{
             BalanceResponse,
+            FolioEntryResponse,
             FolioResponse,
             OpenFolioRequest,
-            FolioEntryResponse,
         },
 
         error::{
-            ApiError,
             map_app_error,
+            ApiError,
         },
+
+        state::AppState,
     },
 
-    api::state::AppState,
-
-    error::app_error::AppError,
-
     usecase::billing::{
-        close_folio::close_folio,
-        calculate_balance::calculate_balance,
-        open_folio::open_folio,
-        get_folio_entries::
+        calculation::calculate_balance::
+            calculate_balance,
+
+        command::{
+            close_folio::close_folio,
+            open_folio::open_folio,
+        },
+
+        search::get_folio_entries::
             get_folio_entries,
-    }
+    },
 };
 
 pub async fn open_folio_handler(
-
     State(state): State<AppState>,
-
     Json(request): Json<OpenFolioRequest>,
-
-) -> Result<Response, ApiError> {
+) -> Result<
+    Json<FolioResponse>,
+    ApiError,
+> {
 
     let folio =
         open_folio(
@@ -62,33 +60,25 @@ pub async fn open_folio_handler(
 
     Ok(
         Json(
-            FolioResponse {
-                folio_id:
-                    folio.id,
-
-                status:
-                    format!("{:?}", folio.status),
-            }
+            folio.into()
         )
-        .into_response()
     )
 }
 
 pub async fn close_folio_handler(
-
     State(state): State<AppState>,
-
     Path(folio_id): Path<String>,
-
-) -> Result<Response, ApiError> {
+) -> Result<
+    StatusCode,
+    ApiError,
+> {
 
     let folio_id =
         Uuid::parse_str(&folio_id)
             .map_err(|e| {
-                map_app_error(
-                    AppError::Validation(
-                        e.to_string()
-                    )
+                ApiError::new(
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
                 )
             })?;
 
@@ -99,27 +89,23 @@ pub async fn close_folio_handler(
     .await
     .map_err(map_app_error)?;
 
-    Ok(
-        StatusCode::OK
-            .into_response()
-    )
+    Ok(StatusCode::OK)
 }
 
 pub async fn get_balance_handler(
-
     State(state): State<AppState>,
-
     Path(folio_id): Path<String>,
-
-) -> Result<Response, ApiError> {
+) -> Result<
+    Json<BalanceResponse>,
+    ApiError,
+> {
 
     let folio_id =
         Uuid::parse_str(&folio_id)
             .map_err(|e| {
-                map_app_error(
-                    AppError::Validation(
-                        e.to_string()
-                    )
+                ApiError::new(
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
                 )
             })?;
 
@@ -138,25 +124,23 @@ pub async fn get_balance_handler(
                 balance,
             }
         )
-        .into_response()
     )
 }
 
 pub async fn get_entries_handler(
-
     State(state): State<AppState>,
-
     Path(folio_id): Path<String>,
-
-) -> Result<Response, ApiError> {
+) -> Result<
+    Json<Vec<FolioEntryResponse>>,
+    ApiError,
+> {
 
     let folio_id =
         Uuid::parse_str(&folio_id)
             .map_err(|e| {
-                map_app_error(
-                    AppError::Validation(
-                        e.to_string()
-                    )
+                ApiError::new(
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
                 )
             })?;
 
@@ -171,32 +155,8 @@ pub async fn get_entries_handler(
     let response =
         entries
             .into_iter()
-            .map(|entry| {
-                FolioEntryResponse {
+            .map(Into::into)
+            .collect();
 
-                    id:
-                        entry.id,
-
-                    entry_type:
-                        format!(
-                            "{:?}",
-                            entry.entry_type
-                        ),
-
-                    amount:
-                        entry.amount,
-
-                    description:
-                        entry.description,
-
-                    occurred_at:
-                        entry.occurred_at,
-                }
-            })
-            .collect::<Vec<_>>();
-
-    Ok(
-        Json(response)
-            .into_response()
-    )
+    Ok(Json(response))
 }

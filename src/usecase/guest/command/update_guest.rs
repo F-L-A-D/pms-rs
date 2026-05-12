@@ -22,9 +22,7 @@ use crate::{
 
 pub async fn update_guest(
     db: &Db,
-
     guest_id: Uuid,
-
     update: GuestProfileUpdate,
 ) -> AppResult<Guest> {
 

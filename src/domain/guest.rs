@@ -1,22 +1,41 @@
 use chrono::{
-    NaiveDate,
     DateTime,
-    Utc
+    NaiveDate,
+    Utc,
 };
 
 use serde::{
-    Serialize,
     Deserialize,
+    Serialize,
 };
 
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 pub enum Gender {
     Male,
     Female,
     Other,
     Unspecified,
+}
+
+#[derive(Debug, Clone)]
+pub struct GuestProfileUpdate {
+    pub last_name: String,
+    pub first_name: String,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub nationality: Option<String>,
+    pub birth_date: Option<NaiveDate>,
+    pub gender: Option<Gender>,
+    pub membership_code: Option<String>,
+    pub marketing_opt_in: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -39,126 +58,197 @@ impl Guest {
 
     pub fn new(
         id: Uuid,
-        last_name: String,
-        first_name: String,
-        phone: Option<String>,
-        email: Option<String>,
-        nationality: Option<String>,
-        birth_date: Option<NaiveDate>,
-        gender: Option<Gender>,
-        membership_code: Option<String>,
-        marketing_opt_in: bool,
+        profile: GuestProfileUpdate,
     ) -> Result<Self, String> {
 
-        let last_name = last_name.trim().to_string();
-        let first_name = first_name.trim().to_string();
+        Self::validate_profile(
+            &profile
+        )?;
 
-        if last_name.is_empty() {
-            return Err("last_name required".into());
-        }
-
-        if first_name.is_empty() {
-            return Err("first_name required".into());
-        }
-
-        let email =
-            Self::normalize_optional_string(email)
-                .map(|v| v.to_lowercase());
-
-        if let Some(email) = &email {
-            if !email.contains('@') {
-                return Err("invalid email".into());
-            }
-        }
-
-        let now = Utc::now();
+        let now =
+            Utc::now();
 
         Ok(
             Self {
+
                 id,
-                last_name,
-                first_name,
-                phone: Self::normalize_optional_string(phone),
-                email,
+
+                last_name:
+                    profile.last_name
+                        .trim()
+                        .to_string(),
+
+                first_name:
+                    profile.first_name
+                        .trim()
+                        .to_string(),
+
+                phone:
+                    Self::normalize_optional_string(
+                        profile.phone
+                    ),
+
+                email:
+                    Self::normalize_email(
+                        profile.email
+                    )?,
+
                 nationality:
-                    Self::normalize_optional_string(nationality),
-                birth_date,
-                gender,
+                    Self::normalize_optional_string(
+                        profile.nationality
+                    ),
+
+                birth_date:
+                    profile.birth_date,
+
+                gender:
+                    profile.gender,
+
                 membership_code:
                     Self::normalize_optional_string(
-                        membership_code
+                        profile.membership_code
                     ),
-                marketing_opt_in,
-                created_at: now,
-                updated_at: now,
+
+                marketing_opt_in:
+                    profile.marketing_opt_in,
+
+                created_at:
+                    now,
+
+                updated_at:
+                    now,
             }
         )
     }
 
     pub fn update_profile(
         &mut self,
-        last_name: String,
-        first_name: String,
-        phone: Option<String>,
-        email: Option<String>,
-        nationality: Option<String>,
-        birth_date: Option<NaiveDate>,
-        gender: Option<Gender>,
-        membership_code: Option<String>,
-        marketing_opt_in: bool,
+        update: GuestProfileUpdate,
     ) -> Result<(), String> {
 
-        let last_name = last_name.trim().to_string();
-        let first_name = first_name.trim().to_string();
+        Self::validate_profile(
+            &update
+        )?;
 
-        if last_name.is_empty() {
-            return Err("last_name required".into());
-        }
+        self.last_name =
+            update.last_name
+                .trim()
+                .to_string();
 
-        if first_name.is_empty() {
-            return Err("first_name required".into());
-        }
+        self.first_name =
+            update.first_name
+                .trim()
+                .to_string();
 
-        let email =
-            Self::normalize_optional_string(email)
-                .map(|v| v.to_lowercase());
-
-        if let Some(email) = &email {
-            if !email.contains('@') {
-                return Err("invalid email".into());
-            }
-        }
-
-        self.last_name = last_name;
-        self.first_name = first_name;
         self.phone =
-            Self::normalize_optional_string(phone);
-        self.email = email;
+            Self::normalize_optional_string(
+                update.phone
+            );
+
+        self.email =
+            Self::normalize_email(
+                update.email
+            )?;
+
         self.nationality =
-            Self::normalize_optional_string(nationality);
-        self.birth_date = birth_date;
-        self.gender = gender;
+            Self::normalize_optional_string(
+                update.nationality
+            );
+
+        self.birth_date =
+            update.birth_date;
+
+        self.gender =
+            update.gender;
+
         self.membership_code =
             Self::normalize_optional_string(
-                membership_code
+                update.membership_code
             );
-        self.marketing_opt_in = marketing_opt_in;
 
-        self.updated_at = Utc::now();
+        self.marketing_opt_in =
+            update.marketing_opt_in;
+
+        self.updated_at =
+            Utc::now();
 
         Ok(())
     }
 
+    fn validate_profile(
+        profile: &GuestProfileUpdate,
+    ) -> Result<(), String> {
+
+        if profile.last_name
+            .trim()
+            .is_empty()
+        {
+
+            return Err(
+                "last_name required"
+                    .into()
+            );
+        }
+
+        if profile.first_name
+            .trim()
+            .is_empty()
+        {
+
+            return Err(
+                "first_name required"
+                    .into()
+            );
+        }
+
+        if let Some(email)
+            = &profile.email
+        {
+
+            if !email.contains('@')
+            {
+
+                return Err(
+                    "invalid email"
+                        .into()
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn normalize_email(
+        email: Option<String>,
+    ) -> Result<Option<String>, String> {
+
+        let normalized =
+            Self::normalize_optional_string(
+                email
+            )
+            .map(
+                |v| v.to_lowercase()
+            );
+
+        Ok(normalized)
+    }
+
     fn normalize_optional_string(
-        value: Option<String>
+        value: Option<String>,
     ) -> Option<String> {
 
         value.and_then(|v| {
-            let trimmed = v.trim().to_string();
+
+            let trimmed =
+                v.trim()
+                    .to_string();
 
             if trimmed.is_empty() {
+
                 None
+
             } else {
+
                 Some(trimmed)
             }
         })

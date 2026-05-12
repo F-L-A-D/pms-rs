@@ -5,7 +5,7 @@ use crate::{
 
     domain::{
         guest_timeline_event::TimelineEventType,
-        reservation::ReservationStatus,
+        reservation::{Reservation, ReservationStatus},
     },
 
     error::app_error::{
@@ -26,7 +26,7 @@ use crate::{
 pub async fn cancel_reservation(
     db: &Db,
     id: Uuid,
-) -> AppResult<()> {
+) -> AppResult<Reservation> {
 
     let mut tx =
         db.begin_tx().await;
@@ -47,9 +47,8 @@ pub async fn cancel_reservation(
                 )?;
 
         if reservation.reservation_status
-            == ReservationStatus::Cancelled
-        {
-            return Ok(());
+            == ReservationStatus::Cancelled{
+                return Ok(reservation);
         }
 
         remove_reservation_projection(
@@ -87,19 +86,19 @@ pub async fn cancel_reservation(
             .await?;
         }
 
-        Ok(())
+        Ok(reservation)
 
     }.await;
 
     match result {
 
-        Ok(_) => {
+        Ok(reservation) => {
 
             tx.commit()
                 .await
                 .map_err(infra)?;
 
-            Ok(())
+            Ok(reservation)
         }
 
         Err(e) => {

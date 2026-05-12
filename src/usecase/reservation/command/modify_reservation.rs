@@ -1,37 +1,29 @@
+use chrono::NaiveDate;
+
 use uuid::Uuid;
 
 use crate::{
-    db::connection::Db,
-
-    error::app_error::{
+    db::connection::Db, domain::reservation::Reservation, error::app_error::{
         AppResult,
         infra,
         not_found,
         validation,
-    },
-
-    projection::service::
+    }, projection::service::
         inventory_projection_service::
-            transition_reservation_projection,
-
-    repository::sqlite::operational::
-        reservation_repository::SqliteReservationRepository,
-
-    usecase::reservation::stay_input::{
-        normalize,
-        StayInput,
-    },
+            transition_reservation_projection, repository::sqlite::operational::
+        reservation_repository::SqliteReservationRepository
 };
 
 pub async fn modify_reservation(
     db: &Db,
     id: Uuid,
-    input: StayInput,
-) -> AppResult<()> {
+    check_in: Option<NaiveDate>,
+    check_out: Option<NaiveDate>,
+    room_class: Option<String>,
+) -> AppResult<Reservation> {
 
     let mut tx =
         db.begin_tx().await;
-
 
     let result = async {
 
@@ -51,11 +43,29 @@ pub async fn modify_reservation(
         let old_reservation =
             reservation.clone();
 
-        let (check_in, check_out) =
-            normalize(
-                input.clone()
-            )
-            .map_err(validation)?;
+        let check_in =
+            check_in.unwrap_or(
+                reservation.check_in
+            );
+
+        let check_out =
+            check_out.unwrap_or(
+                reservation.check_out
+            );
+
+        if check_in > check_out {
+
+            return Err(
+                validation(
+                    "check_in must be <= check_out"
+                )
+            );
+        }
+
+        let room_class =
+            room_class.unwrap_or(
+                reservation.room_class.clone()
+            );
 
         reservation.check_in =
             check_in;
@@ -64,7 +74,7 @@ pub async fn modify_reservation(
             check_out;
 
         reservation.room_class =
-            input.room_class();
+            room_class;
 
         SqliteReservationRepository
             ::modify(
@@ -80,19 +90,19 @@ pub async fn modify_reservation(
         )
         .await?;
 
-        Ok(())
+        Ok(reservation)
 
     }.await;
 
     match result {
 
-        Ok(_) => {
+        Ok(reservation) => {
 
             tx.commit()
                 .await
                 .map_err(infra)?;
 
-            Ok(())
+            Ok(reservation)
         }
 
         Err(e) => {

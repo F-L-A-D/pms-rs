@@ -5,7 +5,8 @@ use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::domain::reservation_guest_relation::{
-    ReservationGuestRelation, ReservationGuestRelationType,
+    ReservationGuestRelation, 
+    ReservationGuestRelationType,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -24,13 +25,13 @@ pub enum StayStatus {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Reservation {
     pub id: Uuid,
-    pub external_id: String,
+    pub external_id: Option<String>,
     pub check_in: NaiveDate,
     pub check_out: NaiveDate,
     pub reservation_status: ReservationStatus,
     pub stay_status: Option<StayStatus>,
     pub room_class: String,
-    pub room_id: Option<String>,
+    pub room_id: Option<Uuid>,
     pub participants: Vec<ReservationGuestRelation>,
     pub created_at: DateTime<Utc>,
 }
@@ -38,17 +39,12 @@ pub struct Reservation {
 impl Reservation {
     pub fn new(
         id: Uuid,
-        external_id: String,
+        external_id: Option<String>,
         check_in: NaiveDate,
         check_out: NaiveDate,
         room_class: String,
         participants: Vec<ReservationGuestRelation>,
     ) -> Result<Self, String> {
-        let external_id = external_id.trim().to_string();
-
-        if external_id.is_empty() {
-            return Err("external_id required".into());
-        }
 
         if check_in > check_out {
             return Err("check_in must be before or equal to check_out".into());

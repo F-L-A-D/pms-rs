@@ -2,71 +2,137 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
+
 use uuid::Uuid;
 
-use crate::api::dto::guest::{
-    CreateGuestRequest, GuestResponse, GuestSearchQuery, UpdateGuestRequest,
-};
+use crate::{
+    api::{
+        dto::guest::{
+            CreateGuestRequest,
+            GuestResponse,
+            GuestSearchQuery,
+            UpdateGuestRequest,
+        },
 
-use crate::api::error::{map_app_error, ApiError};
-use crate::api::state::AppState;
+        error::{
+            map_app_error,
+            ApiError,
+        },
 
-use crate::domain::guest::Guest;
+        state::AppState,
+    },
+    domain::guest::{
+        Guest,
+        GuestProfileUpdate,
+    },
+    usecase::guest::{
+        command::{
+            create_guest::create_guest,
+            update_guest::update_guest,
+        },
 
-use crate::error::app_error::AppError;
+        detail::get_guest::get_guest,
 
-use crate::usecase::guest::{
-    create_guest::create_guest, get_guest::get_guest, list_guests::list_guests,
-    update_guest::update_guest,
+        search::get_guests::get_guests,
+    },
 };
 
 pub async fn create_guest_handler(
     State(state): State<AppState>,
     Json(req): Json<CreateGuestRequest>,
 ) -> Result<Json<GuestResponse>, ApiError> {
-    let guest = Guest::new(
-        Uuid::new_v4(),
-        req.last_name,
-        req.first_name,
-        req.phone,
-        req.email,
-        req.nationality,
-        req.birth_date,
-        req.gender,
-        req.membership_code,
-        req.marketing_opt_in,
+
+    let profile =
+        GuestProfileUpdate {
+            last_name: req.last_name,
+
+            first_name: req.first_name,
+
+            phone: req.phone,
+
+            email: req.email,
+
+            nationality: req.nationality,
+
+            birth_date: req.birth_date,
+
+            gender: req.gender,
+
+            membership_code: req.membership_code,
+
+            marketing_opt_in:
+                req.marketing_opt_in,
+        };
+
+    let guest =
+        Guest::new(
+            Uuid::new_v4(),
+            profile,
+        )
+        .map_err(|e| {
+            ApiError::new(
+                axum::http::StatusCode::BAD_REQUEST,
+                e,
+            )
+        })?;
+
+    let response =
+        GuestResponse::from(
+            guest.clone(),
+        );
+
+    create_guest(
+        &state.db,
+        guest,
     )
-    .map_err(|e| map_app_error(AppError::Validation(e)))?;
+    .await
+    .map_err(map_app_error)?;
 
-    create_guest(&state.db, guest.clone())
-        .await
-        .map_err(map_app_error)?;
-
-    Ok(Json(guest.into()))
+    Ok(Json(response))
 }
 
 pub async fn get_guest_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<GuestResponse>, ApiError> {
-    let guest_id =
-        Uuid::parse_str(&id).map_err(|e| map_app_error(AppError::Validation(e.to_string())))?;
 
-    let guest = get_guest(&state.db, guest_id)
+    let guest_id =
+        Uuid::parse_str(&id)
+            .map_err(|e| {
+                ApiError::new(
+                    axum::http::StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                )
+            })?;
+
+    let guest =
+        get_guest(
+            &state.db,
+            guest_id,
+        )
         .await
         .map_err(map_app_error)?
-        .ok_or_else(|| ApiError::new(axum::http::StatusCode::NOT_FOUND, "guest not found"))?;
+        .ok_or_else(|| {
+            ApiError::new(
+                axum::http::StatusCode::NOT_FOUND,
+                "guest not found",
+            )
+        })?;
 
-    Ok(Json(guest.into()))
+    Ok(
+        Json(
+            guest.into(),
+        )
+    )
 }
 
-pub async fn list_guests_handler(
+pub async fn get_guests_handler(
     State(state): State<AppState>,
     Query(query): Query<GuestSearchQuery>,
 ) -> Result<Json<Vec<GuestResponse>>, ApiError> {
 
     let guests =
-        list_guests(
+        get_guests(
             &state.db,
             query.query,
             query.field,
@@ -88,24 +154,50 @@ pub async fn update_guest_handler(
     Path(id): Path<String>,
     Json(req): Json<UpdateGuestRequest>,
 ) -> Result<Json<GuestResponse>, ApiError> {
+
     let guest_id =
-        Uuid::parse_str(&id).map_err(|e| map_app_error(AppError::Validation(e.to_string())))?;
+        Uuid::parse_str(&id)
+            .map_err(|e| {
+                ApiError::new(
+                    axum::http::StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                )
+            })?;
 
-    let guest = update_guest(
-        &state.db,
-        guest_id,
-        req.last_name,
-        req.first_name,
-        req.phone,
-        req.email,
-        req.nationality,
-        req.birth_date,
-        req.gender,
-        req.membership_code,
-        req.marketing_opt_in,
+    let profile =
+        GuestProfileUpdate {
+            last_name: req.last_name,
+
+            first_name: req.first_name,
+
+            phone: req.phone,
+
+            email: req.email,
+
+            nationality: req.nationality,
+
+            birth_date: req.birth_date,
+
+            gender: req.gender,
+
+            membership_code: req.membership_code,
+
+            marketing_opt_in:
+                req.marketing_opt_in,
+        };
+
+    let guest =
+        update_guest(
+            &state.db,
+            guest_id,
+            profile,
+        )
+        .await
+        .map_err(map_app_error)?;
+
+    Ok(
+        Json(
+            guest.into(),
+        )
     )
-    .await
-    .map_err(map_app_error)?;
-
-    Ok(Json(guest.into()))
 }

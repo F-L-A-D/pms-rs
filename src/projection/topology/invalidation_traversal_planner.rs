@@ -12,6 +12,13 @@ use crate::projection::invalidation::{
 };
 
 use super::{
+        
+    convergence_traversal_plan::
+        ConvergenceTraversalPlan,
+
+    convergence_step::
+        ConvergenceStep,
+
     projection_dependency::
         ProjectionDependency,
 
@@ -20,9 +27,7 @@ use super::{
 
     projection_topology::
         projection_dependencies,
-    
-    convergence_traversal_plan::
-        ConvergenceTraversalPlan,
+
 };
 
 pub fn downstream_of(
@@ -57,7 +62,10 @@ pub fn derive_convergence_plan(
         &ProjectionInvalidation,
 ) -> ConvergenceTraversalPlan {
 
-    let mut ordered =
+    let mut ordered_nodes =
+        Vec::new();
+    
+    let mut convergence_steps =
         Vec::new();
 
     let mut traversed_dependencies =
@@ -82,7 +90,15 @@ pub fn derive_convergence_plan(
 
         visited.insert(current);
 
-        ordered.push(current);
+        ordered_nodes.push(
+            current
+        );
+
+        convergence_steps.push(
+            ConvergenceStep::new(
+                current,
+            )
+        );
 
         for dependency in
             downstream_of(
@@ -102,13 +118,12 @@ pub fn derive_convergence_plan(
 
     let affected_subgraph =
         AffectedProjectionSubgraph::new(
-            ordered.clone(),
+            ordered_nodes,
             traversed_dependencies,
         );
 
     ConvergenceTraversalPlan::new(
         affected_subgraph,
-        ordered,
-        invalidation.scope.clone(),
+        convergence_steps,
     )
 }

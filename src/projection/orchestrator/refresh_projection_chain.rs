@@ -18,11 +18,6 @@ use crate::{
                 ProjectionScope,
         },
 
-        service::{
-            hotel_inventory_projection_service::
-                refresh_hotel_inventory_projection,
-        },
-
         topology::{
             projection_node::
                 ProjectionNode,
@@ -34,45 +29,16 @@ use crate::{
         orchestrator::
             convergence_execution_result::
                 ConvergenceExecutionResult,
+
+        execution::{
+            projection_convergence_executor::
+                ProjectionConvergenceExecutor,
+
+            projection_execution_registry::
+                ProjectionExecutionRegistry,
+        },
     },
 };
-
-async fn refresh_single_projection(
-    tx: &mut Transaction<'_, Sqlite>,
-    node: ProjectionNode,
-    target: &ProjectionRefreshTarget,
-) -> AppResult<()>
-{
-    match node {
-
-        ProjectionNode::HotelInventory => {
-
-            match target {
-
-                ProjectionRefreshTarget::InventoryDate {
-                    date
-                } => {
-
-                    refresh_hotel_inventory_projection(
-                        tx,
-                        date,
-                    )
-                    .await?;
-                }
-
-                ProjectionRefreshTarget::Global => {
-                    // no-op
-                }
-            }
-        }
-
-        _ => {
-            // no-op
-        }
-    }
-
-    Ok(())
-}
 
 pub async fn propagate_invalidation(
     tx: &mut Transaction<'_, Sqlite>,
@@ -85,24 +51,29 @@ pub async fn propagate_invalidation(
         );
 
     let mut completed =
-    Vec::new();
+        Vec::new();
 
-    for node in
-        plan.convergence_nodes()
+    let executor = 
+        ProjectionExecutionRegistry;
+
+    for step in plan.steps()
     {
         let result =
-            refresh_single_projection(
-                tx,
-                *node,
-                &invalidation.target,
-            )
-            .await;
+            executor
+                .execute(
+                    tx, 
+                    step.node(), 
+                    &invalidation.target,
+                )
+                .await;
 
         match result {
 
             Ok(_) => {
 
-                completed.push(*node);
+                completed.push(
+                    step.node()
+                );
             }
 
             Err(_error) => {
@@ -111,7 +82,7 @@ pub async fn propagate_invalidation(
                     ConvergenceExecutionResult::failed(
                         plan.clone(),
                         completed,
-                        *node,
+                        step.node(),
                     )
                 );
             }

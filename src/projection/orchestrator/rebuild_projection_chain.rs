@@ -7,7 +7,15 @@ use crate::{
     error::app_error::
         AppResult,
 
-    projection::{
+    projection::{       
+        execution::{
+            projection_convergence_executor::
+                ProjectionConvergenceExecutor,
+
+            projection_execution_registry::
+                ProjectionExecutionRegistry,
+        },
+
         invalidation::{
             projection_invalidation::{
                 ProjectionInvalidation,
@@ -16,20 +24,6 @@ use crate::{
 
             projection_scope::
                 ProjectionScope,
-        },
-
-        rebuild::{
-            guest_summary_rebuild::
-                rebuild_guest_summary_projection,
-
-            inventory_projection_rebuild::
-                rebuild_inventory_projection,
-
-            reservation_search_rebuild::
-                rebuild_reservation_search_projection,
-
-            hotel_inventory_projection_rebuild::
-                rebuild_hotel_inventory_projection,
         },
 
         topology::{
@@ -46,48 +40,7 @@ use crate::{
     },
 };
 
-async fn rebuild_single_projection(
-    tx: &mut Transaction<'_, Sqlite>,
-    node: ProjectionNode,
-) -> AppResult<()>
-{
-    match node {
 
-        ProjectionNode::GuestSummary => {
-
-            rebuild_guest_summary_projection(
-                tx,
-            )
-            .await?;
-        }
-
-        ProjectionNode::ReservationSearch => {
-
-            rebuild_reservation_search_projection(
-                tx,
-            )
-            .await?;
-        }
-
-        ProjectionNode::Inventory => {
-
-            rebuild_inventory_projection(
-                tx,
-            )
-            .await?;
-        }
-
-        ProjectionNode::HotelInventory => {
-
-            rebuild_hotel_inventory_projection(
-                tx,
-            )
-            .await?;
-        }
-    }
-
-    Ok(())
-}
 
 pub async fn rebuild_projection_chain(
     tx: &mut Transaction<'_, Sqlite>,
@@ -106,16 +59,22 @@ pub async fn rebuild_projection_chain(
     let mut completed =
         Vec::new();
 
-    for node in
-        plan.convergence_nodes()
-    {
-        rebuild_single_projection(
-            tx,
-            *node,
-        )
-        .await?;
+    let executor =
+        ProjectionExecutionRegistry;
 
-        completed.push(*node);
+    for step in
+        plan.steps()
+    {
+        executor
+            .execute_rebuild(
+                tx,
+                step.node(),
+            )
+            .await?;
+
+        completed.push(
+            step.node()
+        );
     }
 
     Ok(

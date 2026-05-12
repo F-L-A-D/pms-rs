@@ -1,10 +1,17 @@
 use crate::projection::{
-    invalidation::projection_scope::ProjectionScope,
 
-    topology::projection_node::ProjectionNode,
+    invalidation::
+        affected_projection_subgraph:: 
+            AffectedProjectionSubgraph,
 
-    invalidation::affected_projection_subgraph::
-        AffectedProjectionSubgraph,
+    topology::{
+        convergence_step::
+            ConvergenceStep,
+
+        projection_node::
+            ProjectionNode,        
+
+    }
 };
 
 #[derive(
@@ -15,14 +22,11 @@ use crate::projection::{
 )]
 pub struct ConvergenceTraversalPlan {
 
-    pub affected_subgraph:
+    affected_subgraph:
         AffectedProjectionSubgraph,
 
-    pub ordered_nodes:
-        Vec<ProjectionNode>,
-
-    pub scope:
-        ProjectionScope,
+    steps:
+        Vec<ConvergenceStep>,
 }
 
 impl ConvergenceTraversalPlan {
@@ -31,33 +35,38 @@ impl ConvergenceTraversalPlan {
         affected_subgraph:
             AffectedProjectionSubgraph,
 
-        ordered_nodes:
-            Vec<ProjectionNode>,
-
-        scope:
-            ProjectionScope,
-    ) -> Self {
-
+        steps: Vec<
+            ConvergenceStep
+        >,
+    ) -> Self
+    {
         Self {
             affected_subgraph,
-            ordered_nodes,
-            scope,
+            steps,
         }
+    }
+
+    pub fn steps(
+        &self,
+    ) -> &[ConvergenceStep]
+    {
+        &self.steps
+    }
+
+    pub fn affected_subgraph(
+        &self,
+    ) -> &AffectedProjectionSubgraph
+    {
+        &self.affected_subgraph
     }
 
     pub fn convergence_nodes(
         &self,
-    ) -> &[ProjectionNode] {
-
-        &self.ordered_nodes
-    }
-
-    pub fn contains(
-        &self,
-        node: ProjectionNode,
-    ) -> bool {
-
-        self.ordered_nodes
-            .contains(&node)
+    ) -> Vec<ProjectionNode>
+    {
+        self.steps
+            .iter()
+            .map(|step| step.node())
+            .collect()
     }
 }

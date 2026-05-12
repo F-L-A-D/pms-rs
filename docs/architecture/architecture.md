@@ -504,6 +504,109 @@ These queries derive authoritative operational/accounting state from operational
 
 ---
 
+## Settlement Reconstruction
+
+Settlement/accounting state must remain reconstructable independently from projections.
+
+Settlement reconstruction derives authoritative accounting state from:
+
+* settlement transition history
+* invoice authority
+* receivable lifecycle authority
+* operational accounting references
+
+Projection systems must not participate in authoritative settlement reconstruction.
+
+---
+
+### Operational Mutation vs Accounting Interpretation
+
+Operational billing mutations and accounting settlement interpretation are intentionally separated.
+
+Examples of operational mutations:
+
+* payment posting
+* room charge posting
+* folio correction
+* folio closure
+
+Examples of accounting interpretation:
+
+* receivable opening
+* payment allocation
+* receivable settlement
+* settlement reversal
+* dispute lifecycle transitions
+* write-off lifecycle transitions
+
+Operational mutations represent hospitality workflow activity.
+
+Accounting interpretation represents settlement/accounting meaning.
+
+These concerns must not collapse into a single authority model.
+
+---
+
+### SettlementTransition History
+
+SettlementTransition records represent append-only accounting semantic history.
+
+Settlement transition history supports:
+
+* deterministic replay
+* accounting reconstruction
+* auditability
+* future settlement reinterpretation
+* forecasting compatibility
+
+Settlement transitions are not:
+
+* projections
+* workflow UI events
+* downstream synchronization triggers
+* mutable accounting summaries
+
+Settlement transitions must remain append-oriented.
+
+---
+
+### Receivable Reconstruction
+
+Receivable lifecycle state must remain reconstructable from authoritative settlement history.
+
+Receivables may contain mutable workflow-oriented summary state.
+
+However:
+
+mutable summaries must not become exclusive accounting reconstruction authority.
+
+Outstanding settlement state must remain reproducible from authoritative accounting history.
+
+---
+
+### Derived Accounting Queries
+
+Derived accounting queries may reconstruct authoritative accounting state from append-oriented accounting history.
+
+Examples:
+
+* outstanding receivable balance
+* collectible exposure
+* settlement aging
+* payment allocation state
+
+These queries are authoritative operational/accounting queries rather than projections.
+
+---
+
+### Projection Independence
+
+Projection rebuilds, topology evolution, invalidation semantics, and projection reconstruction must remain independent from accounting replay semantics.
+
+Projection evolution must never alter authoritative settlement reconstruction results.
+
+---
+
 ## Scoped Rebuild Semantics
 
 Affected projection subgraphs define authoritative rebuild-equivalence boundaries.
@@ -580,3 +683,156 @@ Partially converged projection state must never become authoritatively visible.
 Authoritative visibility emerges only after affected rebuild boundary convergence fulfillment.
 
 Convergence degradation remains isolated to affected rebuild boundaries.
+
+---
+
+# Usecase Layer Semantics
+
+The usecase layer is divided by workflow semantics.
+
+## command
+
+`usecase/*/command`
+
+Command usecases own operational workflow execution.
+
+Responsibilities:
+
+* aggregate state transition
+* validation orchestration
+* operational persistence
+* behavioral append
+
+Allowed:
+
+* `repository.find_by_id`
+* `repository.save`
+* `repository.modify`
+* behavioral repositories
+* orchestrators
+
+Disallowed:
+
+* direct projection access
+* projection services
+* projection repositories
+* projection rebuild ownership
+
+Projection rebuilds are orchestrator-owned.
+
+
+---
+
+## detail
+
+`usecase/*/detail`
+
+Detail usecases provide direct operational entity retrieval.
+
+Responsibilities:
+
+* single aggregate retrieval
+* detail screen retrieval
+* operational truth access
+
+Allowed:
+
+* `repository.find_by_id`
+
+Disallowed:
+
+* list/search retrieval
+* projection access
+* behavioral traversal
+* aggregate scanning
+
+
+---
+
+## search
+
+`usecase/*/search`
+
+Search usecases provide list-oriented retrieval.
+
+Responsibilities:
+
+* search retrieval
+* keyword filtering
+* list queries
+* projection-backed query orchestration
+
+Allowed:
+
+* repository list/search queries
+* behavioral repositories
+* projection services
+
+Disallowed:
+
+* direct projection repository access
+
+Projection access must follow:
+
+usecase
+→ projection/services
+→ projection/*
+
+
+---
+
+## calculation
+
+`usecase/*/calculation`
+
+Calculation usecases provide derived computation logic.
+
+Examples:
+
+* balance calculation
+* receivable derivation
+* settlement computation
+
+Allowed:
+
+* repositories
+* behavioral repositories
+
+Disallowed:
+
+* operational mutation
+* projection ownership
+
+
+---
+
+# Projection Ownership
+
+Projection ownership belongs exclusively to the projection layer.
+
+Usecases must not directly own:
+
+* projection persistence
+* projection rebuild topology
+* projection invalidation traversal
+
+Projection consistency is orchestrator-owned.
+
+
+---
+
+# Operational Truth Rule
+
+Operational repositories remain authoritative.
+
+Operational entities may be directly retrieved when:
+
+* accessing by identity
+* performing transactional workflow
+* retrieving detail views
+
+Projection models remain:
+
+* rebuildable
+* disposable
+* non-authoritative

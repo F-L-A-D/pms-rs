@@ -1,9 +1,4 @@
-pub mod create_reservation;
-pub mod modify_reservation;
-pub mod cancel_reservation;
-pub mod get_reservation;
-pub mod assign_room;
+pub mod command;
+pub mod detail;
+pub mod search;
 pub mod stay_input;
-pub mod reservation_search_view;
-pub mod get_reservation_search_view;
-pub mod get_guest_reservations;

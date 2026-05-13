@@ -19,9 +19,23 @@ use crate::{
         not_found,
     },
 
-    projection::service::
-        guest_summary_projection_service::
-            refresh_guest_summary_projection,
+    projection::{
+        invalidation::{
+            projection_invalidation::{
+                ProjectionInvalidation,
+                ProjectionRefreshTarget,
+            },
+
+            projection_scope::
+                ProjectionScope,
+        },
+
+        orchestrator::refresh_projection_chain::
+            refresh_projection_chain,
+
+        topology::projection_node::
+            ProjectionNode,
+    },
 
     repository::sqlite::operational::{
         folio_entry_repository::
@@ -34,7 +48,8 @@ use crate::{
             SqliteReservationRepository,
     },
 
-    usecase::timeline::command::record_event::record_event,
+    usecase::timeline::command::
+        record_event::record_event,
 };
 
 pub async fn post_room_charge(
@@ -42,8 +57,8 @@ pub async fn post_room_charge(
     folio_id: Uuid,
     amount: i64,
     description: Option<String>,
-) -> AppResult<()> {
-
+) -> AppResult<()>
+{
     let mut tx =
         db.begin_tx().await;
 
@@ -58,8 +73,8 @@ pub async fn post_room_charge(
                 .await?
                 .ok_or(
                     not_found(
-                        "folio not found"
-                    )
+                        "folio not found",
+                    ),
                 )?;
 
         let entry =
@@ -91,8 +106,8 @@ pub async fn post_room_charge(
                 .await?
                 .ok_or(
                     not_found(
-                        "reservation not found"
-                    )
+                        "reservation not found",
+                    ),
                 )?;
 
         let primary_guest_id =
@@ -100,10 +115,9 @@ pub async fn post_room_charge(
                 .primary_participant()
                 .map(|p| p.guest_id);
 
-        if let Some(guest_id)
-            = primary_guest_id
+        if let Some(guest_id) =
+            primary_guest_id
         {
-
             record_event(
                 &mut tx,
                 guest_id,
@@ -117,10 +131,19 @@ pub async fn post_room_charge(
         for participant in
             &reservation.participants
         {
-
-            refresh_guest_summary_projection(
+            refresh_projection_chain(
                 &mut tx,
-                participant.guest_id,
+
+                ProjectionInvalidation::new(
+                    ProjectionNode::GuestAggregate,
+
+                    ProjectionScope::Guest,
+
+                    ProjectionRefreshTarget::Guest {
+                        guest_id:
+                            participant.guest_id,
+                    },
+                ),
             )
             .await?;
         }

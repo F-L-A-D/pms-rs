@@ -26,7 +26,7 @@ pub async fn refresh_guest_aggregate(
 ) -> AppResult<GuestAggregate> {
 
     let aggregate =
-        materialize_guest_aggregate(
+        materialize_guest_aggregate(    
             tx,
             guest_id,
         )

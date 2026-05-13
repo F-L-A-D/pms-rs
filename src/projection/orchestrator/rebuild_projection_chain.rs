@@ -8,13 +8,9 @@ use crate::{
         AppResult,
 
     projection::{       
-        execution::{
+        execution::
             projection_convergence_executor::
                 ProjectionConvergenceExecutor,
-
-            projection_execution_registry::
-                ProjectionExecutionRegistry,
-        },
 
         invalidation::{
             projection_invalidation::{
@@ -59,16 +55,13 @@ pub async fn rebuild_projection_chain(
     let mut completed =
         Vec::new();
 
-    let executor =
-        ProjectionExecutionRegistry;
-
     for step in
         plan.steps()
     {
-        executor
-            .execute_rebuild(
+        ProjectionConvergenceExecutor::
+            execute_rebuild(
                 tx,
-                step.node(),
+                &step.node(),
             )
             .await?;
 

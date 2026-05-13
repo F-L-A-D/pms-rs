@@ -3,15 +3,39 @@ use chrono::NaiveDate;
 use uuid::Uuid;
 
 use crate::{
-    db::connection::Db, domain::reservation::Reservation, error::app_error::{
+    db::connection::Db,
+
+    domain::reservation::
+        Reservation,
+
+    error::app_error::{
         AppResult,
         infra,
         not_found,
         validation,
-    }, projection::service::
-        inventory_projection_service::
-            transition_reservation_projection, repository::sqlite::operational::
-        reservation_repository::SqliteReservationRepository
+    },
+
+    projection::{
+        invalidation::{
+            projection_invalidation::{
+                ProjectionInvalidation,
+                ProjectionRefreshTarget,
+            },
+
+            projection_scope::
+                ProjectionScope,
+        },
+
+        orchestrator::refresh_projection_chain::
+            refresh_projection_chain,
+
+        topology::projection_node::
+            ProjectionNode,
+    },
+
+    repository::sqlite::operational::
+        reservation_repository::
+            SqliteReservationRepository,
 };
 
 pub async fn modify_reservation(
@@ -20,8 +44,8 @@ pub async fn modify_reservation(
     check_in: Option<NaiveDate>,
     check_out: Option<NaiveDate>,
     room_class: Option<String>,
-) -> AppResult<Reservation> {
-
+) -> AppResult<Reservation>
+{
     let mut tx =
         db.begin_tx().await;
 
@@ -36,35 +60,34 @@ pub async fn modify_reservation(
                 .await?
                 .ok_or(
                     not_found(
-                        "reservation not found"
-                    )
+                        "reservation not found",
+                    ),
                 )?;
-
-        let old_reservation =
-            reservation.clone();
 
         let check_in =
             check_in.unwrap_or(
-                reservation.check_in
+                reservation.check_in,
             );
 
         let check_out =
             check_out.unwrap_or(
-                reservation.check_out
+                reservation.check_out,
             );
 
         if check_in > check_out {
 
             return Err(
                 validation(
-                    "check_in must be <= check_out"
-                )
+                    "check_in must be <= check_out",
+                ),
             );
         }
 
         let room_class =
             room_class.unwrap_or(
-                reservation.room_class.clone()
+                reservation
+                    .room_class
+                    .clone(),
             );
 
         reservation.check_in =
@@ -83,12 +106,25 @@ pub async fn modify_reservation(
             )
             .await?;
 
-        transition_reservation_projection(
-            &mut tx,
-            &old_reservation,
-            &reservation,
-        )
-        .await?;
+        for participant in
+            &reservation.participants
+        {
+            refresh_projection_chain(
+                &mut tx,
+
+                ProjectionInvalidation::new(
+                    ProjectionNode::GuestAggregate,
+
+                    ProjectionScope::Guest,
+
+                    ProjectionRefreshTarget::Guest {
+                        guest_id:
+                            participant.guest_id,
+                    },
+                ),
+            )
+            .await?;
+        }
 
         Ok(reservation)
 

@@ -6,7 +6,6 @@
     Hash,
 )]
 pub enum ProjectionScope {
-
     Global,
     Inventory,
     Guest,

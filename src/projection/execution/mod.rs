@@ -1,4 +1,5 @@
-pub mod projection_convergence_executor;
-pub mod projection_execution_registry;
+pub mod binding;
+pub mod dispatcher;
+pub mod registry;
 
-pub mod handlers;
+pub mod projection_convergence_executor;

@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::projection::topology::
     projection_node::ProjectionNode;
 
@@ -31,6 +33,10 @@ pub struct ProjectionInvalidation {
 pub enum ProjectionRefreshTarget {
 
     Global,
+    
+    Guest {
+        guest_id: Uuid,
+    },
 
     InventoryDate {
         date: String,

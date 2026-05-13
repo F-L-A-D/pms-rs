@@ -5,7 +5,11 @@ use crate::{
 
     domain::{
         guest_timeline_event::TimelineEventType,
-        reservation::{Reservation, ReservationStatus},
+
+        reservation::{
+            Reservation,
+            ReservationStatus,
+        },
     },
 
     error::app_error::{
@@ -14,20 +18,37 @@ use crate::{
         not_found,
     },
 
-    projection::service::inventory_projection_service::
-        remove_reservation_projection,
+    projection::{
+        invalidation::{
+            projection_invalidation::{
+                ProjectionInvalidation,
+                ProjectionRefreshTarget,
+            },
+
+            projection_scope::
+                ProjectionScope,
+        },
+
+        orchestrator::refresh_projection_chain::
+            refresh_projection_chain,
+
+        topology::projection_node::
+            ProjectionNode,
+    },
 
     repository::sqlite::operational::
-        reservation_repository::SqliteReservationRepository,
+        reservation_repository::
+            SqliteReservationRepository,
 
-    usecase::timeline::command::record_event::record_event,
+    usecase::timeline::command::
+        record_event::record_event,
 };
 
 pub async fn cancel_reservation(
     db: &Db,
     id: Uuid,
-) -> AppResult<Reservation> {
-
+) -> AppResult<Reservation>
+{
     let mut tx =
         db.begin_tx().await;
 
@@ -42,20 +63,17 @@ pub async fn cancel_reservation(
                 .await?
                 .ok_or(
                     not_found(
-                        "reservation not found"
-                    )
+                        "reservation not found",
+                    ),
                 )?;
 
         if reservation.reservation_status
-            == ReservationStatus::Cancelled{
-                return Ok(reservation);
+            == ReservationStatus::Cancelled
+        {
+            return Ok(
+                reservation
+            );
         }
-
-        remove_reservation_projection(
-            &mut tx,
-            &reservation,
-        )
-        .await?;
 
         reservation.reservation_status =
             ReservationStatus::Cancelled;
@@ -75,13 +93,35 @@ pub async fn cancel_reservation(
             )
             .await?;
 
-        if let Some(guest_id) = primary_guest_id {
-
+        if let Some(guest_id) =
+            primary_guest_id
+        {
             record_event(
                 &mut tx,
                 guest_id,
-                TimelineEventType::ReservationCancelled,
+                TimelineEventType::
+                    ReservationCancelled,
                 reservation.id,
+            )
+            .await?;
+        }
+
+        for participant in
+            &reservation.participants
+        {
+            refresh_projection_chain(
+                &mut tx,
+
+                ProjectionInvalidation::new(
+                    ProjectionNode::GuestAggregate,
+
+                    ProjectionScope::Guest,
+
+                    ProjectionRefreshTarget::Guest {
+                        guest_id:
+                            participant.guest_id,
+                    },
+                ),
             )
             .await?;
         }

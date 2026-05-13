@@ -7,8 +7,5 @@
     Hash,
 )]
 pub enum ProjectionNode {
-    GuestSummary,
-    ReservationSearch,
-    Inventory,
-    HotelInventory,
+    GuestAggregate,
 }

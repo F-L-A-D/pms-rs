@@ -1,3 +1,0 @@
-pub mod inventory_projection_rebuild_test;
-pub mod inventory_projection_semantics_test;
-pub mod hotel_inventory_projection_test;

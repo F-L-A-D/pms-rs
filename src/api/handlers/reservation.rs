@@ -1,5 +1,6 @@
 use axum::{
     extract::{Path, State},
+    http::StatusCode,
     Json,
 };
 
@@ -51,7 +52,10 @@ use crate::{
 pub async fn create_reservation_handler(
     State(state): State<AppState>,
     Json(req): Json<CreateReservationRequest>,
-) -> Result<Json<ReservationResponse>, ApiError> {
+) -> Result<
+    (StatusCode, Json<ReservationResponse>),
+    ApiError,
+> {
 
     let stay_input =
         StayInput::CheckInAndCheckOut {
@@ -91,7 +95,7 @@ pub async fn create_reservation_handler(
         Reservation::new(
             reservation_id,
 
-            Some(req.external_id),
+            req.external_id,
 
             check_in,
 
@@ -120,7 +124,10 @@ pub async fn create_reservation_handler(
     .await
     .map_err(map_app_error)?;
 
-    Ok(Json(response))
+    Ok((
+        StatusCode::CREATED,
+        Json(response),
+    ))
 }
 
 pub async fn modify_reservation_handler(

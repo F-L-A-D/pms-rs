@@ -7,13 +7,13 @@ use serde::{
     Serialize,
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct CreateRoomRequest {
     pub room_no: String,
     pub room_class: String,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct RoomResponse {
     pub id: Uuid,
     pub room_no: String,

@@ -7,7 +7,7 @@ pub struct AssignRoomRequest {
     pub room_id: String,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct StayResponse {
     pub id: Uuid,
     pub status: String,

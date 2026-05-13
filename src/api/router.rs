@@ -85,17 +85,9 @@ pub fn create_router(
 
         .route(
             "/reservations/:id",
-            patch(modify_reservation_handler),
-        )
-
-        .route(
-            "/reservations/:id",
-            delete(cancel_reservation_handler),
-        )
-
-        .route(
-            "/reservations/:id",
-            get(get_reservation_handler)
+            patch(modify_reservation_handler)
+                .delete(cancel_reservation_handler)
+                .get(get_reservation_handler)
         )
 
         .route(
@@ -124,12 +116,8 @@ pub fn create_router(
 
         .route(
             "/rooms",
-            post(create_room_handler),
-        )
-
-        .route(
-            "/rooms",
-            get(get_rooms_handler),
+            post(create_room_handler)
+                .get(get_rooms_handler),
         )
 
         // housekeeping
@@ -195,12 +183,8 @@ pub fn create_router(
 
         .route(
             "/guests/:id",
-            get(get_guest_handler),
-        )
-
-        .route(
-            "/guests/:id",
-            patch(update_guest_handler),
+            get(get_guest_handler)
+                .patch(update_guest_handler),
         )
 
         // timeline

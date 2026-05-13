@@ -32,14 +32,16 @@ impl SqliteRoomRepository {
             r#"
             INSERT OR REPLACE INTO rooms (
                 id,
+                room_no,
                 room_class,
                 occupancy_status,
                 housekeeping_status
             )
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?)
             "#
         )
-        .bind(&room.id)
+        .bind(&room.id.to_string())
+        .bind(&room.room_no)
         .bind(&room.room_class)
         .bind(match room.occupancy_status {
             OccupancyStatus::Occupied =>

@@ -836,3 +836,56 @@ Projection models remain:
 * rebuildable
 * disposable
 * non-authoritative
+
+---
+
+## Projection Runtime Validation
+
+Projection runtime correctness must be validated through
+integration-oriented convergence testing.
+
+Validation targets include:
+
+* invalidation propagation correctness
+* topology traversal determinism
+* refresh/rebuild equivalence
+* aggregate realization consistency
+* scoped convergence correctness
+* projection disposal/recovery safety
+* orchestration/runtime boundary correctness
+
+Projection runtime behavior must remain:
+
+* deterministic
+* rebuildable
+* topology-consistent
+* semantically convergent
+
+---
+
+## Testing Direction
+
+The architecture intentionally prioritizes:
+
+* workflow-level validation
+* runtime convergence validation
+* semantic propagation validation
+* integration-oriented behavioral verification
+
+over isolated unit-level abstraction testing.
+
+Test helpers may encapsulate:
+
+* workflow setup
+* operational fixture generation
+* projection convergence setup
+* aggregate reconstruction preparation
+
+However:
+
+* topology semantics
+* invalidation behavior
+* orchestration traversal
+* semantic convergence
+
+must remain observable from integration-level tests.

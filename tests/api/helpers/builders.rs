@@ -104,6 +104,7 @@ impl GuestBuilder {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_email(
         mut self,
         value: impl Into<String>,

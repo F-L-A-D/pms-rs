@@ -36,8 +36,6 @@ use crate::{
     },
 };
 
-
-
 pub async fn rebuild_projection_chain(
     tx: &mut Transaction<'_, Sqlite>,
     start: ProjectionNode,
@@ -58,16 +56,37 @@ pub async fn rebuild_projection_chain(
     for step in
         plan.steps()
     {
-        ProjectionConvergenceExecutor::
-            execute_rebuild(
-                tx,
-                &step.node(),
-            )
-            .await?;
 
-        completed.push(
-            step.node()
-        );
+        let result =
+            ProjectionConvergenceExecutor::
+                execute_rebuild(
+                    tx,
+                    &step.node(),
+                )
+                .await;
+
+        match result {
+
+            Ok(_) => {
+
+                completed.push(
+                    step.node()
+                );
+            }
+
+            Err(error) => {
+
+                println!("{:#?}", error);
+
+                return Ok(
+                    ConvergenceExecutionResult::failed(
+                        plan.clone(),
+                        completed,
+                        step.node(),
+                    ),
+                );
+            }
+        }
     }
 
     Ok(

@@ -1,1 +1,1 @@
-pub mod guest_aggregate_materializer;
+pub mod materialize_guest_aggregate;

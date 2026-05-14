@@ -2,6 +2,7 @@ use axum::http::StatusCode;
 
 use pms_rs::api::dto::guest::GuestResponse;
 
+#[allow(unused_imports)]
 use crate::api::helpers::{
     app::spawn_app,
 

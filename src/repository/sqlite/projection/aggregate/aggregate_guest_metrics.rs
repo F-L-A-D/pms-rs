@@ -41,9 +41,7 @@ pub async fn aggregate_guest_metrics(
                 row.get("total_stays"),
 
             total_nights:
-                row.get::<f64, _>(
-                    "total_nights"
-                ) as i64,
+                row.get::<i64, _>("total_nights"),
 
             total_spending:
                 row.get("total_spending"),

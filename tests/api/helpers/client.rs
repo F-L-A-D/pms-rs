@@ -15,6 +15,7 @@ use serde_json::Value;
 
 use tower::ServiceExt;
 
+#[allow(dead_code)]
 pub async fn get(
     app: &axum::Router,
     uri: &str,
@@ -32,6 +33,7 @@ pub async fn get(
         .unwrap()
 }
 
+#[allow(dead_code)]
 pub async fn post(
     app: &axum::Router,
     uri: &str,
@@ -49,6 +51,7 @@ pub async fn post(
         .unwrap()
 }
 
+#[allow(dead_code)]
 pub async fn post_json<T>(
     app: &axum::Router,
     uri: &str,
@@ -77,6 +80,7 @@ where
         .unwrap()
 }
 
+#[allow(dead_code)]
 pub async fn response_json(
     response: Response<Body>,
 ) -> Value {
@@ -93,6 +97,7 @@ pub async fn response_json(
         .unwrap()
 }
 
+#[allow(dead_code)]
 pub async fn put_json<T>(
     app: &axum::Router,
     uri: &str,

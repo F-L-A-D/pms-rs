@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use pms_rs::api::dto::stay::StayResponse;
 
+#[allow(unused_imports)]
 use crate::api::helpers::client::{
     post,
     post_json, 

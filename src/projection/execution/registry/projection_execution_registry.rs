@@ -8,8 +8,17 @@ use crate::{
 
     projection::{
         execution::binding::{
-            guest_aggregate_rebuild::execute_guest_aggregate_rebuild,
-            guest_aggregate_refresh::execute_guest_aggregate_refresh,
+            guest_aggregate_rebuild::
+                execute_guest_aggregate_rebuild,
+            
+            guest_aggregate_refresh::
+                execute_guest_aggregate_refresh,
+            
+            guest_activity_signal_refresh::
+                execute_guest_activity_signal_refresh,
+
+            guest_activity_signal_rebuild::
+                execute_guest_activity_signal_rebuild,
         },
         invalidation::projection_invalidation::ProjectionRefreshTarget,
         topology::projection_node::ProjectionNode,
@@ -32,6 +41,13 @@ impl ProjectionExecutionRegistry {
                 )
                 .await
             }
+            ProjectionNode::GuestActivitySignal => {
+                execute_guest_activity_signal_refresh(
+                    tx,
+                    target,
+                )
+                .await
+            }
         }
     }
 
@@ -41,10 +57,14 @@ impl ProjectionExecutionRegistry {
     ) -> AppResult<()> {
 
         match node {
-
             ProjectionNode::GuestAggregate => {
-
                 execute_guest_aggregate_rebuild(
+                    tx,
+                )
+                .await?;
+            }
+            ProjectionNode::GuestActivitySignal => {
+                execute_guest_activity_signal_rebuild(
                     tx,
                 )
                 .await?;

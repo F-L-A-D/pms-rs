@@ -4,3 +4,4 @@ pub mod orchestrator;
 pub mod topology;
 
 pub mod aggregate;
+pub mod signal;

@@ -1,7 +1,3 @@
-use axum::http::StatusCode;
-
-use pms_rs::api::dto::room::RoomResponse;
-
 use crate::api::helpers::{
     app::spawn_app,
 

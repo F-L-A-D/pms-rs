@@ -803,6 +803,11 @@ Disallowed:
 * operational mutation
 * projection ownership
 
+Although calculation can be viewed as a type of projection, I will make a clear distinction between the two here.
+
+'calculation' is limited to the minimum necessary operations—such as the sum of a balance—that are essential for business purposes. 'calculation' is simply a computation devoid of context; it is a compression of facts.
+
+'projection' on the other hand, is an aggregated result that includes contextual meaning.
 
 ---
 
@@ -889,3 +894,317 @@ However:
 * semantic convergence
 
 must remain observable from integration-level tests.
+
+---
+
+# Semantic Projection Architecture
+
+The projection architecture is evolving from:
+
+- query-oriented projections
+- denormalized read models
+- fixed KPI systems
+
+toward:
+
+```text
+explicit semantic derivation architecture
+```
+
+The long-term direction is:
+
+```text
+Behavioral Facts
+→ Aggregate
+→ Signal
+→ Interpretation
+→ Decision
+```
+
+This architecture models hospitality operations as:
+
+```text
+deterministic semantic propagation
+```
+
+rather than opaque ML pipelines or black-box scoring systems.
+
+Projection layers remain:
+
+- rebuildable
+- disposable
+- deterministic
+- explainable
+- non-authoritative
+
+Operational truth remains authoritative.
+
+---
+
+# Semantic Projection Layers
+
+Projection layers are explicitly separated by semantic responsibility.
+
+```text
+Aggregate
+→ Signal
+→ Interpretation
+→ Decision
+```
+
+---
+
+## Aggregate Layer
+
+Purpose:
+
+```text
+observable behavioral aggregation
+```
+
+Aggregate projections represent:
+
+- interpretation-free behavioral facts
+- reusable semantic primitives
+- stable semantic foundations
+
+Examples:
+
+- stay_interval_aggregate
+- booking_window_aggregate
+- spend_behavior_aggregate
+- companion_behavior_aggregate
+
+Aggregate projections intentionally avoid:
+
+- CRM interpretation
+- scoring semantics
+- recommendation semantics
+
+Aggregate projections are designed as:
+
+```text
+semantic feature substrate
+```
+
+for downstream semantic derivation.
+
+---
+
+## Signal Layer
+
+Purpose:
+
+```text
+latent semantic tendencies
+```
+
+Signal projections derive lightweight semantic activations from aggregate projections.
+
+Examples:
+
+- loyalty_growth_signal
+- dormancy_signal
+- premiumization_signal
+- family_transition_signal
+
+Signals are:
+
+- reusable
+- composable
+- non-human-facing
+- interpretation pre-layer
+
+Signals represent semantic activation primitives rather than direct CRM meaning.
+
+---
+
+## Interpretation Layer
+
+Purpose:
+
+```text
+human-readable hospitality meaning
+```
+
+Interpretation projections derive explainable hospitality semantics from signals.
+
+Examples:
+
+- relationship_depth
+- loyalty_stage
+- family_segment
+- dormancy_risk
+
+Interpretation projections are:
+
+- explainable
+- hotel-customizable
+- CRM-oriented
+- non-authoritative
+
+This layer introduces explicit human semantic interpretation.
+
+---
+
+## Decision Layer
+
+Purpose:
+
+```text
+operational recommendation support
+```
+
+Decision projections derive recommendation-oriented semantics.
+
+Examples:
+
+- retention_opportunity
+- upgrade_recommendation
+- recovery_attention
+
+Decision projections remain:
+
+- non-authoritative
+- explainable
+- rebuildable
+
+Decision layers must never become operational authority.
+
+---
+
+# Semantic Dependency Rules
+
+Semantic dependency direction is intentionally constrained.
+
+Allowed:
+
+```text
+Aggregate
+→ Signal
+→ Interpretation
+→ Decision
+```
+
+Forbidden:
+
+```text
+Decision → Aggregate
+Interpretation → Aggregate
+Decision → Signal
+```
+
+This prevents semantic contamination between layers.
+
+---
+
+# Projection Runtime Structure
+
+Global semantic runtime ownership remains centralized.
+
+```text
+projection/
+├── topology/
+├── orchestrator/
+├── invalidation/
+```
+
+Responsibilities:
+
+- dependency ownership
+- traversal ordering
+- rebuild ordering
+- invalidation propagation
+- deterministic convergence
+
+Projection-local layers encapsulate their own semantic realization logic.
+
+Example:
+
+```text
+projection/
+├── aggregate/
+│   ├── access/
+│   ├── materializer/
+│   ├── rebuild/
+│   ├── refresh/
+│   └── model/
+```
+
+The same structure applies to:
+
+- signal
+- interpretation
+- decision
+
+This separation preserves:
+
+```text
+semantic locality
+```
+
+and prevents:
+
+- hidden semantic dependencies
+- semantic leakage
+- topology ambiguity
+- cross-layer semantic contamination
+
+---
+
+# Aggregate-First Direction
+
+The architecture intentionally prioritizes:
+
+```text
+interpretation-free aggregates
+```
+
+before introducing heavier semantic interpretation systems.
+
+Initial focus areas:
+
+- stable observable facts
+- reusable behavioral primitives
+- composable semantic substrates
+
+rather than:
+
+- giant CRM projections
+- opaque scoring systems
+- premature recommendation engines
+
+This preserves:
+
+- explainability
+- rebuildability
+- semantic reversibility
+- composability
+
+throughout future semantic evolution.
+
+---
+
+# Architectural Direction
+
+The long-term direction is not:
+
+```text
+AI-enhanced PMS
+```
+
+The long-term direction is:
+
+```text
+Hospitality Semantic Network
+```
+
+where hospitality behavior becomes:
+
+- explicitly modeled
+- semantically layered
+- rebuildable
+- explainable
+- compositionally interpretable
+
+through deterministic semantic propagation.

@@ -6,11 +6,18 @@ use sqlx::{
 use crate::{
     error::app_error::AppResult,
 
-    projection::aggregate::{
-        materializer::guest_aggregate_materializer::
-            materialize_guest_aggregate,
-        access::
-            list_guest_ids::list_guest_ids
+    projection::{
+        aggregate::{
+            materializer::materialize_guest_aggregate::
+                materialize_guest_aggregate,
+
+            access::
+                list_guest_ids::list_guest_ids,
+        },
+
+        execution::execution_trace::push_trace,
+
+        topology::projection_node::ProjectionNode,
     },
 
     repository::sqlite::projection::save::
@@ -21,6 +28,10 @@ use crate::{
 pub async fn rebuild_guest_aggregate(
     tx: &mut Transaction<'_, Sqlite>,
 ) -> AppResult<()> {
+
+    push_trace(
+        ProjectionNode::GuestAggregate,
+    );
 
     let guest_ids =
         list_guest_ids(tx)

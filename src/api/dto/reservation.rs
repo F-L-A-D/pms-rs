@@ -22,7 +22,7 @@ pub struct ReservationParticipantInput {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateReservationRequest {
     #[serde(alias = "id")]
-    pub external_id: String,
+    pub external_id: Option<String>,
     pub check_in: NaiveDate,
     pub check_out: NaiveDate,
     pub room_class: String,
@@ -36,13 +36,13 @@ pub struct ModifyReservationRequest {
     pub room_class: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ReservationParticipantResponse {
     pub guest_id: Uuid,
     pub relation_type: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ReservationResponse {
     pub id: Uuid,
     pub external_id: Option<String>,

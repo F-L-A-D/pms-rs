@@ -41,7 +41,7 @@ pub async fn materialize_guest_aggregate(
                 row.total_stays,
 
             total_nights:
-                row.total_nights,
+                row.total_nights as i64,
 
             total_spending:
                 row.total_spending,

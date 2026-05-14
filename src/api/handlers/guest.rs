@@ -1,5 +1,6 @@
 use axum::{
     extract::{Path, Query, State},
+    http::StatusCode,
     Json,
 };
 
@@ -40,7 +41,10 @@ use crate::{
 pub async fn create_guest_handler(
     State(state): State<AppState>,
     Json(req): Json<CreateGuestRequest>,
-) -> Result<Json<GuestResponse>, ApiError> {
+) -> Result<
+    (StatusCode, Json<GuestResponse>),
+    ApiError,
+> {
 
     let profile =
         GuestProfileUpdate {
@@ -88,7 +92,10 @@ pub async fn create_guest_handler(
     .await
     .map_err(map_app_error)?;
 
-    Ok(Json(response))
+    Ok((
+        StatusCode::CREATED,
+        Json(response),
+    ))
 }
 
 pub async fn get_guest_handler(

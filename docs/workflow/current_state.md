@@ -100,6 +100,38 @@ Refresh propagation is modeled as scoped convergence toward authoritative rebuil
 
 ---
 
+## Next Validation Target
+
+Focus shifts temporarily from architecture expansion toward
+runtime stabilization and convergence validation.
+
+Validation focus areas:
+
+* API workflow integration tests
+* projection convergence verification
+* topology traversal correctness
+* invalidation propagation consistency
+* refresh/rebuild equivalence validation
+* aggregate realization correctness
+* semantic runtime recovery behavior
+
+Current testing direction:
+
+* strengthen integration-first validation
+* reduce repetitive workflow setup
+* improve reusable test helpers
+* validate runtime determinism under realistic workflows
+
+Important validation goals:
+
+* projections converge deterministically
+* rebuild restores equivalent semantic state
+* invalidation traversal remains topology-consistent
+* orchestration/runtime separation remains intact
+* aggregate realization remains local-only
+
+---
+
 ## Parallel Exploration: AR Foundation
 
 Exploration in progress:

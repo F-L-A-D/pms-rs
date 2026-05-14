@@ -1,8 +1,18 @@
-use super::projection_dependency::
-    ProjectionDependency;
+use super::{
+    projection_dependency::
+        ProjectionDependency,
 
-pub fn projection_dependencies()
-    -> Vec<ProjectionDependency>
+    projection_node::
+        ProjectionNode,
+};
+
+pub fn projection_dependencies(
+) -> Vec<ProjectionDependency>
 {
-    vec![]
+    vec![
+        ProjectionDependency::new(
+            ProjectionNode::GuestAggregate,
+            ProjectionNode::GuestActivitySignal,
+        ),
+    ]
 }

@@ -8,11 +8,17 @@ use uuid::Uuid;
 use crate::{
     error::app_error::AppResult,
 
-    projection::aggregate::{
-        materializer::guest_aggregate_materializer::
-            materialize_guest_aggregate,
+    projection::{
+        aggregate::{
+            materializer::materialize_guest_aggregate::
+                materialize_guest_aggregate,
 
-        model::guest_aggregate::GuestAggregate,
+            model::guest_aggregate::GuestAggregate,
+        },
+
+        execution::execution_trace::push_trace,
+
+        topology::projection_node::ProjectionNode,
     },
 
     repository::sqlite::projection::save::
@@ -24,6 +30,10 @@ pub async fn refresh_guest_aggregate(
     tx: &mut Transaction<'_, Sqlite>,
     guest_id: Uuid,
 ) -> AppResult<GuestAggregate> {
+
+    push_trace(
+        ProjectionNode::GuestAggregate,
+    );
 
     let aggregate =
         materialize_guest_aggregate(    

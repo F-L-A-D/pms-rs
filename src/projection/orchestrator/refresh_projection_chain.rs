@@ -32,11 +32,21 @@ pub async fn propagate_invalidation(
             &invalidation,
         );
 
+    println!(
+        "runtime plan: {:?}",
+        plan.convergence_nodes(),
+    );
+
     let mut completed =
         Vec::new();
 
     for step in plan.steps()
     {
+        println!(
+            "executing node: {:?}",
+            step.node(),
+        );
+
         let result =
             ProjectionConvergenceExecutor::
                 execute_refresh(
@@ -55,7 +65,9 @@ pub async fn propagate_invalidation(
                 );
             }
 
-            Err(_error) => {
+            Err(error) => {
+
+                println!("{:#?}", error);
 
                 return Ok(
                     ConvergenceExecutionResult::failed(

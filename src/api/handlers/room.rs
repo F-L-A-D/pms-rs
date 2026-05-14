@@ -1,5 +1,6 @@
 use axum::{
     extract::State,
+    http::StatusCode,
     Json,
 };
 
@@ -32,7 +33,10 @@ use crate::{
 pub async fn create_room_handler(
     State(state): State<AppState>,
     Json(req): Json<CreateRoomRequest>,
-) -> Result<Json<RoomResponse>, ApiError> {
+) -> Result<
+    (StatusCode, Json<RoomResponse>),
+    ApiError,
+> {
 
     let room =
         Room::new(
@@ -53,7 +57,10 @@ pub async fn create_room_handler(
     .await
     .map_err(map_app_error)?;
 
-    Ok(Json(response))
+    Ok((
+        StatusCode::CREATED,
+        Json(response),
+    ))
 }
 
 pub async fn get_rooms_handler(

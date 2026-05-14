@@ -49,7 +49,7 @@ pub struct GuestSearchQuery {
     pub field: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct GuestResponse {
     pub id: Uuid,
     pub last_name: String,

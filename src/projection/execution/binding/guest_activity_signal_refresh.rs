@@ -22,9 +22,23 @@ pub async fn execute_guest_activity_signal_refresh(
     target: &ProjectionRefreshTarget,
 ) -> AppResult<()>
 {
-    refresh_guest_activity_signal(
-        tx,
-        target,
-    )
-    .await
+    match target {
+
+        ProjectionRefreshTarget::Guest {
+            guest_id,
+        } => {
+
+            refresh_guest_activity_signal(
+                tx,
+                *guest_id,
+            )
+            .await?;
+        }
+
+        ProjectionRefreshTarget::Global => {}
+
+        _ => {}
+    }
+
+    Ok(())
 }

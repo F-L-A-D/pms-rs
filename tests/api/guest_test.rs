@@ -3,7 +3,7 @@ use axum::http::StatusCode;
 use pms_rs::api::dto::guest::GuestResponse;
 
 #[allow(unused_imports)]
-use crate::api::helpers::{
+use crate::common::{
     app::spawn_app,
 
     builders::GuestBuilder,

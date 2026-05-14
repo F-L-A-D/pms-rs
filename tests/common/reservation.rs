@@ -3,9 +3,11 @@ use axum::{
     Router,
 };
 
+use uuid::Uuid;
+
 use pms_rs::api::dto::reservation::ReservationResponse;
 
-use crate::api::helpers::{
+use super::{
         builders::{
             ReservationBuilder,
             ReservationParticipantBuilder,
@@ -30,6 +32,45 @@ pub async fn create_reservation(
     let participant =
         ReservationParticipantBuilder::new(
             guest.id,
+        )
+        .build();
+
+    let request =
+        ReservationBuilder::new()
+            .with_participant(participant)
+            .build();
+
+    let response =
+        post_json(
+            app,
+            "/reservations",
+            &request,
+        )
+        .await;
+
+    assert_eq!(
+        response.status(),
+        StatusCode::CREATED,
+    );
+
+    let body =
+        response_json(response)
+            .await;
+
+    serde_json::from_value::<ReservationResponse>(
+        body,
+    )
+    .unwrap()
+}
+
+pub async fn create_reservation_with_guest(
+    app: &Router,
+    guest_id: Uuid,
+) -> ReservationResponse {
+
+    let participant =
+        ReservationParticipantBuilder::new(
+            guest_id,
         )
         .build();
 

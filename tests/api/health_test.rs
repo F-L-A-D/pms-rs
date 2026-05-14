@@ -8,7 +8,7 @@ use axum::{
 
 use tower::ServiceExt;
 
-use crate::api::helpers::app::spawn_app;
+use crate::common::app::spawn_app;
 
 #[tokio::test]
 async fn should_health_returns_ok() {

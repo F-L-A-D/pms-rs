@@ -11,8 +11,8 @@ use crate::{
     error::app_error::AppResult,
 
     projection::aggregate::{
-        access::get_guest_aggregate::
-            get_guest_aggregate_row,
+        access::fetch_guest_aggregate_row::
+            fetch_guest_aggregate_row,
 
         model::{
             guest_aggregate::GuestAggregate,
@@ -27,7 +27,7 @@ pub async fn materialize_guest_aggregate(
 ) -> AppResult<GuestAggregate> {
 
     let row: GuestAggregateRow =
-        get_guest_aggregate_row(
+        fetch_guest_aggregate_row(
             tx,
             guest_id,
         )

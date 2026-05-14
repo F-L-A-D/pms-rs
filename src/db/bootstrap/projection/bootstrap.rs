@@ -13,4 +13,13 @@ pub async fn bootstrap(
     .await
     .unwrap();
 
+    sqlx::query(
+        include_str!(
+            "guest_activities.sql"
+        ),
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
 }

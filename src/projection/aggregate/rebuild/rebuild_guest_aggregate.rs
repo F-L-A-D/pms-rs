@@ -7,13 +7,13 @@ use crate::{
     error::app_error::AppResult,
 
     projection::{
-        aggregate::{
+        
+        access::
+                list_guest_ids::list_guest_ids,
+                
+        aggregate::
             materializer::materialize_guest_aggregate::
                 materialize_guest_aggregate,
-
-            access::
-                list_guest_ids::list_guest_ids,
-        },
 
         execution::execution_trace::push_trace,
 

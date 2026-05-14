@@ -20,10 +20,10 @@ use crate::{
 
 const QUERY: &str =
     include_str!(
-        "aggregate_guest_metrics.sql"
+        "aggregate_guest.sql"
     );
 
-pub async fn aggregate_guest_metrics(
+pub async fn aggregate_guest(
     tx: &mut Transaction<'_, Sqlite>,
     guest_id: Uuid,
 ) -> AppResult<GuestAggregateRow> {

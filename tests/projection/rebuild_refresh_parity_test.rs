@@ -1,11 +1,9 @@
 use serial_test::serial;
 
 use pms_rs::projection::{
-
-    execution::execution_trace::{
-        clear_trace,
-        execution_trace,
-    },
+    aggregate::access::
+        fetch_guest_aggregate::
+            fetch_guest_aggregate,
 
     invalidation::{
         projection_invalidation::{
@@ -17,27 +15,28 @@ use pms_rs::projection::{
             ProjectionScope,
     },
 
-    orchestrator::
+    orchestrator::{
+        rebuild_projection_chain::
+            rebuild_projection_chain,
+
         refresh_projection_chain::
             refresh_projection_chain,
+    },
 
     topology::projection_node::
         ProjectionNode,
 };
 
 use crate::common::{
-    
     app::spawn_app,
-    
+
     guest::create_guest,
 };
 
 #[tokio::test]
 #[serial]
-async fn should_execute_refresh_in_topology_order()
+async fn should_refresh_and_rebuild_returns_same_result()
 {
-    clear_trace();
-
     let app =
         spawn_app().await;
 
@@ -60,23 +59,38 @@ async fn should_execute_refresh_in_topology_order()
             },
         );
 
-    let result =
-        refresh_projection_chain(
-            &mut tx,
-            invalidation,
-        )
-        .await;
+    refresh_projection_chain(
+        &mut tx,
+        invalidation,
+    )
+    .await
+    .unwrap();
 
-    assert!(
-        result.is_ok(),
-    );
+    let refreshed =
+        fetch_guest_aggregate(
+            &mut tx,
+            guest.id,
+        )
+        .await
+        .unwrap();
+
+    rebuild_projection_chain(
+        &mut tx,
+        ProjectionNode::GuestAggregate,
+    )
+    .await
+    .unwrap();
+
+    let rebuilt =
+        fetch_guest_aggregate(
+            &mut tx,
+            guest.id,
+        )
+        .await
+        .unwrap();
 
     assert_eq!(
-        execution_trace(),
-
-        vec![
-            ProjectionNode::GuestAggregate,
-            ProjectionNode::GuestActivitySignal,
-        ],
+        refreshed,
+        rebuilt,
     );
 }

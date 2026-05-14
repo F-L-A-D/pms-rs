@@ -1,3 +1,5 @@
+use serial_test::serial;
+
 use pms_rs::projection::{
 
     execution::execution_trace::{
@@ -31,6 +33,7 @@ use crate::api::helpers::{
 };
 
 #[tokio::test]
+#[serial]
 async fn should_execute_refresh_in_topology_order()
 {
     clear_trace();

@@ -1,1 +1,4 @@
+pub mod materialize_change_pattern;
+pub mod materialize_confidence_profile;
 pub mod materialize_guest_activity_signal;
+pub mod materialize_semantic_activation;

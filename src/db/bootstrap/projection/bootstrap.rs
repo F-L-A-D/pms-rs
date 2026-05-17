@@ -40,4 +40,19 @@ pub async fn bootstrap(pool: &SqlitePool) {
         .execute(pool)
         .await
         .unwrap();
+
+    sqlx::query(include_str!("change_patterns.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query(include_str!("confidence_profiles.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query(include_str!("semantic_activations.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
 }

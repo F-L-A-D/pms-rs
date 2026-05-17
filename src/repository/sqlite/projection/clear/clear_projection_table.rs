@@ -7,6 +7,10 @@ use crate::{
 
 fn projection_table_name(node: &ProjectionNode) -> &'static str {
     match node {
+        ProjectionNode::ChangePattern => "change_patterns",
+
+        ProjectionNode::ConfidenceProfile => "confidence_profiles",
+
         ProjectionNode::DailyRoomClassKpiAggregate => "daily_room_class_kpi_aggregates",
 
         ProjectionNode::DailyHotelKpiAggregate => "daily_hotel_kpi_aggregates",
@@ -24,6 +28,8 @@ fn projection_table_name(node: &ProjectionNode) -> &'static str {
         ProjectionNode::MonthlyHotelKpiAggregate => "monthly_hotel_kpi_aggregates",
 
         ProjectionNode::MonthlyRoomClassKpiAggregate => "monthly_room_class_kpi_aggregates",
+
+        ProjectionNode::SemanticActivation => "semantic_activations",
     }
 }
 

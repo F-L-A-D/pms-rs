@@ -102,3 +102,17 @@ where
         .await
         .unwrap()
 }
+
+#[allow(dead_code)]
+pub async fn delete(app: &axum::Router, uri: &str) -> Response<Body> {
+    app.clone()
+        .oneshot(
+            Request::builder()
+                .uri(uri)
+                .method("DELETE")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+}

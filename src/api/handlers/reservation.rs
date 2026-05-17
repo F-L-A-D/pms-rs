@@ -23,8 +23,12 @@ use crate::{
         error::{map_app_error, ApiError},
         state::AppState,
     },
-    domain::entity::reservation::Reservation,
-    domain::semantic::reservation_booking::ReservationBookingChannel,
+    domain::{
+        entity::reservation::Reservation,
+        semantic::{
+            operation_context::OperationContext, reservation_booking::ReservationBookingChannel,
+        },
+    },
     usecase::reservation::{
         command::{cancel_reservation::cancel_reservation, create_reservation, modify_reservation},
         detail::get_reservation::get_reservation,
@@ -131,7 +135,7 @@ pub async fn create_reservation_handler(
         participants,
     };
 
-    let reservation = create_reservation::execute(&state.db, input)
+    let reservation = create_reservation::execute(&state.db, input, OperationContext::api_system())
         .await
         .map_err(map_app_error)?;
 
@@ -168,9 +172,14 @@ pub async fn modify_reservation_handler(
         room_class: req.room_class,
     };
 
-    let updated = modify_reservation::execute(&state.db, reservation_id, input)
-        .await
-        .map_err(map_app_error)?;
+    let updated = modify_reservation::execute(
+        &state.db,
+        reservation_id,
+        input,
+        OperationContext::api_system(),
+    )
+    .await
+    .map_err(map_app_error)?;
 
     Ok(Json(reservation_to_response(updated)))
 }
@@ -182,7 +191,7 @@ pub async fn cancel_reservation_handler(
     let reservation_id =
         Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let reservation = cancel_reservation(&state.db, reservation_id)
+    let reservation = cancel_reservation(&state.db, reservation_id, OperationContext::api_system())
         .await
         .map_err(map_app_error)?;
 

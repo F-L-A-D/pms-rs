@@ -46,6 +46,11 @@ pub async fn bootstrap(pool: &SqlitePool) {
         .await
         .unwrap();
 
+    sqlx::query(include_str!("operation_change_events.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
     sqlx::query(include_str!("companies.sql"))
         .execute(pool)
         .await

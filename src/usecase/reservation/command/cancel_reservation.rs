@@ -4,7 +4,11 @@ use crate::{
     db::connection::Db,
     domain::{
         entity::reservation::{Reservation, ReservationStatus},
-        semantic::guest_timeline_event::TimelineEventType,
+        semantic::{
+            guest_timeline_event::TimelineEventType,
+            operation_change_event::{OperationChangeEvent, OperationType},
+            operation_context::OperationContext,
+        },
     },
     error::app_error::{infra, not_found, AppResult},
     projection::{
@@ -15,17 +19,26 @@ use crate::{
         orchestrator::refresh_projection_chain::refresh_projection_chain,
         topology::projection_node::ProjectionNode,
     },
-    repository::sqlite::operational::reservation_repository::SqliteReservationRepository,
+    repository::sqlite::operational::{
+        operation_change_event_repository::SqliteOperationChangeEventRepository,
+        reservation_repository::SqliteReservationRepository,
+    },
     usecase::timeline::command::record_event::record_event,
 };
 
-pub async fn cancel_reservation(db: &Db, id: Uuid) -> AppResult<Reservation> {
+pub async fn cancel_reservation(
+    db: &Db,
+    id: Uuid,
+    context: OperationContext,
+) -> AppResult<Reservation> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
         let mut reservation = SqliteReservationRepository::find_by_id(&mut tx, id)
             .await?
             .ok_or(not_found("reservation not found"))?;
+
+        let before = reservation.clone();
 
         if reservation.reservation_status == ReservationStatus::Cancelled {
             return Ok(reservation);
@@ -38,6 +51,36 @@ pub async fn cancel_reservation(db: &Db, id: Uuid) -> AppResult<Reservation> {
         let primary_guest_id = reservation.primary_participant().map(|p| p.guest_id);
 
         SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+
+        let change_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "reservation".to_string(),
+            aggregate_id: reservation.id,
+            operation_type: OperationType::Cancel,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: Some(reservation_json(&before).to_string()),
+            after_json: reservation_json(&reservation).to_string(),
+            changed_fields_json: serde_json::json!(["reservation_status", "stay_status"])
+                .to_string(),
+            occurred_at: chrono::Utc::now(),
+        };
+
+        SqliteOperationChangeEventRepository::save(&mut tx, &change_event).await?;
+
+        refresh_projection_chain(
+            &mut tx,
+            ProjectionInvalidation::new(
+                ProjectionNode::ChangePattern,
+                ProjectionScope::Timeline,
+                ProjectionRefreshTarget::OperationEvent {
+                    event_id: change_event.id,
+                },
+            ),
+        )
+        .await?;
 
         if let Some(guest_id) = primary_guest_id {
             record_event(
@@ -142,4 +185,19 @@ pub async fn cancel_reservation(db: &Db, id: Uuid) -> AppResult<Reservation> {
             Err(e)
         }
     }
+}
+
+fn reservation_json(reservation: &Reservation) -> serde_json::Value {
+    serde_json::json!({
+        "id": reservation.id,
+        "external_id": reservation.external_id,
+        "check_in": reservation.check_in,
+        "check_out": reservation.check_out,
+        "reservation_status": reservation.reservation_status,
+        "stay_status": reservation.stay_status,
+        "room_class": reservation.room_class,
+        "room_id": reservation.room_id,
+        "booking_channel": reservation.booking_channel,
+        "plan_code": reservation.plan_code,
+    })
 }

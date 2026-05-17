@@ -7,13 +7,18 @@ use pms_rs::{
     domain::{
         reservation_guest_relation::ReservationGuestRelationType,
         semantic::{
+            operation_change_event::OperationType,
+            operation_context::{OperationActor, OperationSource},
             reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
             reservation_transition::ReservationTransitionType,
+            semantic_activation::SemanticActivationKey,
         },
     },
+    projection::signal::access::fetch_semantic_activation::fetch_semantic_activation,
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
         operational::{
+            operation_change_event_repository::SqliteOperationChangeEventRepository,
             reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
             reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
             reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
@@ -24,7 +29,7 @@ use pms_rs::{
 use crate::common::{
     app::spawn_app,
     builders::{ReservationBuilder, ReservationParticipantBuilder},
-    client::{get, patch_json, post_json, response_json},
+    client::{delete, get, patch_json, post_json, response_json},
     guest::create_guest,
     reservation::create_reservation,
 };
@@ -211,6 +216,45 @@ async fn should_create_reservation_with_booking_channel_and_package_breakdowns()
             && breakdown.revenue_category == ReservationRevenueCategory::FoodAndBeverage
             && breakdown.amount == rust_decimal::Decimal::new(3000, 2)
     }));
+}
+
+#[tokio::test]
+async fn should_record_operation_change_event_and_activation_on_reservation_create() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+
+    let mut tx = app.db.begin_tx().await;
+
+    let events = SqliteOperationChangeEventRepository::list_all(&mut tx)
+        .await
+        .unwrap();
+    let event = events
+        .iter()
+        .find(|event| {
+            event.aggregate_id == created.id && event.operation_type == OperationType::Create
+        })
+        .unwrap();
+
+    assert_eq!(event.aggregate_type, "reservation");
+    assert_eq!(event.actor, OperationActor::System);
+    assert_eq!(event.source, OperationSource::Api);
+    assert!(event.actor_id.is_none());
+    assert!(event.before_json.is_none());
+    assert!(event.after_json.contains(created.id.to_string().as_str()));
+
+    let activation = fetch_semantic_activation(&mut tx, event.id)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let _ = tx.rollback().await;
+
+    assert_eq!(
+        activation.activation_key,
+        SemanticActivationKey::ReservationCreated
+    );
+    assert!(activation.is_active);
 }
 
 #[tokio::test]
@@ -408,4 +452,76 @@ async fn should_record_semantic_reservation_transitions_on_modify() {
             && transition.before_value == created.room_class
             && transition.after_value == "deluxe"
     }));
+}
+
+#[tokio::test]
+async fn should_record_operation_change_events_for_modify_and_cancel() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+
+    let modify_request = serde_json::json!({
+        "check_out": (created.check_out + Duration::days(1)).to_string(),
+        "room_class": "deluxe"
+    });
+
+    let modify_response = patch_json(
+        &app.app,
+        &format!("/reservations/{}", created.id),
+        &modify_request,
+    )
+    .await;
+
+    assert_eq!(modify_response.status(), StatusCode::OK);
+
+    let cancel_response = delete(&app.app, &format!("/reservations/{}", created.id)).await;
+
+    assert_eq!(cancel_response.status(), StatusCode::OK);
+
+    let mut tx = app.db.begin_tx().await;
+
+    let events = SqliteOperationChangeEventRepository::list_all(&mut tx)
+        .await
+        .unwrap();
+
+    let modify_event = events
+        .iter()
+        .find(|event| {
+            event.aggregate_id == created.id && event.operation_type == OperationType::Modify
+        })
+        .unwrap();
+    let cancel_event = events
+        .iter()
+        .find(|event| {
+            event.aggregate_id == created.id && event.operation_type == OperationType::Cancel
+        })
+        .unwrap();
+
+    assert!(modify_event.before_json.is_some());
+    assert!(modify_event.after_json.contains("deluxe"));
+    assert!(modify_event.changed_fields_json.contains("room_class"));
+    assert!(cancel_event.before_json.is_some());
+    assert!(cancel_event
+        .changed_fields_json
+        .contains("reservation_status"));
+
+    let modify_activation = fetch_semantic_activation(&mut tx, modify_event.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let cancel_activation = fetch_semantic_activation(&mut tx, cancel_event.id)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let _ = tx.rollback().await;
+
+    assert_eq!(
+        modify_activation.activation_key,
+        SemanticActivationKey::StayShapeChanged
+    );
+    assert_eq!(
+        cancel_activation.activation_key,
+        SemanticActivationKey::ReservationCancelled
+    );
 }

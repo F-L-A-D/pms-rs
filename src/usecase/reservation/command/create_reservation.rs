@@ -11,6 +11,8 @@ use crate::{
         entity::reservation::Reservation,
         semantic::{
             guest_timeline_event::TimelineEventType,
+            operation_change_event::{OperationChangeEvent, OperationType},
+            operation_context::OperationContext,
             reservation_booking::{
                 ReservationDailyRevenueAllocation, ReservationDailyStayDetail,
                 ReservationPackageBreakdown,
@@ -29,6 +31,7 @@ use crate::{
     },
     repository::sqlite::operational::{
         guest_repository::SqliteGuestRepository,
+        operation_change_event_repository::SqliteOperationChangeEventRepository,
         reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
         reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
         reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
@@ -38,7 +41,11 @@ use crate::{
     usecase::timeline::command::record_event::record_event,
 };
 
-pub async fn execute(db: &Db, input: CreateReservationInput) -> AppResult<Reservation> {
+pub async fn execute(
+    db: &Db,
+    input: CreateReservationInput,
+    context: OperationContext,
+) -> AppResult<Reservation> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
@@ -118,6 +125,46 @@ pub async fn execute(db: &Db, input: CreateReservationInput) -> AppResult<Reserv
         for allocation in &reservation.daily_revenue_allocations {
             SqliteReservationDailyRevenueAllocationRepository::save(&mut tx, allocation).await?;
         }
+
+        let change_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "reservation".to_string(),
+            aggregate_id: reservation.id,
+            operation_type: OperationType::Create,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: None,
+            after_json: reservation_json(&reservation).to_string(),
+            changed_fields_json: serde_json::json!([
+                "external_id",
+                "check_in",
+                "check_out",
+                "room_class",
+                "booking_channel",
+                "plan_code",
+                "package_breakdowns",
+                "daily_details",
+                "participants"
+            ])
+            .to_string(),
+            occurred_at: chrono::Utc::now(),
+        };
+
+        SqliteOperationChangeEventRepository::save(&mut tx, &change_event).await?;
+
+        refresh_projection_chain(
+            &mut tx,
+            ProjectionInvalidation::new(
+                ProjectionNode::ChangePattern,
+                ProjectionScope::Timeline,
+                ProjectionRefreshTarget::OperationEvent {
+                    event_id: change_event.id,
+                },
+            ),
+        )
+        .await?;
 
         let primary_guest_id = reservation.primary_participant().map(|p| p.guest_id);
 
@@ -224,6 +271,21 @@ pub async fn execute(db: &Db, input: CreateReservationInput) -> AppResult<Reserv
             Err(e)
         }
     }
+}
+
+fn reservation_json(reservation: &Reservation) -> serde_json::Value {
+    serde_json::json!({
+        "id": reservation.id,
+        "external_id": reservation.external_id,
+        "check_in": reservation.check_in,
+        "check_out": reservation.check_out,
+        "reservation_status": reservation.reservation_status,
+        "stay_status": reservation.stay_status,
+        "room_class": reservation.room_class,
+        "room_id": reservation.room_id,
+        "booking_channel": reservation.booking_channel,
+        "plan_code": reservation.plan_code,
+    })
 }
 
 fn build_daily_stay_details(

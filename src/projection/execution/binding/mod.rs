@@ -1,3 +1,7 @@
+pub mod change_pattern_rebuild;
+pub mod change_pattern_refresh;
+pub mod confidence_profile_rebuild;
+pub mod confidence_profile_refresh;
 pub mod daily_hotel_kpi_aggregate_rebuild;
 pub mod daily_hotel_kpi_aggregate_refresh;
 pub mod daily_room_class_kpi_aggregate_rebuild;
@@ -12,6 +16,8 @@ pub mod monthly_hotel_kpi_aggregate_rebuild;
 pub mod monthly_hotel_kpi_aggregate_refresh;
 pub mod monthly_room_class_kpi_aggregate_rebuild;
 pub mod monthly_room_class_kpi_aggregate_refresh;
+pub mod semantic_activation_rebuild;
+pub mod semantic_activation_refresh;
 
 pub mod guest_activity_signal_rebuild;
 pub mod guest_activity_signal_refresh;

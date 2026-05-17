@@ -9,6 +9,8 @@ use crate::{
     db::connection::Db,
     domain::{
         entity::reservation::Reservation,
+        semantic::operation_change_event::{OperationChangeEvent, OperationType},
+        semantic::operation_context::OperationContext,
         semantic::reservation_booking::{
             ReservationDailyRevenueAllocation, ReservationDailyStayDetail,
         },
@@ -28,6 +30,7 @@ use crate::{
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
         operational::{
+            operation_change_event_repository::SqliteOperationChangeEventRepository,
             reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
             reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
             reservation_repository::SqliteReservationRepository,
@@ -36,7 +39,12 @@ use crate::{
     usecase::timeline::command::record_event::record_event,
 };
 
-pub async fn execute(db: &Db, id: Uuid, input: ModifyReservationInput) -> AppResult<Reservation> {
+pub async fn execute(
+    db: &Db,
+    id: Uuid,
+    input: ModifyReservationInput,
+    context: OperationContext,
+) -> AppResult<Reservation> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
@@ -84,6 +92,36 @@ pub async fn execute(db: &Db, id: Uuid, input: ModifyReservationInput) -> AppRes
         for allocation in &reservation.daily_revenue_allocations {
             SqliteReservationDailyRevenueAllocationRepository::save(&mut tx, allocation).await?;
         }
+
+        let changed_fields = changed_fields(&before, &reservation);
+        let change_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "reservation".to_string(),
+            aggregate_id: reservation.id,
+            operation_type: OperationType::Modify,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: Some(reservation_json(&before).to_string()),
+            after_json: reservation_json(&reservation).to_string(),
+            changed_fields_json: serde_json::to_string(&changed_fields).map_err(infra)?,
+            occurred_at: chrono::Utc::now(),
+        };
+
+        SqliteOperationChangeEventRepository::save(&mut tx, &change_event).await?;
+
+        refresh_projection_chain(
+            &mut tx,
+            ProjectionInvalidation::new(
+                ProjectionNode::ChangePattern,
+                ProjectionScope::Timeline,
+                ProjectionRefreshTarget::OperationEvent {
+                    event_id: change_event.id,
+                },
+            ),
+        )
+        .await?;
 
         for change in transition_changes {
             SqliteReservationTransitionRepository::save(
@@ -198,6 +236,43 @@ pub async fn execute(db: &Db, id: Uuid, input: ModifyReservationInput) -> AppRes
             Err(e)
         }
     }
+}
+
+fn changed_fields(before: &Reservation, after: &Reservation) -> Vec<&'static str> {
+    let mut fields = Vec::new();
+
+    if before.check_in != after.check_in {
+        fields.push("check_in");
+    }
+    if before.check_out != after.check_out {
+        fields.push("check_out");
+    }
+    if before.room_class != after.room_class {
+        fields.push("room_class");
+    }
+    if before.daily_stay_details != after.daily_stay_details {
+        fields.push("daily_details");
+    }
+    if before.daily_revenue_allocations != after.daily_revenue_allocations {
+        fields.push("daily_revenue_allocations");
+    }
+
+    fields
+}
+
+fn reservation_json(reservation: &Reservation) -> serde_json::Value {
+    serde_json::json!({
+        "id": reservation.id,
+        "external_id": reservation.external_id,
+        "check_in": reservation.check_in,
+        "check_out": reservation.check_out,
+        "reservation_status": reservation.reservation_status,
+        "stay_status": reservation.stay_status,
+        "room_class": reservation.room_class,
+        "room_id": reservation.room_id,
+        "booking_channel": reservation.booking_channel,
+        "plan_code": reservation.plan_code,
+    })
 }
 
 fn affected_inventory_dates(before: &Reservation, after: &Reservation) -> Vec<NaiveDate> {

@@ -4,6 +4,10 @@ use crate::{
     error::app_error::AppResult,
     projection::{
         execution::binding::{
+            change_pattern_rebuild::execute_change_pattern_rebuild,
+            change_pattern_refresh::execute_change_pattern_refresh,
+            confidence_profile_rebuild::execute_confidence_profile_rebuild,
+            confidence_profile_refresh::execute_confidence_profile_refresh,
             daily_hotel_kpi_aggregate_rebuild::execute_daily_hotel_kpi_aggregate_rebuild,
             daily_hotel_kpi_aggregate_refresh::execute_daily_hotel_kpi_aggregate_refresh,
             daily_room_class_kpi_aggregate_rebuild::execute_daily_room_class_kpi_aggregate_rebuild,
@@ -20,6 +24,8 @@ use crate::{
             monthly_hotel_kpi_aggregate_refresh::execute_monthly_hotel_kpi_aggregate_refresh,
             monthly_room_class_kpi_aggregate_rebuild::execute_monthly_room_class_kpi_aggregate_rebuild,
             monthly_room_class_kpi_aggregate_refresh::execute_monthly_room_class_kpi_aggregate_refresh,
+            semantic_activation_rebuild::execute_semantic_activation_rebuild,
+            semantic_activation_refresh::execute_semantic_activation_refresh,
         },
         invalidation::projection_invalidation::ProjectionRefreshTarget,
         topology::projection_node::ProjectionNode,
@@ -35,6 +41,10 @@ impl ProjectionExecutionRegistry {
         target: &ProjectionRefreshTarget,
     ) -> AppResult<()> {
         match node {
+            ProjectionNode::ChangePattern => execute_change_pattern_refresh(tx, target).await,
+            ProjectionNode::ConfidenceProfile => {
+                execute_confidence_profile_refresh(tx, target).await
+            }
             ProjectionNode::DailyRoomClassKpiAggregate => {
                 execute_daily_room_class_kpi_aggregate_refresh(tx, target).await
             }
@@ -57,6 +67,9 @@ impl ProjectionExecutionRegistry {
             ProjectionNode::MonthlyRoomClassKpiAggregate => {
                 execute_monthly_room_class_kpi_aggregate_refresh(tx, target).await
             }
+            ProjectionNode::SemanticActivation => {
+                execute_semantic_activation_refresh(tx, target).await
+            }
         }
     }
 
@@ -65,6 +78,12 @@ impl ProjectionExecutionRegistry {
         node: &ProjectionNode,
     ) -> AppResult<()> {
         match node {
+            ProjectionNode::ChangePattern => {
+                execute_change_pattern_rebuild(tx).await?;
+            }
+            ProjectionNode::ConfidenceProfile => {
+                execute_confidence_profile_rebuild(tx).await?;
+            }
             ProjectionNode::DailyRoomClassKpiAggregate => {
                 execute_daily_room_class_kpi_aggregate_rebuild(tx).await?;
             }
@@ -88,6 +107,9 @@ impl ProjectionExecutionRegistry {
             }
             ProjectionNode::MonthlyRoomClassKpiAggregate => {
                 execute_monthly_room_class_kpi_aggregate_rebuild(tx).await?;
+            }
+            ProjectionNode::SemanticActivation => {
+                execute_semantic_activation_rebuild(tx).await?;
             }
         }
 

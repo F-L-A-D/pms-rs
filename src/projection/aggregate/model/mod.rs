@@ -1,3 +1,4 @@
+pub mod daily_hotel_kpi_aggregate;
 pub mod daily_room_class_kpi_aggregate;
 pub mod daily_room_class_kpi_aggregate_row;
 pub mod guest_aggregate;
@@ -6,3 +7,5 @@ pub mod housekeeping_daily_workload_aggregate;
 pub mod housekeeping_daily_workload_aggregate_row;
 pub mod inventory_aggregate;
 pub mod inventory_aggregate_row;
+pub mod monthly_hotel_kpi_aggregate;
+pub mod monthly_room_class_kpi_aggregate;

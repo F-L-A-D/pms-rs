@@ -93,6 +93,42 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
                 ),
             )
             .await?;
+
+            refresh_projection_chain(
+                &mut tx,
+                ProjectionInvalidation::new(
+                    ProjectionNode::DailyHotelKpiAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::KpiDate {
+                        date: service_date.to_string(),
+                    },
+                ),
+            )
+            .await?;
+
+            refresh_projection_chain(
+                &mut tx,
+                ProjectionInvalidation::new(
+                    ProjectionNode::MonthlyRoomClassKpiAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::KpiMonth {
+                        year_month: service_date.format("%Y-%m").to_string(),
+                    },
+                ),
+            )
+            .await?;
+
+            refresh_projection_chain(
+                &mut tx,
+                ProjectionInvalidation::new(
+                    ProjectionNode::MonthlyHotelKpiAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::KpiMonth {
+                        year_month: service_date.format("%Y-%m").to_string(),
+                    },
+                ),
+            )
+            .await?;
         }
 
         reservation.stay_status = Some(StayStatus::CheckedIn);

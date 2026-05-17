@@ -9,6 +9,8 @@ fn projection_table_name(node: &ProjectionNode) -> &'static str {
     match node {
         ProjectionNode::DailyRoomClassKpiAggregate => "daily_room_class_kpi_aggregates",
 
+        ProjectionNode::DailyHotelKpiAggregate => "daily_hotel_kpi_aggregates",
+
         ProjectionNode::GuestAggregate => "guest_aggregates",
 
         ProjectionNode::GuestActivitySignal => "guest_activities",
@@ -18,6 +20,10 @@ fn projection_table_name(node: &ProjectionNode) -> &'static str {
         }
 
         ProjectionNode::InventoryAggregate => "inventory_aggregates",
+
+        ProjectionNode::MonthlyHotelKpiAggregate => "monthly_hotel_kpi_aggregates",
+
+        ProjectionNode::MonthlyRoomClassKpiAggregate => "monthly_room_class_kpi_aggregates",
     }
 }
 

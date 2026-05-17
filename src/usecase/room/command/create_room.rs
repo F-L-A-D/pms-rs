@@ -56,6 +56,36 @@ pub async fn execute(db: &Db, input: CreateRoomInput) -> AppResult<Room> {
         )
         .await?;
 
+        refresh_projection_chain(
+            &mut tx,
+            ProjectionInvalidation::new(
+                ProjectionNode::DailyHotelKpiAggregate,
+                ProjectionScope::Inventory,
+                ProjectionRefreshTarget::Global,
+            ),
+        )
+        .await?;
+
+        refresh_projection_chain(
+            &mut tx,
+            ProjectionInvalidation::new(
+                ProjectionNode::MonthlyRoomClassKpiAggregate,
+                ProjectionScope::Inventory,
+                ProjectionRefreshTarget::Global,
+            ),
+        )
+        .await?;
+
+        refresh_projection_chain(
+            &mut tx,
+            ProjectionInvalidation::new(
+                ProjectionNode::MonthlyHotelKpiAggregate,
+                ProjectionScope::Inventory,
+                ProjectionRefreshTarget::Global,
+            ),
+        )
+        .await?;
+
         Ok(room)
     }
     .await;

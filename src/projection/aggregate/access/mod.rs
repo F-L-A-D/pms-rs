@@ -1,3 +1,4 @@
+pub mod fetch_daily_hotel_kpi_aggregate_by_date;
 pub mod fetch_daily_room_class_kpi_aggregate_rows;
 pub mod fetch_daily_room_class_kpi_aggregates_by_date;
 pub mod fetch_guest_aggregate;
@@ -6,3 +7,5 @@ pub mod fetch_housekeeping_daily_workload_aggregate_rows;
 pub mod fetch_housekeeping_daily_workload_aggregates_by_date;
 pub mod fetch_inventory_aggregate_rows;
 pub mod fetch_inventory_aggregates_by_date;
+pub mod fetch_monthly_hotel_kpi_aggregate_by_month;
+pub mod fetch_monthly_room_class_kpi_aggregates_by_month;

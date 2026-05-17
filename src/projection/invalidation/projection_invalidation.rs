@@ -23,6 +23,8 @@ pub enum ProjectionRefreshTarget {
 
     KpiDate { date: String },
 
+    KpiMonth { year_month: String },
+
     RoomDate { date: String },
 }
 

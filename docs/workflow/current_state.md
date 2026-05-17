@@ -1,172 +1,73 @@
-## Projection Invalidation Semantics
+# Current State
 
-Status: FOUNDATION COMPLETE
+## Phase
 
-Implemented:
+Projection runtime stabilization is mostly complete.
 
-* `ProjectionInvalidation`
-* `ProjectionScope`
-* `ProjectionRefreshTarget`
-* topology-owned invalidation propagation semantics
-* `InvalidationTraversalPlanner`
-* `AffectedProjectionSubgraph`
-* invalidation-aware orchestrator flow
-* dependency-level invalidation policies
-* rebuild / invalidation semantic separation
-* responsibility-oriented projection test structure
+The current focus is practical hospitality domain expansion:
 
-Current semantics:
+- operational realism
+- workflow reconstruction correctness
+- settlement/accounting separation
+- semantic clarity
+- room housekeeping and occupancy semantics
 
-* propagation remains deterministic
-* propagation remains topology-owned
-* invalidation derives affected projection subgraph
-* refresh execution consumes affected subgraph traversal order
-* projections remain rebuildable/disposable/non-authoritative
-* operational correctness remains authoritative
+## Established Projection Guarantees
 
-Intentional non-features:
+Preserve these invariants:
 
-* async propagation
-* distributed invalidation
-* traversal optimization
-* partial rebuild execution
-* incremental projection engine
-* cache-aware propagation pruning
+- topology-managed propagation
+- deterministic traversal ordering
+- rebuildable projection chains
+- refresh/rebuild equivalence
+- transaction-scoped propagation consistency
+- projection authority boundary
 
-Current architecture direction:
+Projection runtime redesign is not the default task.
 
-Projection invalidation is now modeled as semantic topology propagation rather than execution-side downstream refresh chaining.
+## Recent Domain Direction
 
-Next target:
+Billing and settlement now separate operational authority more explicitly:
 
-## Scoped Rebuild Semantics
+- folio lifecycle uses `open`, `locked`, and `closed`
+- invoices require closed folios
+- payments and folio entry mutation require open folios
+- settlement transitions remain operational-command oriented
 
-Status: FOUNDATION COMPLETE
+Room operations now separate static room identity from date-scoped state:
 
-Implemented:
+- `Room` is static room information
+- `RoomDailyState` represents `Room x service_date`
+- housekeeping updates mutate `RoomDailyState`
+- room API responses do not fabricate occupancy or housekeeping state
 
-* authoritative rebuild-equivalence boundary semantics
-* affected projection subgraph convergence semantics
-* scoped rebuild convergence contracts
-* refresh execution as rebuild-equivalence fulfillment
-* boundary-scoped correctness semantics
-* execution consumption of semantic rebuild boundaries
-* refresh/rebuild orchestration symmetry
-* convergence visibility isolation semantics
-* authoritative convergence execution semantics
-* resumability boundary semantics
-* abort-safe convergence semantics
-* failed projection node isolation semantics
-* topology-owned convergence execution
+## Current Expansion Areas
 
-Current semantics:
+Good next areas:
 
-* affected projection subgraphs define authoritative rebuild boundaries
-* refresh propagation fulfills rebuild-equivalence contracts
-* refresh/rebuild symmetry is scoped to affected boundaries
-* rebuild equivalence guarantees are boundary-scoped
-* execution consumes semantic rebuild boundaries
-* topology remains authoritative for boundary derivation
-* projections remain rebuildable/disposable/non-authoritative
-* operational correctness remains authoritative
-* partially converged projections never become authoritatively visible
-* failed projection nodes are excluded from authoritative convergence completion
-* convergence degradation remains boundary-scoped
-* topology owns convergence execution ordering
+- housekeeping operational workflow depth
+- stay/check-in integration with room daily occupancy
+- room out-of-order and maintenance workflows
+- settlement/accounting lifecycle refinement
+- API/input/response DTO consistency
+- integration tests for realistic hospitality workflows
 
-Boundary semantics:
+Areas that should remain stable:
 
-* rebuild-equivalence guarantees apply only within affected boundaries
-* projection equivalence outside affected boundaries is intentionally undefined
-* scoped refresh correctness does not imply global projection convergence
+- projection runtime and topology orchestration
+- transaction ownership rules
+- repository transaction behavior
+- explicit enum snake_case persistence
+- operational/projection authority separation
 
-Intentional non-features:
+## Non-Goals
 
-* no partial rebuild optimization
-* no incremental rebuild engine
-* no asynchronous convergence semantics
-* no distributed rebuild semantics
-* no cache-aware pruning
-* no execution heuristics
-* no durable checkpoint persistence
-* no retry orchestration
-* no distributed convergence execution
+Do not prioritize:
 
-Current architecture direction:
-
-Projection invalidation now derives authoritative rebuild-equivalence boundaries rather than execution-oriented refresh sets.
-
-Refresh propagation is modeled as scoped convergence toward authoritative rebuild-equivalent state.
-
----
-
-## Next Validation Target
-
-Focus shifts temporarily from architecture expansion toward
-runtime stabilization and convergence validation.
-
-Validation focus areas:
-
-* API workflow integration tests
-* projection convergence verification
-* topology traversal correctness
-* invalidation propagation consistency
-* refresh/rebuild equivalence validation
-* aggregate realization correctness
-* semantic runtime recovery behavior
-
-Current testing direction:
-
-* strengthen integration-first validation
-* reduce repetitive workflow setup
-* improve reusable test helpers
-* validate runtime determinism under realistic workflows
-
-Important validation goals:
-
-* projections converge deterministically
-* rebuild restores equivalent semantic state
-* invalidation traversal remains topology-consistent
-* orchestration/runtime separation remains intact
-* aggregate realization remains local-only
-
----
-
-## Parallel Exploration: AR Foundation
-
-Exploration in progress:
-
-- BillingAccount
-- Invoice
-- Receivable
-- folio close workflow
-- invoice issuance workflow
-- operational settlement boundary modeling
-
-Current direction:
-
-Maintain strict separation between:
-
-- operational billing authority
-- settlement/accounting authority
-- projection intelligence layers
-
-Recent refinement:
-
-- billing handler decomposition completed
-- billing transport DTO separation refined
-- billing handlers separated into:
-  - folio authority
-  - payment mutation authority
-  - invoice / settlement authority
-- append-only billing mutations now intentionally return `201 CREATED`
-- settlement lifecycle transitions remain operational-command oriented
-- mechanical equivalence preservation prioritized during refactor
-- existing operational semantics/tree/usecase naming treated as authoritative during decomposition
-
-Implemented during exploration:
-
-- `post_payment` usecase
-- `get_folio_entries` usecase
-- billing handler modularization
-- invoice request/response DTO separation
+- frontend completeness
+- async propagation
+- distributed invalidation
+- traversal optimization
+- partial rebuild optimization
+- incremental projection engine
+- framework extraction

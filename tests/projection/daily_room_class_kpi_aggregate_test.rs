@@ -204,6 +204,114 @@ async fn should_refresh_monthly_room_class_and_hotel_kpis() {
 
 #[tokio::test]
 #[serial]
+async fn should_project_daily_kpis_from_nightly_room_class_and_revenue_allocations() {
+    let app = spawn_app().await;
+
+    create_room(&app.app).await;
+    create_room_with_class(&app.app, "room_deluxe_daily_kpi", "deluxe").await;
+
+    let guest = create_guest(&app.app).await;
+    let today = Utc::now().date_naive();
+
+    let body = json!({
+        "check_in": today.to_string(),
+        "check_out": (today + Duration::days(2)).to_string(),
+        "room_class": "standard",
+        "booking_channel": "direct",
+        "plan_code": "BASE",
+        "daily_details": [
+            {
+                "service_date": today.to_string(),
+                "room_class": "standard",
+                "plan_code": "BB",
+                "adult_count": 1,
+                "child_count": 0,
+                "package_breakdowns": [
+                    {
+                        "package_code": "ROOM",
+                        "revenue_category": "room",
+                        "amount": "100.00"
+                    },
+                    {
+                        "package_code": "TAX",
+                        "revenue_category": "tax",
+                        "amount": "10.00"
+                    }
+                ]
+            },
+            {
+                "service_date": (today + Duration::days(1)).to_string(),
+                "room_class": "deluxe",
+                "plan_code": "HB",
+                "adult_count": 2,
+                "child_count": 1,
+                "package_breakdowns": [
+                    {
+                        "package_code": "ROOM",
+                        "revenue_category": "room",
+                        "amount": "180.00"
+                    },
+                    {
+                        "package_code": "DINNER",
+                        "revenue_category": "food_and_beverage",
+                        "amount": "40.00"
+                    },
+                    {
+                        "package_code": "TAX",
+                        "revenue_category": "tax",
+                        "amount": "20.00"
+                    }
+                ]
+            }
+        ],
+        "participants": [
+            {
+                "guest_id": guest.id.to_string(),
+                "relation_type": "primary"
+            }
+        ]
+    });
+
+    let response = post_json(&app.app, "/reservations", &body).await;
+
+    assert!(response.status().is_success());
+
+    let mut tx = app.db.begin_tx().await;
+
+    let first_day = fetch_daily_room_class_kpi_aggregates_by_date(&mut tx, today)
+        .await
+        .unwrap();
+    let first_day_standard = first_day
+        .iter()
+        .find(|aggregate| aggregate.room_class == "standard")
+        .unwrap();
+
+    assert_eq!(first_day_standard.sold_room_nights, 1);
+    assert_eq!(first_day_standard.room_revenue, Decimal::new(10000, 2));
+    assert_eq!(first_day_standard.tax_amount, Decimal::new(1000, 2));
+
+    let second_day =
+        fetch_daily_room_class_kpi_aggregates_by_date(&mut tx, today + Duration::days(1))
+            .await
+            .unwrap();
+    let second_day_deluxe = second_day
+        .iter()
+        .find(|aggregate| aggregate.room_class == "deluxe")
+        .unwrap();
+
+    assert_eq!(second_day_deluxe.sold_room_nights, 1);
+    assert_eq!(second_day_deluxe.room_revenue, Decimal::new(18000, 2));
+    assert_eq!(
+        second_day_deluxe.food_and_beverage_revenue,
+        Decimal::new(4000, 2)
+    );
+    assert_eq!(second_day_deluxe.tax_amount, Decimal::new(2000, 2));
+
+    let _ = tx.rollback().await;
+}
+
+#[tokio::test]
+#[serial]
 async fn should_keep_zero_kpi_rates_when_all_rooms_are_out_of_order() {
     clear_trace();
 
@@ -506,4 +614,15 @@ fn days_in_month(date: NaiveDate) -> i64 {
     };
 
     i64::from(next_month.pred_opt().unwrap().day())
+}
+
+async fn create_room_with_class(app: &axum::Router, room_no: &str, room_class: &str) {
+    let body = json!({
+        "room_no": room_no,
+        "room_class": room_class
+    });
+
+    let response = post_json(app, "/rooms", &body).await;
+
+    assert!(response.status().is_success());
 }

@@ -7,7 +7,10 @@ use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::domain::semantic::{
-    reservation_booking::{ReservationBookingChannel, ReservationPackageBreakdown},
+    reservation_booking::{
+        ReservationBookingChannel, ReservationDailyRevenueAllocation, ReservationDailyStayDetail,
+        ReservationPackageBreakdown,
+    },
     reservation_guest_relation::{ReservationGuestRelation, ReservationGuestRelationType},
 };
 
@@ -103,6 +106,8 @@ pub struct Reservation {
     pub booking_channel: ReservationBookingChannel,
     pub plan_code: Option<String>,
     pub package_breakdowns: Vec<ReservationPackageBreakdown>,
+    pub daily_stay_details: Vec<ReservationDailyStayDetail>,
+    pub daily_revenue_allocations: Vec<ReservationDailyRevenueAllocation>,
     pub participants: Vec<ReservationGuestRelation>,
     pub created_at: DateTime<Utc>,
 }
@@ -158,6 +163,8 @@ impl Reservation {
             booking_channel,
             plan_code,
             package_breakdowns,
+            daily_stay_details: vec![],
+            daily_revenue_allocations: vec![],
             participants,
             created_at: now,
         })

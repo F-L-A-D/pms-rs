@@ -9,6 +9,8 @@ use crate::{
     },
     error::app_error::{infra, AppResult},
     repository::sqlite::operational::{
+        reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
+        reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
         reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
         reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
     },
@@ -218,6 +220,20 @@ impl SqliteReservationRepository {
             )
             .await?;
 
+        let daily_stay_details =
+            SqliteReservationDailyStayDetailRepository::list_by_reservation_id(
+                tx,
+                reservation_uuid,
+            )
+            .await?;
+
+        let daily_revenue_allocations =
+            SqliteReservationDailyRevenueAllocationRepository::list_by_reservation_id(
+                tx,
+                reservation_uuid,
+            )
+            .await?;
+
         Ok(Reservation {
             id: reservation_uuid,
 
@@ -254,6 +270,10 @@ impl SqliteReservationRepository {
             plan_code: row.get("plan_code"),
 
             package_breakdowns,
+
+            daily_stay_details,
+
+            daily_revenue_allocations,
 
             participants,
 

@@ -73,25 +73,10 @@ async fn aggregate_revenue(
     };
 
     for row in revenue_rows {
-        let check_in = row
-            .get::<String, _>("check_in")
-            .parse::<NaiveDate>()
-            .map_err(infra)?;
-        let check_out = row
-            .get::<String, _>("check_out")
-            .parse::<NaiveDate>()
-            .map_err(infra)?;
-        let nights = (check_out - check_in).num_days();
-
-        if nights <= 0 {
-            continue;
-        }
-
         let amount = row
             .get::<String, _>("amount")
             .parse::<Decimal>()
-            .map_err(infra)?
-            / Decimal::from(nights);
+            .map_err(infra)?;
 
         let category = ReservationRevenueCategory::from_snake(
             row.get::<String, _>("revenue_category").as_str(),

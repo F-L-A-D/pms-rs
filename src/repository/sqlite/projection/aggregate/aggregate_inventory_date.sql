@@ -6,10 +6,11 @@ WITH room_classes AS (
 
     UNION
 
-    SELECT DISTINCT room_class
-    FROM reservations
-    WHERE check_in <= ?1
-      AND check_out > ?1
+    SELECT DISTINCT rsd.room_class
+    FROM reservation_daily_stay_details rsd
+    INNER JOIN reservations r
+        ON r.id = rsd.reservation_id
+    WHERE rsd.service_date = ?1
 )
 SELECT
     rc.room_class AS room_class,
@@ -36,28 +37,31 @@ SELECT
 
     (
         SELECT COUNT(*)
-        FROM reservations r
-        WHERE r.room_class = rc.room_class
-          AND r.check_in <= ?1
-          AND r.check_out > ?1
+        FROM reservation_daily_stay_details rsd
+        INNER JOIN reservations r
+            ON r.id = rsd.reservation_id
+        WHERE rsd.room_class = rc.room_class
+          AND rsd.service_date = ?1
           AND r.reservation_status = 'confirmed'
     ) AS confirmed_reservations,
 
     (
         SELECT COUNT(*)
-        FROM reservations r
-        WHERE r.room_class = rc.room_class
-          AND r.check_in <= ?1
-          AND r.check_out > ?1
+        FROM reservation_daily_stay_details rsd
+        INNER JOIN reservations r
+            ON r.id = rsd.reservation_id
+        WHERE rsd.room_class = rc.room_class
+          AND rsd.service_date = ?1
           AND r.reservation_status = 'pending'
     ) AS pending_reservations,
 
     (
         SELECT COUNT(*)
-        FROM reservations r
-        WHERE r.room_class = rc.room_class
-          AND r.check_in <= ?1
-          AND r.check_out > ?1
+        FROM reservation_daily_stay_details rsd
+        INNER JOIN reservations r
+            ON r.id = rsd.reservation_id
+        WHERE rsd.room_class = rc.room_class
+          AND rsd.service_date = ?1
           AND r.reservation_status = 'cancelled'
     ) AS cancelled_reservations
 FROM room_classes rc

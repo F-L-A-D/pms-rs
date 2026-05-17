@@ -2,11 +2,16 @@ use uuid::Uuid;
 
 use chrono::NaiveDate;
 
+use rust_decimal::Decimal;
+
 use crate::{
     api::dto::input::reservation::ModifyReservationInput,
     db::connection::Db,
     domain::{
         entity::reservation::Reservation,
+        semantic::reservation_booking::{
+            ReservationDailyRevenueAllocation, ReservationDailyStayDetail,
+        },
         semantic::reservation_semantics::{
             detect_reservation_timeline_events, detect_reservation_transition_changes,
         },
@@ -22,7 +27,11 @@ use crate::{
     },
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
-        operational::reservation_repository::SqliteReservationRepository,
+        operational::{
+            reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
+            reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
+            reservation_repository::SqliteReservationRepository,
+        },
     },
     usecase::timeline::command::record_event::record_event,
 };
@@ -50,7 +59,31 @@ pub async fn execute(db: &Db, id: Uuid, input: ModifyReservationInput) -> AppRes
         let timeline_event_types = detect_reservation_timeline_events(&before, &reservation);
         let transition_changes = detect_reservation_transition_changes(&before, &reservation);
 
+        reservation.daily_stay_details = build_legacy_daily_stay_details(&reservation);
+        reservation.daily_revenue_allocations =
+            build_legacy_daily_revenue_allocations(&reservation);
+
         SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+
+        SqliteReservationDailyStayDetailRepository::delete_by_reservation_id(
+            &mut tx,
+            reservation.id,
+        )
+        .await?;
+
+        for detail in &reservation.daily_stay_details {
+            SqliteReservationDailyStayDetailRepository::save(&mut tx, detail).await?;
+        }
+
+        SqliteReservationDailyRevenueAllocationRepository::delete_by_reservation_id(
+            &mut tx,
+            reservation.id,
+        )
+        .await?;
+
+        for allocation in &reservation.daily_revenue_allocations {
+            SqliteReservationDailyRevenueAllocationRepository::save(&mut tx, allocation).await?;
+        }
 
         for change in transition_changes {
             SqliteReservationTransitionRepository::save(
@@ -177,4 +210,46 @@ fn affected_inventory_dates(before: &Reservation, after: &Reservation) -> Vec<Na
     }
 
     dates
+}
+
+fn build_legacy_daily_stay_details(reservation: &Reservation) -> Vec<ReservationDailyStayDetail> {
+    reservation
+        .nights()
+        .into_iter()
+        .map(|service_date| ReservationDailyStayDetail {
+            reservation_id: reservation.id,
+            service_date,
+            room_class: reservation.room_class.clone(),
+            plan_code: reservation.plan_code.clone(),
+            adult_count: 1,
+            child_count: 0,
+        })
+        .collect()
+}
+
+fn build_legacy_daily_revenue_allocations(
+    reservation: &Reservation,
+) -> Vec<ReservationDailyRevenueAllocation> {
+    let nights = reservation.nights();
+
+    if nights.is_empty() {
+        return vec![];
+    }
+
+    let divisor = Decimal::from(nights.len() as i64);
+
+    nights
+        .into_iter()
+        .flat_map(|service_date| {
+            reservation.package_breakdowns.iter().map(move |breakdown| {
+                ReservationDailyRevenueAllocation {
+                    reservation_id: reservation.id,
+                    service_date,
+                    package_code: breakdown.package_code.clone(),
+                    revenue_category: breakdown.revenue_category,
+                    amount: breakdown.amount / divisor,
+                }
+            })
+        })
+        .collect()
 }

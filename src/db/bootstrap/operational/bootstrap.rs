@@ -36,6 +36,16 @@ pub async fn bootstrap(pool: &SqlitePool) {
         .await
         .unwrap();
 
+    sqlx::query(include_str!("reservation_daily_stay_details.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query(include_str!("reservation_daily_revenue_allocations.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
     sqlx::query(include_str!("companies.sql"))
         .execute(pool)
         .await

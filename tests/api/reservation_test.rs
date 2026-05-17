@@ -13,7 +13,11 @@ use pms_rs::{
     },
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
-        operational::reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
+        operational::{
+            reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
+            reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
+            reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
+        },
     },
 };
 
@@ -207,6 +211,155 @@ async fn should_create_reservation_with_booking_channel_and_package_breakdowns()
             && breakdown.revenue_category == ReservationRevenueCategory::FoodAndBeverage
             && breakdown.amount == rust_decimal::Decimal::new(3000, 2)
     }));
+}
+
+#[tokio::test]
+async fn should_create_reservation_with_daily_stay_details_and_daily_revenue_allocations() {
+    let app = spawn_app().await;
+
+    let guest = create_guest(&app.app).await;
+    let participant = ReservationParticipantBuilder::new(guest.id).build();
+    let today = Utc::now().date_naive();
+
+    let request = serde_json::json!({
+        "external_id": "RES-DAILY-001",
+        "check_in": today.to_string(),
+        "check_out": (today + Duration::days(2)).to_string(),
+        "room_class": "standard",
+        "booking_channel": "direct",
+        "plan_code": "BASE",
+        "daily_details": [
+            {
+                "service_date": today.to_string(),
+                "room_class": "standard",
+                "plan_code": "BB",
+                "adult_count": 1,
+                "child_count": 0,
+                "package_breakdowns": [
+                    {
+                        "package_code": "ROOM",
+                        "revenue_category": "room",
+                        "amount": "100.00"
+                    },
+                    {
+                        "package_code": "TAX",
+                        "revenue_category": "tax",
+                        "amount": "10.00"
+                    }
+                ]
+            },
+            {
+                "service_date": (today + Duration::days(1)).to_string(),
+                "room_class": "deluxe",
+                "plan_code": "HB",
+                "adult_count": 2,
+                "child_count": 1,
+                "package_breakdowns": [
+                    {
+                        "package_code": "ROOM",
+                        "revenue_category": "room",
+                        "amount": "180.00"
+                    },
+                    {
+                        "package_code": "DINNER",
+                        "revenue_category": "food_and_beverage",
+                        "amount": "40.00"
+                    },
+                    {
+                        "package_code": "TAX",
+                        "revenue_category": "tax",
+                        "amount": "20.00"
+                    }
+                ]
+            }
+        ],
+        "participants": [
+            {
+                "guest_id": participant.guest_id.to_string(),
+                "relation_type": participant.relation_type
+            }
+        ]
+    });
+
+    let response = post_json(&app.app, "/reservations", &request).await;
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    let created: ReservationResponse =
+        serde_json::from_value(response_json(response).await).unwrap();
+
+    assert_eq!(created.daily_details.len(), 2);
+    assert!(created.daily_details.iter().any(|detail| {
+        detail.service_date == today
+            && detail.room_class == "standard"
+            && detail.plan_code.as_deref() == Some("BB")
+            && detail.adult_count == 1
+            && detail.child_count == 0
+    }));
+    assert!(created.daily_details.iter().any(|detail| {
+        detail.service_date == today + Duration::days(1)
+            && detail.room_class == "deluxe"
+            && detail.plan_code.as_deref() == Some("HB")
+            && detail.adult_count == 2
+            && detail.child_count == 1
+    }));
+    assert_eq!(created.daily_revenue_allocations.len(), 5);
+
+    let mut tx = app.db.begin_tx().await;
+
+    let details =
+        SqliteReservationDailyStayDetailRepository::list_by_reservation_id(&mut tx, created.id)
+            .await
+            .unwrap();
+    let allocations = SqliteReservationDailyRevenueAllocationRepository::list_by_reservation_id(
+        &mut tx, created.id,
+    )
+    .await
+    .unwrap();
+
+    let _ = tx.rollback().await;
+
+    assert_eq!(details.len(), 2);
+    assert_eq!(allocations.len(), 5);
+    assert!(allocations.iter().any(|allocation| {
+        allocation.service_date == today + Duration::days(1)
+            && allocation.package_code == "DINNER"
+            && allocation.revenue_category == ReservationRevenueCategory::FoodAndBeverage
+            && allocation.amount == rust_decimal::Decimal::new(4000, 2)
+    }));
+}
+
+#[tokio::test]
+async fn should_reject_daily_details_that_do_not_cover_every_reservation_night() {
+    let app = spawn_app().await;
+
+    let guest = create_guest(&app.app).await;
+    let participant = ReservationParticipantBuilder::new(guest.id).build();
+    let today = Utc::now().date_naive();
+
+    let request = serde_json::json!({
+        "check_in": today.to_string(),
+        "check_out": (today + Duration::days(2)).to_string(),
+        "room_class": "standard",
+        "daily_details": [
+            {
+                "service_date": today.to_string(),
+                "room_class": "standard",
+                "adult_count": 1,
+                "child_count": 0
+            }
+        ],
+        "participants": [
+            {
+                "guest_id": participant.guest_id.to_string(),
+                "relation_type": participant.relation_type
+            }
+        ]
+    });
+
+    let response = post_json(&app.app, "/reservations", &request).await;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]

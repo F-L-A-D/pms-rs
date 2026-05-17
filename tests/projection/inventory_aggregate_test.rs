@@ -8,7 +8,7 @@ use pms_rs::{
     domain::{
         entity::reservation::{Reservation, ReservationStatus, StayStatus},
         semantic::{
-            reservation_booking::ReservationBookingChannel,
+            reservation_booking::{ReservationBookingChannel, ReservationDailyStayDetail},
             room_daily_state::{RoomDailyOccupancyStatus, RoomDailyState},
         },
     },
@@ -26,6 +26,7 @@ use pms_rs::{
         topology::projection_node::ProjectionNode,
     },
     repository::sqlite::operational::{
+        reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
         reservation_repository::SqliteReservationRepository,
         room_daily_state_repository::SqliteRoomDailyStateRepository,
     },
@@ -89,6 +90,8 @@ async fn should_preserve_pending_and_out_of_order_inventory_inputs() {
         booking_channel: ReservationBookingChannel::Direct,
         plan_code: None,
         package_breakdowns: vec![],
+        daily_stay_details: vec![],
+        daily_revenue_allocations: vec![],
         participants: vec![],
         created_at: Utc::now(),
     };
@@ -102,6 +105,20 @@ async fn should_preserve_pending_and_out_of_order_inventory_inputs() {
     SqliteReservationRepository::save(&mut tx, &pending_reservation)
         .await
         .unwrap();
+
+    SqliteReservationDailyStayDetailRepository::save(
+        &mut tx,
+        &ReservationDailyStayDetail {
+            reservation_id: pending_reservation.id,
+            service_date,
+            room_class: "standard".to_string(),
+            plan_code: None,
+            adult_count: 1,
+            child_count: 0,
+        },
+    )
+    .await
+    .unwrap();
 
     refresh_projection_chain(
         &mut tx,

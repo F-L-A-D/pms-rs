@@ -14,8 +14,8 @@ use crate::{
     api::{
         dto::{
             input::reservation::{
-                CreateReservationInput, ModifyReservationInput, ReservationPackageBreakdownInput,
-                ReservationParticipantInput,
+                CreateReservationInput, ModifyReservationInput, ReservationDailyDetailInput,
+                ReservationPackageBreakdownInput, ReservationParticipantInput,
             },
             request::reservation::{CreateReservationRequest, ModifyReservationRequest},
             response::reservation::{ReservationParticipantResponse, ReservationResponse},
@@ -74,6 +74,41 @@ pub async fn create_reservation_handler(
         })
         .collect::<Result<Vec<_>, ApiError>>()?;
 
+    let daily_details = req
+        .daily_details
+        .into_iter()
+        .map(|detail| {
+            let service_date = NaiveDate::parse_from_str(&detail.service_date, "%Y-%m-%d")
+                .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+            let package_breakdowns = detail
+                .package_breakdowns
+                .into_iter()
+                .map(|breakdown| {
+                    let amount = breakdown
+                        .amount
+                        .parse::<Decimal>()
+                        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+                    Ok(ReservationPackageBreakdownInput {
+                        package_code: breakdown.package_code,
+                        revenue_category: breakdown.revenue_category,
+                        amount,
+                    })
+                })
+                .collect::<Result<Vec<_>, ApiError>>()?;
+
+            Ok(ReservationDailyDetailInput {
+                service_date,
+                room_class: detail.room_class,
+                plan_code: detail.plan_code,
+                adult_count: detail.adult_count,
+                child_count: detail.child_count,
+                package_breakdowns,
+            })
+        })
+        .collect::<Result<Vec<_>, ApiError>>()?;
+
     let input = CreateReservationInput {
         external_id: req.external_id,
 
@@ -90,6 +125,8 @@ pub async fn create_reservation_handler(
         plan_code: req.plan_code,
 
         package_breakdowns,
+
+        daily_details,
 
         participants,
     };
@@ -216,6 +253,33 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
                     package_code: breakdown.package_code,
                     revenue_category: breakdown.revenue_category,
                     amount: breakdown.amount,
+                }
+            })
+            .collect(),
+
+        daily_details: reservation
+            .daily_stay_details
+            .into_iter()
+            .map(
+                |detail| crate::api::dto::response::reservation::ReservationDailyDetailResponse {
+                    service_date: detail.service_date,
+                    room_class: detail.room_class,
+                    plan_code: detail.plan_code,
+                    adult_count: detail.adult_count,
+                    child_count: detail.child_count,
+                },
+            )
+            .collect(),
+
+        daily_revenue_allocations: reservation
+            .daily_revenue_allocations
+            .into_iter()
+            .map(|allocation| {
+                crate::api::dto::response::reservation::ReservationDailyRevenueAllocationResponse {
+                    service_date: allocation.service_date,
+                    package_code: allocation.package_code,
+                    revenue_category: allocation.revenue_category,
+                    amount: allocation.amount,
                 }
             })
             .collect(),

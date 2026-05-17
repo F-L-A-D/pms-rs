@@ -17,6 +17,7 @@ pub struct CreateReservationInput {
     pub booking_channel: ReservationBookingChannel,
     pub plan_code: Option<String>,
     pub package_breakdowns: Vec<ReservationPackageBreakdownInput>,
+    pub daily_details: Vec<ReservationDailyDetailInput>,
     pub participants: Vec<ReservationParticipantInput>,
 }
 
@@ -24,6 +25,15 @@ pub struct ReservationPackageBreakdownInput {
     pub package_code: String,
     pub revenue_category: ReservationRevenueCategory,
     pub amount: Decimal,
+}
+
+pub struct ReservationDailyDetailInput {
+    pub service_date: NaiveDate,
+    pub room_class: String,
+    pub plan_code: Option<String>,
+    pub adult_count: i64,
+    pub child_count: i64,
+    pub package_breakdowns: Vec<ReservationPackageBreakdownInput>,
 }
 
 pub struct ReservationParticipantInput {

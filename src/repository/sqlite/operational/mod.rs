@@ -7,6 +7,8 @@ pub mod guest_timeline_event_repository;
 pub mod invoice_repository;
 pub mod payment_repository;
 pub mod receivable_repository;
+pub mod reservation_daily_revenue_allocation_repository;
+pub mod reservation_daily_stay_detail_repository;
 pub mod reservation_guest_relation_repository;
 pub mod reservation_package_breakdown_repository;
 pub mod reservation_repository;

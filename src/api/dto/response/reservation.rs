@@ -25,11 +25,30 @@ pub struct ReservationResponse {
     pub booking_channel: ReservationBookingChannel,
     pub plan_code: Option<String>,
     pub package_breakdowns: Vec<ReservationPackageBreakdownResponse>,
+    pub daily_details: Vec<ReservationDailyDetailResponse>,
+    pub daily_revenue_allocations: Vec<ReservationDailyRevenueAllocationResponse>,
     pub participants: Vec<ReservationParticipantResponse>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ReservationPackageBreakdownResponse {
+    pub package_code: String,
+    pub revenue_category: ReservationRevenueCategory,
+    pub amount: rust_decimal::Decimal,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationDailyDetailResponse {
+    pub service_date: NaiveDate,
+    pub room_class: String,
+    pub plan_code: Option<String>,
+    pub adult_count: i64,
+    pub child_count: i64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationDailyRevenueAllocationResponse {
+    pub service_date: NaiveDate,
     pub package_code: String,
     pub revenue_category: ReservationRevenueCategory,
     pub amount: rust_decimal::Decimal,

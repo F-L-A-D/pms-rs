@@ -2,6 +2,8 @@ use rust_decimal::Decimal;
 
 use serde::{Deserialize, Serialize};
 
+use chrono::NaiveDate;
+
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,6 +75,25 @@ impl ReservationRevenueCategory {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReservationPackageBreakdown {
     pub reservation_id: Uuid,
+    pub package_code: String,
+    pub revenue_category: ReservationRevenueCategory,
+    pub amount: Decimal,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReservationDailyStayDetail {
+    pub reservation_id: Uuid,
+    pub service_date: NaiveDate,
+    pub room_class: String,
+    pub plan_code: Option<String>,
+    pub adult_count: i64,
+    pub child_count: i64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReservationDailyRevenueAllocation {
+    pub reservation_id: Uuid,
+    pub service_date: NaiveDate,
     pub package_code: String,
     pub revenue_category: ReservationRevenueCategory,
     pub amount: Decimal,

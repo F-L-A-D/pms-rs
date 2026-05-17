@@ -4,13 +4,17 @@ use chrono::{Duration, Utc};
 
 use pms_rs::{
     api::dto::reservation::ReservationResponse,
-    domain::reservation_guest_relation::ReservationGuestRelationType,
+    domain::{
+        reservation_guest_relation::ReservationGuestRelationType,
+        semantic::reservation_transition::ReservationTransitionType,
+    },
+    repository::sqlite::behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
 };
 
 use crate::common::{
     app::spawn_app,
     builders::{ReservationBuilder, ReservationParticipantBuilder},
-    client::{get, post_json, response_json},
+    client::{get, patch_json, post_json, response_json},
     guest::create_guest,
     reservation::create_reservation,
 };
@@ -124,4 +128,52 @@ async fn should_reject_duplicate_participant_guest_ids() {
     let response = post_json(&app.app, "/reservations", &request).await;
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST,);
+}
+
+#[tokio::test]
+async fn should_record_semantic_reservation_transitions_on_modify() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+
+    let next_check_out = created.check_out + Duration::days(1);
+
+    let request = serde_json::json!({
+        "check_out": next_check_out.to_string(),
+        "room_class": "deluxe"
+    });
+
+    let response = patch_json(&app.app, &format!("/reservations/{}", created.id), &request).await;
+
+    assert_eq!(response.status(), StatusCode::OK,);
+
+    let mut tx = app.db.begin_tx().await;
+
+    let transitions =
+        SqliteReservationTransitionRepository::find_by_reservation_id(&mut tx, created.id)
+            .await
+            .unwrap();
+
+    let _ = tx.rollback().await;
+
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == ReservationTransitionType::CheckOutChanged
+            && transition.field_name == "check_out"
+            && transition.before_value == created.check_out.to_string()
+            && transition.after_value == next_check_out.to_string()
+    }));
+
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == ReservationTransitionType::ReservationExtended
+            && transition.field_name == "check_out"
+            && transition.before_value == created.check_out.to_string()
+            && transition.after_value == next_check_out.to_string()
+    }));
+
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == ReservationTransitionType::RoomClassChanged
+            && transition.field_name == "room_class"
+            && transition.before_value == created.room_class
+            && transition.after_value == "deluxe"
+    }));
 }

@@ -5,7 +5,9 @@ use crate::{
     db::connection::Db,
     domain::{
         entity::reservation::Reservation,
-        semantic::reservation_semantics::detect_reservation_timeline_events,
+        semantic::reservation_semantics::{
+            detect_reservation_timeline_events, detect_reservation_transition_changes,
+        },
     },
     error::app_error::{infra, not_found, validation, AppResult},
     projection::{
@@ -16,15 +18,14 @@ use crate::{
         orchestrator::refresh_projection_chain::refresh_projection_chain,
         topology::projection_node::ProjectionNode,
     },
-    repository::sqlite::operational::reservation_repository::SqliteReservationRepository,
+    repository::sqlite::{
+        behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
+        operational::reservation_repository::SqliteReservationRepository,
+    },
     usecase::timeline::command::record_event::record_event,
 };
 
-pub async fn modify_reservation(
-    db: &Db,
-    id: Uuid,
-    input: ModifyReservationInput,
-) -> AppResult<Reservation> {
+pub async fn execute(db: &Db, id: Uuid, input: ModifyReservationInput) -> AppResult<Reservation> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
@@ -45,8 +46,17 @@ pub async fn modify_reservation(
         }
 
         let timeline_event_types = detect_reservation_timeline_events(&before, &reservation);
+        let transition_changes = detect_reservation_transition_changes(&before, &reservation);
 
         SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+
+        for change in transition_changes {
+            SqliteReservationTransitionRepository::save(
+                &mut tx,
+                &change.into_transition(reservation.id),
+            )
+            .await?;
+        }
 
         for participant in &reservation.participants {
             for event_type in &timeline_event_types {

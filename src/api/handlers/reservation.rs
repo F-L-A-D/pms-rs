@@ -22,10 +22,7 @@ use crate::{
     },
     domain::entity::reservation::Reservation,
     usecase::reservation::{
-        command::{
-            cancel_reservation::cancel_reservation, create_reservation,
-            modify_reservation::modify_reservation,
-        },
+        command::{cancel_reservation::cancel_reservation, create_reservation, modify_reservation},
         detail::get_reservation::get_reservation,
         search::get_guest_reservations::get_guest_reservations,
     },
@@ -105,7 +102,7 @@ pub async fn modify_reservation_handler(
         room_class: req.room_class,
     };
 
-    let updated = modify_reservation(&state.db, reservation_id, input)
+    let updated = modify_reservation::execute(&state.db, reservation_id, input)
         .await
         .map_err(map_app_error)?;
 

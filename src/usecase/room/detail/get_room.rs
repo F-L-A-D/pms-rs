@@ -1,34 +1,24 @@
-use uuid::Uuid;
-
 use crate::{
+    api::dto::input::room::GetRoomInput,
     db::connection::Db,
-
-    domain::room::Room,
-
-    error::app_error::AppResult,
-    
-    repository::sqlite::operational::
-        room_repository::SqliteRoomRepository,
+    domain::entity::room::Room,
+    error::app_error::{not_found, AppResult},
+    repository::sqlite::operational::room_repository::SqliteRoomRepository,
 };
 
-pub async fn get_room(
-    db: &Db,
-    room_id: Uuid,
-) -> AppResult<Option<Room>> {
+pub async fn get_room(db: &Db, input: GetRoomInput) -> AppResult<Room> {
+    let mut tx = db.begin_tx().await;
 
-    let mut tx =
-        db.begin_tx().await;
+    let result = async {
+        let room = SqliteRoomRepository::find_by_id(&mut tx, input.room_id)
+            .await?
+            .ok_or_else(|| not_found("room not found"))?;
 
-    let result =
-        SqliteRoomRepository
-            ::find_by_id(
-                &mut tx,
-                room_id,
-            )
-            .await;
+        Ok(room)
+    }
+    .await;
 
-    let _ =
-        tx.rollback().await;
+    let _ = tx.rollback().await;
 
     result
 }

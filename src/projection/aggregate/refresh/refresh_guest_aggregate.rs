@@ -1,52 +1,29 @@
-use sqlx::{
-    Sqlite,
-    Transaction,
-};
+use sqlx::{Sqlite, Transaction};
 
 use uuid::Uuid;
 
 use crate::{
     error::app_error::AppResult,
-
     projection::{
         aggregate::{
-            materializer::materialize_guest_aggregate::
-                materialize_guest_aggregate,
-
+            materializer::materialize_guest_aggregate::materialize_guest_aggregate,
             model::guest_aggregate::GuestAggregate,
         },
-
         execution::execution_trace::push_trace,
-
         topology::projection_node::ProjectionNode,
     },
-
-    repository::sqlite::projection::save::
-        save_guest_aggregate::
-            save_guest_aggregate,
+    repository::sqlite::projection::save::save_guest_aggregate::save_guest_aggregate,
 };
 
 pub async fn refresh_guest_aggregate(
     tx: &mut Transaction<'_, Sqlite>,
     guest_id: Uuid,
 ) -> AppResult<GuestAggregate> {
+    push_trace(ProjectionNode::GuestAggregate);
 
-    push_trace(
-        ProjectionNode::GuestAggregate,
-    );
+    let aggregate = materialize_guest_aggregate(tx, guest_id).await?;
 
-    let aggregate =
-        materialize_guest_aggregate(    
-            tx,
-            guest_id,
-        )
-        .await?;
-
-    save_guest_aggregate(
-        tx,
-        &aggregate,
-    )
-    .await?;
+    save_guest_aggregate(tx, &aggregate).await?;
 
     Ok(aggregate)
 }

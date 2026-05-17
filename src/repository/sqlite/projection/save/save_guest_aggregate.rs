@@ -1,28 +1,16 @@
-use sqlx::{
-    Sqlite,
-    Transaction,
-};
+use sqlx::{Sqlite, Transaction};
 
 use crate::{
-    error::app_error::{
-        AppResult,
-        infra,
-    },
-
-    projection::aggregate::model::
-        guest_aggregate::GuestAggregate,
+    error::app_error::{infra, AppResult},
+    projection::aggregate::model::guest_aggregate::GuestAggregate,
 };
 
-const QUERY: &str =
-    include_str!(
-        "save_guest_aggregate.sql"
-    );
+const QUERY: &str = include_str!("save_guest_aggregate.sql");
 
 pub async fn save_guest_aggregate(
     tx: &mut Transaction<'_, Sqlite>,
     aggregate: &GuestAggregate,
 ) -> AppResult<()> {
-
     sqlx::query(QUERY)
         .bind(aggregate.guest_id.to_string())
         .bind(aggregate.total_stays)

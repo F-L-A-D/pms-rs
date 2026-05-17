@@ -1,72 +1,44 @@
-use uuid::Uuid;
-
 use crate::{
+    api::dto::billing::input::close_folio_input::CloseFolioInput,
     db::connection::Db,
-
-    error::app_error::{
-        AppResult,
-        domain,
-        infra,
-        not_found,
-    },
-
-    repository::sqlite::operational::
-        folio_repository::
-            SqliteFolioRepository,
+    domain::entity::folio::{Folio, FolioStatus},
+    error::app_error::{conflict, infra, not_found, AppResult},
+    repository::sqlite::operational::folio_repository::SqliteFolioRepository,
 };
 
-pub async fn close_folio(
-    db: &Db,
-    folio_id: Uuid,
-) -> AppResult<()> {
-
-    let mut tx =
-        db.begin_tx().await;
+pub async fn execute(db: &Db, input: CloseFolioInput) -> AppResult<Folio> {
+    let mut tx = db.begin_tx().await;
 
     let result = async {
+        let mut folio = SqliteFolioRepository::find_by_id(&mut tx, input.folio_id)
+            .await?
+            .ok_or_else(|| not_found("folio not found"))?;
 
-        let mut folio =
-            SqliteFolioRepository
-                ::find_by_id(
-                    &mut tx,
-                    folio_id,
-                )
-                .await?
-                .ok_or(
-                    not_found(
-                        "folio not found"
-                    )
-                )?;
+        match folio.status {
+            FolioStatus::Open | FolioStatus::Locked => {
+                folio.status = FolioStatus::Closed;
+            }
 
-        folio.close()
-            .map_err(domain)?;
+            FolioStatus::Closed => {
+                return Err(conflict("folio already closed"));
+            }
+        }
 
-        SqliteFolioRepository
-            ::save(
-                &mut tx,
-                &folio,
-            )
-            .await?;
+        SqliteFolioRepository::save(&mut tx, &folio).await?;
 
-        Ok(())
-
-    }.await;
+        Ok(folio)
+    }
+    .await;
 
     match result {
+        Ok(folio) => {
+            tx.commit().await.map_err(infra)?;
 
-        Ok(_) => {
-
-            tx.commit()
-                .await
-                .map_err(infra)?;
-
-            Ok(())
+            Ok(folio)
         }
 
         Err(e) => {
-
-            let _ =
-                tx.rollback().await;
+            let _ = tx.rollback().await;
 
             Err(e)
         }

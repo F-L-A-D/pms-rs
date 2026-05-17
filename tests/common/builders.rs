@@ -1,38 +1,19 @@
-use std::sync::atomic::{
-    AtomicU64,
-    Ordering,
-};
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use chrono::{
-    Duration,
-    NaiveDate,
-    Utc,
-};
+use chrono::{Duration, NaiveDate, Utc};
 
 use uuid::Uuid;
 
 use pms_rs::{
     api::dto::{
-        guest::{
-            CreateGuestRequest,
-            UpdateGuestRequest,
-        },
-        reservation::{
-            CreateReservationRequest,
-            ReservationParticipantInput,
-        },
+        guest::{CreateGuestRequest, UpdateGuestRequest},
+        reservation::{CreateReservationRequest, ReservationParticipantInput},
         room::CreateRoomRequest,
     },
-    domain::{
-        guest::Gender,
-
-        reservation_guest_relation::
-            ReservationGuestRelationType,
-    },
+    domain::{guest::Gender, reservation_guest_relation::ReservationGuestRelationType},
 };
 
-static COUNTER: AtomicU64 =
-    AtomicU64::new(1);
+static COUNTER: AtomicU64 = AtomicU64::new(1);
 
 pub struct GuestBuilder {
     last_name: String,
@@ -77,21 +58,13 @@ pub struct RoomBuilder {
 }
 
 impl GuestBuilder {
-
     pub fn new() -> Self {
-
-        let id =
-            COUNTER.fetch_add(
-                1,
-                Ordering::SeqCst,
-            );
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
 
         Self {
-            last_name:
-                format!("last_name_{id}"),
+            last_name: format!("last_name_{id}"),
 
-            first_name:
-                format!("first_name_{id}"),
+            first_name: format!("first_name_{id}"),
 
             phone: None,
             email: None,
@@ -105,20 +78,13 @@ impl GuestBuilder {
     }
 
     #[allow(dead_code)]
-    pub fn with_email(
-        mut self,
-        value: impl Into<String>,
-    ) -> Self {
-
+    pub fn with_email(mut self, value: impl Into<String>) -> Self {
         self.email = Some(value.into());
 
         self
     }
 
-    pub fn build(
-        self,
-    ) -> CreateGuestRequest {
-
+    pub fn build(self) -> CreateGuestRequest {
         CreateGuestRequest {
             last_name: self.last_name,
             first_name: self.first_name,
@@ -134,27 +100,17 @@ impl GuestBuilder {
 }
 
 impl UpdateGuestBuilder {
-
     pub fn new() -> Self {
-
-        let id =
-            COUNTER.fetch_add(
-                1,
-                Ordering::SeqCst,
-            );
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
 
         Self {
-            last_name:
-                format!("updated_last_name_{id}"),
+            last_name: format!("updated_last_name_{id}"),
 
-            first_name:
-                format!("updated_first_name_{id}"),
+            first_name: format!("updated_first_name_{id}"),
 
             phone: None,
 
-            email: Some(
-                format!("updated_{id}@test.com")
-            ),
+            email: Some(format!("updated_{id}@test.com")),
 
             nationality: None,
 
@@ -168,10 +124,7 @@ impl UpdateGuestBuilder {
         }
     }
 
-    pub fn build(
-        self,
-    ) -> UpdateGuestRequest {
-
+    pub fn build(self) -> UpdateGuestRequest {
         UpdateGuestRequest {
             last_name: self.last_name,
             first_name: self.first_name,
@@ -186,35 +139,22 @@ impl UpdateGuestBuilder {
     }
 }
 
-
 impl ReservationParticipantBuilder {
-
-    pub fn new(
-        guest_id: Uuid,
-    ) -> Self {
-
+    pub fn new(guest_id: Uuid) -> Self {
         Self {
             guest_id,
 
-            relation_type:
-                ReservationGuestRelationType::Primary,
+            relation_type: ReservationGuestRelationType::Primary,
         }
     }
 
-    pub fn with_relation_type(
-        mut self,
-        value: ReservationGuestRelationType,
-    ) -> Self {
-
+    pub fn with_relation_type(mut self, value: ReservationGuestRelationType) -> Self {
         self.relation_type = value;
 
         self
     }
 
-    pub fn build(
-        self,
-    ) -> ReservationParticipantInput {
-
+    pub fn build(self) -> ReservationParticipantInput {
         ReservationParticipantInput {
             guest_id: self.guest_id,
             relation_type: self.relation_type,
@@ -223,63 +163,41 @@ impl ReservationParticipantBuilder {
 }
 
 impl ReservationBuilder {
-
     pub fn new() -> Self {
-
-        let today =
-            Utc::now()
-                .date_naive();
+        let today = Utc::now().date_naive();
 
         Self {
             external_id: None,
 
             check_in: today,
 
-            check_out:
-                today + Duration::days(1),
+            check_out: today + Duration::days(1),
 
-            room_class:
-                "standard".to_string(),
+            room_class: "standard".to_string(),
 
             participants: vec![],
         }
     }
 
-    pub fn with_participant(
-        mut self,
-        participant: ReservationParticipantInput,
-    ) -> Self {
-
-        self.participants
-            .push(participant);
+    pub fn with_participant(mut self, participant: ReservationParticipantInput) -> Self {
+        self.participants.push(participant);
 
         self
     }
 
-    pub fn with_check_in(
-        mut self,
-        value: NaiveDate,
-    ) -> Self {
-        
+    pub fn with_check_in(mut self, value: NaiveDate) -> Self {
         self.check_in = value;
 
         self
     }
 
-    pub fn with_check_out(
-        mut self,
-        value: NaiveDate,
-    ) -> Self {
-
+    pub fn with_check_out(mut self, value: NaiveDate) -> Self {
         self.check_out = value;
 
         self
     }
 
-    pub fn build(
-        self,
-    ) -> CreateReservationRequest {
-
+    pub fn build(self) -> CreateReservationRequest {
         CreateReservationRequest {
             external_id: self.external_id,
             check_in: self.check_in,
@@ -291,31 +209,20 @@ impl ReservationBuilder {
 }
 
 impl RoomBuilder {
-    
     pub fn new() -> Self {
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        let id =
-            COUNTER.fetch_add(
-                1, 
-                Ordering::SeqCst,
-            );
-        
         Self {
-            room_no:
-                format!("room_{id}"),
+            room_no: format!("room_{id}"),
 
-            room_class:
-                format!("standard").into(),
+            room_class: format!("standard").into(),
         }
     }
 
-    pub fn build(
-        self,
-    ) -> CreateRoomRequest {
-
-        CreateRoomRequest { 
-            room_no: self.room_no, 
-            room_class: self.room_class, 
+    pub fn build(self) -> CreateRoomRequest {
+        CreateRoomRequest {
+            room_no: self.room_no,
+            room_class: self.room_class,
         }
     }
 }

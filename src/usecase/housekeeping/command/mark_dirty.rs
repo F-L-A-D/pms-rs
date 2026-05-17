@@ -1,72 +1,48 @@
-use uuid::Uuid;
-
 use crate::{
+    api::dto::input::housekeeping::HousekeepingRoomDailyStateInput,
     db::connection::Db,
-
-    error::app_error::{
-        AppResult,
-        conflict,
-        infra,
-        not_found,
-    },
-
-    repository::sqlite::operational::
-        room_repository::
-            SqliteRoomRepository,
+    domain::semantic::room_daily_state::RoomDailyState,
+    error::app_error::{infra, not_found, AppResult},
+    repository::sqlite::operational::room_daily_state_repository::SqliteRoomDailyStateRepository,
+    repository::sqlite::operational::room_repository::SqliteRoomRepository,
 };
 
-pub async fn mark_dirty(
-    db: &Db,
-    room_id: Uuid,
-) -> AppResult<()> {
-
-    let mut tx =
-        db.begin_tx().await;
+pub async fn execute(db: &Db, input: HousekeepingRoomDailyStateInput) -> AppResult<RoomDailyState> {
+    let mut tx = db.begin_tx().await;
 
     let result = async {
+        SqliteRoomRepository::find_by_id(&mut tx, input.room_id)
+            .await?
+            .ok_or(not_found("room not found"))?;
 
-        let mut room =
-            SqliteRoomRepository
-                ::find_by_id(
-                    &mut tx,
-                    room_id,
-                )
-                .await?
-                .ok_or(
-                    not_found(
-                        "room not found"
-                    )
-                )?;
+        let mut state = match SqliteRoomDailyStateRepository::find_by_room_and_service_date(
+            &mut tx,
+            input.room_id,
+            input.service_date,
+        )
+        .await?
+        {
+            Some(state) => state,
+            None => RoomDailyState::new(input.room_id, input.service_date),
+        };
 
-        room.mark_dirty()
-            .map_err(conflict)?;
+        state.mark_dirty();
 
-        SqliteRoomRepository
-            ::save(
-                &mut tx,
-                &room,
-            )
-            .await?;
+        SqliteRoomDailyStateRepository::save(&mut tx, &state).await?;
 
-        Ok(())
-
-    }.await;
+        Ok(state)
+    }
+    .await;
 
     match result {
+        Ok(state) => {
+            tx.commit().await.map_err(infra)?;
 
-        Ok(_) => {
-
-            tx.commit()
-                .await
-                .map_err(infra)?;
-
-            Ok(())
+            Ok(state)
         }
 
         Err(e) => {
-
-            let _ =
-                tx.rollback().await;
+            let _ = tx.rollback().await;
 
             Err(e)
         }

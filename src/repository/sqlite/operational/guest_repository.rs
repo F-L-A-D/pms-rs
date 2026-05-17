@@ -1,34 +1,16 @@
-use sqlx::{
-    Row,
-    Sqlite,
-    Transaction,
-};
-
-use chrono::NaiveDate;
+use sqlx::{Row, Sqlite, Transaction};
 
 use uuid::Uuid;
 
 use crate::{
-    domain::guest::{
-        Gender,
-        Guest,
-    },
-
-    error::app_error::{
-        AppResult,
-        infra,
-    },
+    domain::entity::guest::{Gender, Guest, GuestProfile, GuestSearchField},
+    error::app_error::{infra, AppResult},
 };
 
 pub struct SqliteGuestRepository;
 
 impl SqliteGuestRepository {
-
-    pub async fn save(
-        tx: &mut Transaction<'_, Sqlite>,
-        guest: &Guest,
-    ) -> AppResult<()> {
-
+    pub async fn save(tx: &mut Transaction<'_, Sqlite>, guest: &Guest) -> AppResult<()> {
         sqlx::query(
             r#"
             INSERT INTO guests (
@@ -59,22 +41,18 @@ impl SqliteGuestRepository {
                 ?11,
                 ?12
             )
-            "#
+            "#,
         )
         .bind(guest.id.to_string())
-        .bind(&guest.last_name)
-        .bind(&guest.first_name)
-        .bind(&guest.phone)
-        .bind(&guest.email)
-        .bind(&guest.nationality)
-        .bind(guest.birth_date)
-        .bind(
-            guest.gender.as_ref().map(|v| {
-                format!("{:?}", v)
-            })
-        )
-        .bind(&guest.membership_code)
-        .bind(guest.marketing_opt_in)
+        .bind(&guest.profile.last_name)
+        .bind(&guest.profile.first_name)
+        .bind(&guest.profile.phone)
+        .bind(&guest.profile.email)
+        .bind(&guest.profile.nationality)
+        .bind(guest.profile.birth_date.map(|v| v.to_string()))
+        .bind(guest.profile.gender.as_ref().map(Gender::to_snake))
+        .bind(&guest.profile.membership_code)
+        .bind(&guest.profile.marketing_opt_in)
         .bind(guest.created_at.to_rfc3339())
         .bind(guest.updated_at.to_rfc3339())
         .execute(&mut **tx)
@@ -84,11 +62,7 @@ impl SqliteGuestRepository {
         Ok(())
     }
 
-    pub async fn update(
-        tx: &mut Transaction<'_, Sqlite>,
-        guest: &Guest,
-    ) -> AppResult<()> {
-
+    pub async fn update(tx: &mut Transaction<'_, Sqlite>, guest: &Guest) -> AppResult<()> {
         sqlx::query(
             r#"
             UPDATE guests
@@ -104,21 +78,17 @@ impl SqliteGuestRepository {
                 marketing_opt_in = ?9,
                 updated_at = ?10
             WHERE id = ?11
-            "#
+            "#,
         )
-        .bind(&guest.last_name)
-        .bind(&guest.first_name)
-        .bind(&guest.phone)
-        .bind(&guest.email)
-        .bind(&guest.nationality)
-        .bind(guest.birth_date)
-        .bind(
-            guest.gender.as_ref().map(|v| {
-                format!("{:?}", v)
-            })
-        )
-        .bind(&guest.membership_code)
-        .bind(guest.marketing_opt_in)
+        .bind(&guest.profile.last_name)
+        .bind(&guest.profile.first_name)
+        .bind(&guest.profile.phone)
+        .bind(&guest.profile.email)
+        .bind(&guest.profile.nationality)
+        .bind(guest.profile.birth_date.map(|v| v.to_string()))
+        .bind(guest.profile.gender.as_ref().map(Gender::to_snake))
+        .bind(&guest.profile.membership_code)
+        .bind(guest.profile.marketing_opt_in)
         .bind(guest.updated_at.to_rfc3339())
         .bind(guest.id.to_string())
         .execute(&mut **tx)
@@ -132,10 +102,8 @@ impl SqliteGuestRepository {
         tx: &mut Transaction<'_, Sqlite>,
         id: Uuid,
     ) -> AppResult<Option<Guest>> {
-
-        let row =
-            sqlx::query(
-                r#"
+        let row = sqlx::query(
+            r#"
                 SELECT
                     id,
                     last_name,
@@ -151,34 +119,23 @@ impl SqliteGuestRepository {
                     updated_at
                 FROM guests
                 WHERE id = ?1
-                "#
-            )
-            .bind(id.to_string())
-            .fetch_optional(&mut **tx)
-            .await
-            .map_err(infra)?;
+                "#,
+        )
+        .bind(id.to_string())
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(infra)?;
 
         match row {
-
-            Some(r) => {
-                Ok(
-                    Some(
-                        Self::row_to_guest(&r)?
-                    )
-                )
-            }
+            Some(r) => Ok(Some(Self::row_to_guest(&r)?)),
 
             None => Ok(None),
         }
     }
 
-    pub async fn list(
-        tx: &mut Transaction<'_, Sqlite>,
-    ) -> AppResult<Vec<Guest>> {
-
-        let rows =
-            sqlx::query(
-                r#"
+    pub async fn list_guests(tx: &mut Transaction<'_, Sqlite>) -> AppResult<Vec<Guest>> {
+        let rows = sqlx::query(
+            r#"
                 SELECT
                     id,
                     last_name,
@@ -195,51 +152,35 @@ impl SqliteGuestRepository {
                 FROM guests
                 ORDER BY
                     last_name,
-                    first_name
+                    first_name,
+                    updated_at DESC
                 LIMIT 50
-                "#
-            )
-            .fetch_all(&mut **tx)
-            .await
-            .map_err(infra)?;
-
-        Ok(
-            rows.iter()
-                .map(Self::row_to_guest)
-                .collect::<AppResult<Vec<_>>>()?
+                "#,
         )
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(infra)?;
+
+        Ok(rows
+            .iter()
+            .map(Self::row_to_guest)
+            .collect::<AppResult<Vec<_>>>()?)
     }
 
     pub async fn search(
         tx: &mut Transaction<'_, Sqlite>,
         keyword: &str,
-        field: Option<&str>,
+        field: Option<GuestSearchField>,
     ) -> AppResult<Vec<Guest>> {
+        let tokens = keyword.split_whitespace().collect::<Vec<_>>();
 
-        let tokens =
-            keyword
-                .split_whitespace()
-                .collect::<Vec<_>>();
+        let rows = if field.is_none() && tokens.len() >= 2 {
+            let last_name = format!("%{}%", tokens[0],);
 
-        let rows =
+            let first_name = format!("%{}%", tokens[1],);
 
-            if field.is_none()
-                && tokens.len() >= 2 {
-
-                let last_name =
-                    format!(
-                        "%{}%",
-                        tokens[0],
-                    );
-
-                let first_name =
-                    format!(
-                        "%{}%",
-                        tokens[1],
-                    );
-
-                sqlx::query(
-                    r#"
+            sqlx::query(
+                r#"
                     SELECT
                         id,
                         last_name,
@@ -261,27 +202,19 @@ impl SqliteGuestRepository {
                         last_name,
                         first_name
                     LIMIT 50
-                    "#
-                )
-                .bind(&last_name)
-                .bind(&first_name)
-                .fetch_all(&mut **tx)
-                .await
-                .map_err(infra)?
+                    "#,
+            )
+            .bind(&last_name)
+            .bind(&first_name)
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(infra)?
+        } else {
+            let pattern = format!("%{}%", keyword,);
 
-            } else {
-
-                let pattern =
-                    format!(
-                        "%{}%",
-                        keyword,
-                    );
-
-                let sql =
-                    match field {
-
-                        Some("first_name") => {
-                            r#"
+            let sql = match field {
+                Some(GuestSearchField::FirstName) => {
+                    r#"
                             SELECT
                                 id,
                                 last_name,
@@ -302,10 +235,10 @@ impl SqliteGuestRepository {
                                 first_name
                             LIMIT 50
                             "#
-                        }
+                }
 
-                        Some("last_name") => {
-                            r#"
+                Some(GuestSearchField::LastName) => {
+                    r#"
                             SELECT
                                 id,
                                 last_name,
@@ -326,82 +259,31 @@ impl SqliteGuestRepository {
                                 first_name
                             LIMIT 50
                             "#
-                        }
+                }
 
-                        Some("email") => {
-                            r#"
-                            SELECT
-                                id,
-                                last_name,
-                                first_name,
-                                phone,
-                                email,
-                                nationality,
-                                birth_date,
-                                gender,
-                                membership_code,
-                                marketing_opt_in,
-                                created_at,
-                                updated_at
-                            FROM guests
+                Some(GuestSearchField::Email) => {
+                    r#"
+                            ...
                             WHERE email LIKE ?1
-                            ORDER BY
-                                last_name,
-                                first_name
-                            LIMIT 50
                             "#
-                        }
+                }
 
-                        Some("phone") => {
-                            r#"
-                            SELECT
-                                id,
-                                last_name,
-                                first_name,
-                                phone,
-                                email,
-                                nationality,
-                                birth_date,
-                                gender,
-                                membership_code,
-                                marketing_opt_in,
-                                created_at,
-                                updated_at
-                            FROM guests
+                Some(GuestSearchField::Phone) => {
+                    r#"
+                            ...
                             WHERE phone LIKE ?1
-                            ORDER BY
-                                last_name,
-                                first_name
-                            LIMIT 50
                             "#
-                        }
+                }
 
-                        Some("membership_code") => {
-                            r#"
-                            SELECT
-                                id,
-                                last_name,
-                                first_name,
-                                phone,
-                                email,
-                                nationality,
-                                birth_date,
-                                gender,
-                                membership_code,
-                                marketing_opt_in,
-                                created_at,
-                                updated_at
-                            FROM guests
+                Some(GuestSearchField::MembershipCode) => {
+                    r#"
+                            ...
                             WHERE membership_code LIKE ?1
-                            ORDER BY
-                                last_name,
-                                first_name
-                            LIMIT 50
                             "#
-                        }
+                }
 
-                        _ => {
-                            r#"
+                _ => {
+                    r#"
                             SELECT
                                 id,
                                 last_name,
@@ -427,101 +309,81 @@ impl SqliteGuestRepository {
                                 first_name
                             LIMIT 50
                             "#
-                        }
-                    };
-
-                sqlx::query(sql)
-                    .bind(&pattern)
-                    .fetch_all(&mut **tx)
-                    .await
-                    .map_err(infra)?
+                }
             };
 
-        Ok(
-            rows.iter()
-                .map(Self::row_to_guest)
-                .collect::<AppResult<Vec<_>>>()?
-        )
+            sqlx::query(sql)
+                .bind(&pattern)
+                .fetch_all(&mut **tx)
+                .await
+                .map_err(infra)?
+        };
+
+        Ok(rows
+            .iter()
+            .map(Self::row_to_guest)
+            .collect::<AppResult<Vec<_>>>()?)
     }
 
-    fn row_to_guest(
-        row: &sqlx::sqlite::SqliteRow,
-    ) -> AppResult<Guest> {
+    fn row_to_guest(row: &sqlx::sqlite::SqliteRow) -> AppResult<Guest> {
+        let id = Uuid::parse_str(row.try_get::<String, _>("id").map_err(infra)?.as_str())
+            .map_err(infra)?;
 
-        Ok(
-            Guest {
+        let gender = row
+            .try_get::<Option<String>, _>("gender")
+            .map_err(infra)?
+            .map(|v| Gender::from_snake(v.as_str()).ok_or_else(|| infra("invalid gender")))
+            .transpose()?;
 
-                id:
-                    Uuid::parse_str(
-                        row.get::<String, _>("id")
-                            .as_str()
-                    )
-                    .map_err(infra)?,
+        let birth_date = row
+            .try_get::<Option<String>, _>("birth_date")
+            .map_err(infra)?
+            .map(|v| v.parse())
+            .transpose()
+            .map_err(infra)?;
 
-                last_name:
-                    row.get("last_name"),
-
-                first_name:
-                    row.get("first_name"),
-
-                phone:
-                    row.get("phone"),
-
-                email:
-                    row.get("email"),
-
-                nationality:
-                    row.get("nationality"),
-
-                birth_date:
-                    row.get::<Option<NaiveDate>, _>(
-                        "birth_date"
-                    ),
-
-                gender:
-                    row.get::<Option<String>, _>(
-                        "gender"
-                    )
-                    .map(|v| {
-                        match v.as_str() {
-
-                            "Male" =>
-                                Gender::Male,
-
-                            "Female" =>
-                                Gender::Female,
-
-                            _ =>
-                                Gender::Other,
-                        }
-                    }),
-
-                membership_code:
-                    row.get("membership_code"),
-
-                marketing_opt_in:
-                    row.get("marketing_opt_in"),
-
-                created_at:
-                    chrono::DateTime::parse_from_rfc3339(
-                        row.get::<String, _>(
-                            "created_at"
-                        )
-                        .as_str()
-                    )
-                    .map_err(infra)?
-                    .with_timezone(&chrono::Utc),
-
-                updated_at:
-                    chrono::DateTime::parse_from_rfc3339(
-                        row.get::<String, _>(
-                            "updated_at"
-                        )
-                        .as_str()
-                    )
-                    .map_err(infra)?
-                    .with_timezone(&chrono::Utc),
-            }
+        let created_at = chrono::DateTime::parse_from_rfc3339(
+            row.try_get::<String, _>("created_at")
+                .map_err(infra)?
+                .as_str(),
         )
+        .map_err(infra)?
+        .with_timezone(&chrono::Utc);
+
+        let updated_at = chrono::DateTime::parse_from_rfc3339(
+            row.try_get::<String, _>("updated_at")
+                .map_err(infra)?
+                .as_str(),
+        )
+        .map_err(infra)?
+        .with_timezone(&chrono::Utc);
+
+        Ok(Guest {
+            id,
+
+            profile: GuestProfile {
+                last_name: row.try_get("last_name").map_err(infra)?,
+
+                first_name: row.try_get("first_name").map_err(infra)?,
+
+                phone: row.try_get("phone").map_err(infra)?,
+
+                email: row.try_get("email").map_err(infra)?,
+
+                nationality: row.try_get("nationality").map_err(infra)?,
+
+                birth_date,
+
+                gender,
+
+                membership_code: row.try_get("membership_code").map_err(infra)?,
+
+                marketing_opt_in: row.try_get("marketing_opt_in").map_err(infra)?,
+            },
+
+            created_at,
+
+            updated_at,
+        })
     }
 }

@@ -1,98 +1,52 @@
-use sqlx::{
-    Sqlite,
-    Transaction,
-};
+use sqlx::{Sqlite, Transaction};
 
 use crate::{
-    error::app_error::
-        AppResult,
-
-    projection::{       
-        execution::
-            projection_convergence_executor::
-                ProjectionConvergenceExecutor,
-
+    error::app_error::AppResult,
+    projection::{
+        execution::projection_convergence_executor::ProjectionConvergenceExecutor,
         invalidation::{
-            projection_invalidation::{
-                ProjectionInvalidation,
-                ProjectionRefreshTarget,
-            },
-
-            projection_scope::
-                ProjectionScope,
+            projection_invalidation::{ProjectionInvalidation, ProjectionRefreshTarget},
+            projection_scope::ProjectionScope,
         },
-
+        orchestrator::convergence_execution_result::ConvergenceExecutionResult,
         topology::{
-            invalidation_traversal_planner::
-                derive_convergence_plan,
-
-            projection_node::
-                ProjectionNode,
+            invalidation_traversal_planner::derive_convergence_plan,
+            projection_node::ProjectionNode,
         },
-
-        orchestrator::
-            convergence_execution_result::
-                ConvergenceExecutionResult,
     },
 };
 
 pub async fn rebuild_projection_chain(
     tx: &mut Transaction<'_, Sqlite>,
     start: ProjectionNode,
-) -> AppResult<ConvergenceExecutionResult>
-{
-    let plan =
-        derive_convergence_plan(
-            &ProjectionInvalidation::new(
-                start,
-                ProjectionScope::Global,
-                ProjectionRefreshTarget::Global,
-            ),
-        );
+) -> AppResult<ConvergenceExecutionResult> {
+    let plan = derive_convergence_plan(&ProjectionInvalidation::new(
+        start,
+        ProjectionScope::Global,
+        ProjectionRefreshTarget::Global,
+    ));
 
-    let mut completed =
-        Vec::new();
+    let mut completed = Vec::new();
 
-    for step in
-        plan.steps()
-    {
-
-        let result =
-            ProjectionConvergenceExecutor::
-                execute_rebuild(
-                    tx,
-                    &step.node(),
-                )
-                .await;
+    for step in plan.steps() {
+        let result = ProjectionConvergenceExecutor::execute_rebuild(tx, &step.node()).await;
 
         match result {
-
             Ok(_) => {
-
-                completed.push(
-                    step.node()
-                );
+                completed.push(step.node());
             }
 
             Err(error) => {
-
                 println!("{:#?}", error);
 
-                return Ok(
-                    ConvergenceExecutionResult::failed(
-                        plan.clone(),
-                        completed,
-                        step.node(),
-                    ),
-                );
+                return Ok(ConvergenceExecutionResult::failed(
+                    plan.clone(),
+                    completed,
+                    step.node(),
+                ));
             }
         }
     }
 
-    Ok(
-        ConvergenceExecutionResult::fulfilled(
-            plan,
-            completed,
-        )
-    )
+    Ok(ConvergenceExecutionResult::fulfilled(plan, completed))
 }

@@ -7,60 +7,39 @@ pub enum AppError {
     Infrastructure(String),
 }
 
-pub type AppResult<T> =
-    Result<T, AppError>;
+pub type AppResult<T> = Result<T, AppError>;
 
-pub fn validation<E>(
-    error: E
-) -> AppError
+pub fn validation<E>(error: E) -> AppError
 where
     E: ToString,
 {
-    AppError::Validation(
-        error.to_string()
-    )
+    AppError::Validation(error.to_string())
 }
 
-pub fn domain<E>(
-    error: E
-) -> AppError
+pub fn domain<E>(error: E) -> AppError
 where
     E: ToString,
 {
-    AppError::Domain(
-        error.to_string()
-    )
+    AppError::Domain(error.to_string())
 }
 
-pub fn not_found<E>(
-    error: E
-) -> AppError
+pub fn not_found<E>(error: E) -> AppError
 where
     E: ToString,
 {
-    AppError::NotFound(
-        error.to_string()
-    )
+    AppError::NotFound(error.to_string())
 }
 
-pub fn conflict<E>(
-    error: E
-) -> AppError
+pub fn conflict<E>(error: E) -> AppError
 where
     E: ToString,
 {
-    AppError::Conflict(
-        error.to_string()
-    )
+    AppError::Conflict(error.to_string())
 }
 
-pub fn infra<E>(
-    error: E
-) -> AppError
+pub fn infra<E>(error: E) -> AppError
 where
     E: ToString,
 {
-    AppError::Infrastructure(
-        error.to_string()
-    )
+    AppError::Infrastructure(error.to_string())
 }

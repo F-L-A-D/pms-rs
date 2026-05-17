@@ -2,7 +2,8 @@ CREATE TABLE IF NOT EXISTS invoices (
     id TEXT PRIMARY KEY,
     folio_id TEXT NOT NULL UNIQUE,
     billing_account_id TEXT NOT NULL,
-    issued_amount INTEGER NOT NULL,
+    invoice_number TEXT NOT NULL,
+    issued_amount TEXT NOT NULL,
     issued_at TEXT NOT NULL,
     status TEXT NOT NULL,
 

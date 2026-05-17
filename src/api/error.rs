@@ -34,45 +34,18 @@ impl IntoResponse for ApiError {
     }
 }
 
-pub fn map_app_error(
-    err: AppError
-) -> ApiError {
-
+pub fn map_app_error(err: AppError) -> ApiError {
     match err {
+        AppError::Validation(message) => ApiError::new(StatusCode::BAD_REQUEST, message),
 
-        AppError::Validation(message) => {
-            ApiError::new(
-                StatusCode::BAD_REQUEST,
-                message,
-            )
-        }
+        AppError::Domain(message) => ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, message),
 
-        AppError::Domain(message) => {
-            ApiError::new(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                message,
-            )
-        }
+        AppError::NotFound(message) => ApiError::new(StatusCode::NOT_FOUND, message),
 
-        AppError::NotFound(message) => {
-            ApiError::new(
-                StatusCode::NOT_FOUND,
-                message,
-            )
-        }
-
-        AppError::Conflict(message) => {
-            ApiError::new(
-                StatusCode::CONFLICT,
-                message,
-            )
-        }
+        AppError::Conflict(message) => ApiError::new(StatusCode::CONFLICT, message),
 
         AppError::Infrastructure(_) => {
-            ApiError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal server error",
-            )
+            ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         }
     }
 }

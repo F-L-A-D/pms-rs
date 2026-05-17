@@ -22,4 +22,4 @@ INNER JOIN reservations r
     ON r.id = rgr.reservation_id
 
 WHERE rgr.guest_id = ?
-AND rgr.relation_type = 'PRIMARY'
+AND rgr.relation_type = 'primary'

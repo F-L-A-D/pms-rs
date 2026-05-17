@@ -1,10 +1,7 @@
 use axum::Router;
 
 use pms_rs::{
-    api::{
-        router::create_router,
-        state::AppState,
-    },
+    api::{router::create_router, state::AppState},
     db::connection::Db,
 };
 
@@ -14,17 +11,11 @@ pub struct TestApp {
 }
 
 pub async fn spawn_app() -> TestApp {
-
     let db = Db::new_test().await;
 
-    let state = AppState {
-        db: db.clone(),
-    };
+    let state = AppState { db: db.clone() };
 
     let app = create_router(state);
 
-    TestApp {
-        app,
-        db,
-    }
+    TestApp { app, db }
 }

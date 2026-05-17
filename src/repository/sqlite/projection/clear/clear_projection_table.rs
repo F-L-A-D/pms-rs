@@ -1,46 +1,25 @@
-use sqlx::{
-    Sqlite,
-    Transaction,
-};
+use sqlx::{Sqlite, Transaction};
 
 use crate::{
-    error::app_error::{
-        AppResult,
-        infra,
-    },
-
-    projection::topology::
-        projection_node::
-            ProjectionNode,
+    error::app_error::{infra, AppResult},
+    projection::topology::projection_node::ProjectionNode,
 };
 
-fn projection_table_name(
-    node: &ProjectionNode,
-) -> &'static str {
-
+fn projection_table_name(node: &ProjectionNode) -> &'static str {
     match node {
+        ProjectionNode::GuestAggregate => "guest_aggregates",
 
-        ProjectionNode::GuestAggregate =>
-            "guest_aggregates",
-
-        ProjectionNode::GuestActivitySignal =>
-            "guest_activities",
+        ProjectionNode::GuestActivitySignal => "guest_activities",
     }
 }
 
 pub async fn clear_projection_table(
     tx: &mut Transaction<'_, Sqlite>,
     node: ProjectionNode,
-) -> AppResult<()>
-{
-    let table_name =
-        projection_table_name(&node);
+) -> AppResult<()> {
+    let table_name = projection_table_name(&node);
 
-    let query =
-        format!(
-            "DELETE FROM {}",
-            table_name,
-        );
+    let query = format!("DELETE FROM {}", table_name,);
 
     sqlx::query(&query)
         .execute(&mut **tx)

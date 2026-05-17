@@ -1,4 +1,4 @@
-use chrono::{NaiveDate, Days};
+use chrono::{Days, NaiveDate};
 
 #[derive(Debug, Clone)]
 pub enum StayInput {
@@ -31,7 +31,9 @@ impl StayInput {
 
 pub fn normalize(input: StayInput) -> Result<(NaiveDate, NaiveDate), String> {
     match input {
-        StayInput::CheckInAndNights { check_in, nights, .. } => {
+        StayInput::CheckInAndNights {
+            check_in, nights, ..
+        } => {
             if nights < 0 {
                 return Err("nights must be >= 0".into());
             }
@@ -43,7 +45,11 @@ pub fn normalize(input: StayInput) -> Result<(NaiveDate, NaiveDate), String> {
             Ok((check_in, check_out))
         }
 
-        StayInput::CheckInAndCheckOut { check_in, check_out, .. } => {
+        StayInput::CheckInAndCheckOut {
+            check_in,
+            check_out,
+            ..
+        } => {
             if check_in > check_out {
                 return Err("check_in must be <= check_out".into());
             }
@@ -51,7 +57,9 @@ pub fn normalize(input: StayInput) -> Result<(NaiveDate, NaiveDate), String> {
             Ok((check_in, check_out))
         }
 
-        StayInput::CheckOutAndNights { check_out, nights, .. } => {
+        StayInput::CheckOutAndNights {
+            check_out, nights, ..
+        } => {
             if nights < 0 {
                 return Err("nights must be >= 0".into());
             }

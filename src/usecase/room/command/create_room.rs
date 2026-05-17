@@ -1,53 +1,46 @@
+use uuid::Uuid;
+
 use crate::{
+    api::dto::input::room::CreateRoomInput,
     db::connection::Db,
-
-    domain::room::Room,
-
-    error::app_error::{
-        AppResult,
-        infra,
-    },
-
-    repository::sqlite::operational::
-        room_repository::SqliteRoomRepository,
+    domain::entity::room::Room,
+    error::app_error::{infra, AppResult},
+    repository::sqlite::operational::room_repository::SqliteRoomRepository,
 };
 
-pub async fn create_room(
-    db: &Db,
-    room: Room,
-) -> AppResult<()> {
-
-    let mut tx =
-        db.begin_tx().await;
+pub async fn create_room(db: &Db, input: CreateRoomInput) -> AppResult<Room> {
+    let mut tx = db.begin_tx().await;
 
     let result = async {
+        let room_id = Uuid::new_v4();
 
-        SqliteRoomRepository
-            ::save(
-                &mut tx,
-                &room,
+        let room = if input.is_physical {
+            Room::new(
+                room_id,
+                input.room_no,
+                input.room_class,
+                input.capacity.unwrap_or(1),
+                input.area_sqm,
             )
-            .await?;
+        } else {
+            Room::new_virtual(room_id, input.room_no, input.room_class)
+        };
 
-        Ok(())
+        SqliteRoomRepository::save(&mut tx, &room).await?;
 
-    }.await;
+        Ok(room)
+    }
+    .await;
 
     match result {
+        Ok(room) => {
+            tx.commit().await.map_err(infra)?;
 
-        Ok(_) => {
-
-            tx.commit()
-                .await
-                .map_err(infra)?;
-
-            Ok(())
+            Ok(room)
         }
 
         Err(e) => {
-
-            let _ =
-                tx.rollback().await;
+            let _ = tx.rollback().await;
 
             Err(e)
         }

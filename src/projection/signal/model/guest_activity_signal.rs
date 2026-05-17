@@ -1,7 +1,4 @@
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 
 use uuid::Uuid;
 
@@ -14,23 +11,9 @@ pub struct GuestActivitySignal {
 }
 
 impl PartialEq for GuestActivitySignal {
-
-    fn eq(
-        &self,
-        other: &Self,
-    ) -> bool {
-
-        self.guest_id
-            == other.guest_id
-
-        &&
-
-        self.is_active
-            == other.is_active
-
-        &&
-
-        self.projection_version
-            == other.projection_version
+    fn eq(&self, other: &Self) -> bool {
+        self.guest_id == other.guest_id
+            && self.is_active == other.is_active
+            && self.projection_version == other.projection_version
     }
 }

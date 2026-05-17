@@ -1,12 +1,10 @@
-pub mod reservation;
-pub mod room;
-pub mod folio;
-pub mod folio_entry;
-pub mod guest;
-pub mod reservation_guest_relation;
-pub mod guest_timeline_event;
-pub mod billing_account;
-pub mod company;
-pub mod invoice;
-pub mod receivable;
-pub mod settlement_transition;
+pub mod entity;
+pub mod semantic;
+
+pub mod guest {
+    pub use crate::domain::entity::guest::*;
+}
+
+pub mod reservation_guest_relation {
+    pub use crate::domain::semantic::reservation_guest_relation::*;
+}

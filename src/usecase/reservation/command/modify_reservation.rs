@@ -1,125 +1,73 @@
-use chrono::NaiveDate;
-
 use uuid::Uuid;
 
 use crate::{
+    api::dto::input::reservation::ModifyReservationInput,
     db::connection::Db,
-
-    domain::reservation::
-        Reservation,
-
-    error::app_error::{
-        AppResult,
-        infra,
-        not_found,
-        validation,
+    domain::{
+        entity::reservation::Reservation,
+        semantic::reservation_semantics::detect_reservation_timeline_events,
     },
-
+    error::app_error::{infra, not_found, validation, AppResult},
     projection::{
         invalidation::{
-            projection_invalidation::{
-                ProjectionInvalidation,
-                ProjectionRefreshTarget,
-            },
-
-            projection_scope::
-                ProjectionScope,
+            projection_invalidation::{ProjectionInvalidation, ProjectionRefreshTarget},
+            projection_scope::ProjectionScope,
         },
-
-        orchestrator::refresh_projection_chain::
-            refresh_projection_chain,
-
-        topology::projection_node::
-            ProjectionNode,
+        orchestrator::refresh_projection_chain::refresh_projection_chain,
+        topology::projection_node::ProjectionNode,
     },
-
-    repository::sqlite::operational::
-        reservation_repository::
-            SqliteReservationRepository,
+    repository::sqlite::operational::reservation_repository::SqliteReservationRepository,
+    usecase::timeline::command::record_event::record_event,
 };
 
 pub async fn modify_reservation(
     db: &Db,
     id: Uuid,
-    check_in: Option<NaiveDate>,
-    check_out: Option<NaiveDate>,
-    room_class: Option<String>,
-) -> AppResult<Reservation>
-{
-    let mut tx =
-        db.begin_tx().await;
+    input: ModifyReservationInput,
+) -> AppResult<Reservation> {
+    let mut tx = db.begin_tx().await;
 
     let result = async {
+        let mut reservation = SqliteReservationRepository::find_by_id(&mut tx, id)
+            .await?
+            .ok_or(not_found("reservation not found"))?;
 
-        let mut reservation =
-            SqliteReservationRepository
-                ::find_by_id(
-                    &mut tx,
-                    id,
-                )
-                .await?
-                .ok_or(
-                    not_found(
-                        "reservation not found",
-                    ),
-                )?;
+        let before = reservation.clone();
 
-        let check_in =
-            check_in.unwrap_or(
-                reservation.check_in,
-            );
+        reservation.check_in = input.check_in.unwrap_or(reservation.check_in);
 
-        let check_out =
-            check_out.unwrap_or(
-                reservation.check_out,
-            );
+        reservation.check_out = input.check_out.unwrap_or(reservation.check_out);
 
-        if check_in > check_out {
+        reservation.room_class = input.room_class.unwrap_or(reservation.room_class.clone());
 
-            return Err(
-                validation(
-                    "check_in must be <= check_out",
-                ),
-            );
+        if reservation.check_in > reservation.check_out {
+            return Err(validation("check_in must be <= check_out"));
         }
 
-        let room_class =
-            room_class.unwrap_or(
-                reservation
-                    .room_class
-                    .clone(),
-            );
+        let timeline_event_types = detect_reservation_timeline_events(&before, &reservation);
 
-        reservation.check_in =
-            check_in;
+        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
 
-        reservation.check_out =
-            check_out;
+        for participant in &reservation.participants {
+            for event_type in &timeline_event_types {
+                record_event(
+                    &mut tx,
+                    participant.guest_id,
+                    event_type.clone(),
+                    reservation.id,
+                )
+                .await?;
+            }
+        }
 
-        reservation.room_class =
-            room_class;
-
-        SqliteReservationRepository
-            ::modify(
-                &mut tx,
-                &reservation,
-            )
-            .await?;
-
-        for participant in
-            &reservation.participants
-        {
+        for participant in &reservation.participants {
             refresh_projection_chain(
                 &mut tx,
-
                 ProjectionInvalidation::new(
                     ProjectionNode::GuestAggregate,
-
                     ProjectionScope::Guest,
-
                     ProjectionRefreshTarget::Guest {
-                        guest_id:
-                            participant.guest_id,
+                        guest_id: participant.guest_id,
                     },
                 ),
             )
@@ -127,24 +75,18 @@ pub async fn modify_reservation(
         }
 
         Ok(reservation)
-
-    }.await;
+    }
+    .await;
 
     match result {
-
         Ok(reservation) => {
-
-            tx.commit()
-                .await
-                .map_err(infra)?;
+            tx.commit().await.map_err(infra)?;
 
             Ok(reservation)
         }
 
         Err(e) => {
-
-            let _ =
-                tx.rollback().await;
+            let _ = tx.rollback().await;
 
             Err(e)
         }

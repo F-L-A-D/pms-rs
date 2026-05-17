@@ -1,32 +1,16 @@
-use sqlx::{
-    Row,
-    Sqlite,
-    Transaction,
-};
+use sqlx::{Row, Sqlite, Transaction};
 
 use uuid::Uuid;
 
 use crate::{
-    domain::receivable::{
-        Receivable,
-        ReceivableStatus,
-    },
-
-    error::app_error::{
-        AppResult,
-        infra,
-    },
+    domain::entity::receivable::{Receivable, ReceivableStatus},
+    error::app_error::{infra, AppResult},
 };
 
 pub struct SqliteReceivableRepository;
 
 impl SqliteReceivableRepository {
-
-    pub async fn save(
-        tx: &mut Transaction<'_, Sqlite>,
-        receivable: &Receivable,
-    ) -> AppResult<()> {
-
+    pub async fn save(tx: &mut Transaction<'_, Sqlite>, receivable: &Receivable) -> AppResult<()> {
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO receivables (
@@ -36,27 +20,12 @@ impl SqliteReceivableRepository {
                 status
             )
             VALUES (?1, ?2, ?3, ?4)
-            "#
+            "#,
         )
         .bind(receivable.id.to_string())
         .bind(receivable.invoice_id.to_string())
-        .bind(receivable.outstanding_amount)
-        .bind(
-            match receivable.status {
-
-                ReceivableStatus::Open =>
-                    "OPEN",
-
-                ReceivableStatus::Settled =>
-                    "SETTLED",
-                    
-                ReceivableStatus::Disputed =>
-                    "DISPUTED",
-                    
-                ReceivableStatus::WrittenOff =>
-                    "WRITTENOFF",
-            }
-        )
+        .bind(receivable.outstanding_amount.to_string())
+        .bind(receivable.status.to_snake())
         .execute(&mut **tx)
         .await
         .map_err(infra)?;
@@ -68,10 +37,8 @@ impl SqliteReceivableRepository {
         tx: &mut Transaction<'_, Sqlite>,
         id: Uuid,
     ) -> AppResult<Option<Receivable>> {
-
-        let row =
-            sqlx::query(
-                r#"
+        let row = sqlx::query(
+            r#"
                 SELECT
                     id,
                     invoice_id,
@@ -79,22 +46,15 @@ impl SqliteReceivableRepository {
                     status
                 FROM receivables
                 WHERE id = ?1
-                "#
-            )
-            .bind(id.to_string())
-            .fetch_optional(&mut **tx)
-            .await
-            .map_err(infra)?;
+                "#,
+        )
+        .bind(id.to_string())
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(infra)?;
 
         match row {
-
-            Some(row) => {
-                Ok(
-                    Some(
-                        Self::row_to_receivable(&row)?
-                    )
-                )
-            }
+            Some(row) => Ok(Some(Self::row_to_receivable(&row)?)),
 
             None => Ok(None),
         }
@@ -104,10 +64,8 @@ impl SqliteReceivableRepository {
         tx: &mut Transaction<'_, Sqlite>,
         invoice_id: Uuid,
     ) -> AppResult<Option<Receivable>> {
-
-        let row =
-            sqlx::query(
-                r#"
+        let row = sqlx::query(
+            r#"
                 SELECT
                     id,
                     invoice_id,
@@ -115,76 +73,36 @@ impl SqliteReceivableRepository {
                     status
                 FROM receivables
                 WHERE invoice_id = ?1
-                "#
-            )
-            .bind(invoice_id.to_string())
-            .fetch_optional(&mut **tx)
-            .await
-            .map_err(infra)?;
+                "#,
+        )
+        .bind(invoice_id.to_string())
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(infra)?;
 
         match row {
-
-            Some(row) => {
-                Ok(
-                    Some(
-                        Self::row_to_receivable(&row)?
-                    )
-                )
-            }
+            Some(row) => Ok(Some(Self::row_to_receivable(&row)?)),
 
             None => Ok(None),
         }
     }
 
-    fn row_to_receivable(
-        row: &sqlx::sqlite::SqliteRow,
-    ) -> AppResult<Receivable> {
+    fn row_to_receivable(row: &sqlx::sqlite::SqliteRow) -> AppResult<Receivable> {
+        let status = ReceivableStatus::from_snake(row.get::<String, _>("status").as_str())
+            .ok_or_else(|| infra("invalid receivable status"))?;
 
-        let status =
-            match row
-                .get::<String, _>("status")
-                .as_str()
-            {
+        Ok(Receivable {
+            id: Uuid::parse_str(row.get::<String, _>("id").as_str()).map_err(infra)?,
 
-                "OPEN" =>
-                    ReceivableStatus::Open,
+            invoice_id: Uuid::parse_str(row.get::<String, _>("invoice_id").as_str())
+                .map_err(infra)?,
 
-                "SETTLED" =>
-                    ReceivableStatus::Settled,
+            outstanding_amount: row
+                .get::<String, _>("outstanding_amount")
+                .parse()
+                .map_err(infra)?,
 
-                _ => {
-                    return Err(
-                        infra(
-                            "invalid receivable status"
-                        )
-                    )
-                }
-            };
-
-        Ok(
-            Receivable {
-
-                id:
-                    Uuid::parse_str(
-                        row.get::<String, _>("id")
-                            .as_str()
-                    )
-                    .map_err(infra)?,
-
-                invoice_id:
-                    Uuid::parse_str(
-                        row.get::<String, _>("invoice_id")
-                            .as_str()
-                    )
-                    .map_err(infra)?,
-
-                outstanding_amount:
-                    row.get(
-                        "outstanding_amount"
-                    ),
-
-                status,
-            }
-        )
+            status,
+        })
     }
 }

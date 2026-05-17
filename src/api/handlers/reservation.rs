@@ -6,13 +6,16 @@ use axum::{
 
 use chrono::NaiveDate;
 
+use rust_decimal::Decimal;
+
 use uuid::Uuid;
 
 use crate::{
     api::{
         dto::{
             input::reservation::{
-                CreateReservationInput, ModifyReservationInput, ReservationParticipantInput,
+                CreateReservationInput, ModifyReservationInput, ReservationPackageBreakdownInput,
+                ReservationParticipantInput,
             },
             request::reservation::{CreateReservationRequest, ModifyReservationRequest},
             response::reservation::{ReservationParticipantResponse, ReservationResponse},
@@ -21,6 +24,7 @@ use crate::{
         state::AppState,
     },
     domain::entity::reservation::Reservation,
+    domain::semantic::reservation_booking::ReservationBookingChannel,
     usecase::reservation::{
         command::{cancel_reservation::cancel_reservation, create_reservation, modify_reservation},
         detail::get_reservation::get_reservation,
@@ -53,6 +57,23 @@ pub async fn create_reservation_handler(
         })
         .collect::<Result<Vec<_>, ApiError>>()?;
 
+    let package_breakdowns = req
+        .package_breakdowns
+        .into_iter()
+        .map(|breakdown| {
+            let amount = breakdown
+                .amount
+                .parse::<Decimal>()
+                .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+            Ok(ReservationPackageBreakdownInput {
+                package_code: breakdown.package_code,
+                revenue_category: breakdown.revenue_category,
+                amount,
+            })
+        })
+        .collect::<Result<Vec<_>, ApiError>>()?;
+
     let input = CreateReservationInput {
         external_id: req.external_id,
 
@@ -61,6 +82,14 @@ pub async fn create_reservation_handler(
         check_out,
 
         room_class: req.room_class,
+
+        booking_channel: req
+            .booking_channel
+            .unwrap_or(ReservationBookingChannel::Direct),
+
+        plan_code: req.plan_code,
+
+        package_breakdowns,
 
         participants,
     };
@@ -174,6 +203,22 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
         room_class: reservation.room_class,
 
         room_id: reservation.room_id,
+
+        booking_channel: reservation.booking_channel,
+
+        plan_code: reservation.plan_code,
+
+        package_breakdowns: reservation
+            .package_breakdowns
+            .into_iter()
+            .map(|breakdown| {
+                crate::api::dto::response::reservation::ReservationPackageBreakdownResponse {
+                    package_code: breakdown.package_code,
+                    revenue_category: breakdown.revenue_category,
+                    amount: breakdown.amount,
+                }
+            })
+            .collect(),
 
         participants: reservation
             .participants

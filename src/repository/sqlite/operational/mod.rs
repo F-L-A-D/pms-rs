@@ -8,6 +8,7 @@ pub mod invoice_repository;
 pub mod payment_repository;
 pub mod receivable_repository;
 pub mod reservation_guest_relation_repository;
+pub mod reservation_package_breakdown_repository;
 pub mod reservation_repository;
 pub mod room_daily_state_repository;
 pub mod room_repository;

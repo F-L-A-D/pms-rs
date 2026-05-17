@@ -2,6 +2,7 @@ pub mod billing_responsibility;
 pub mod guest_timeline_event;
 pub mod invoice_settlement;
 pub mod receivable_state;
+pub mod reservation_booking;
 pub mod reservation_guest_relation;
 pub mod reservation_semantics;
 pub mod reservation_transition;

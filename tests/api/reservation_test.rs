@@ -6,9 +6,15 @@ use pms_rs::{
     api::dto::reservation::ReservationResponse,
     domain::{
         reservation_guest_relation::ReservationGuestRelationType,
-        semantic::reservation_transition::ReservationTransitionType,
+        semantic::{
+            reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
+            reservation_transition::ReservationTransitionType,
+        },
     },
-    repository::sqlite::behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
+    repository::sqlite::{
+        behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
+        operational::reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
+    },
 };
 
 use crate::common::{
@@ -128,6 +134,79 @@ async fn should_reject_duplicate_participant_guest_ids() {
     let response = post_json(&app.app, "/reservations", &request).await;
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST,);
+}
+
+#[tokio::test]
+async fn should_create_reservation_with_booking_channel_and_package_breakdowns() {
+    let app = spawn_app().await;
+
+    let guest = create_guest(&app.app).await;
+    let participant = ReservationParticipantBuilder::new(guest.id).build();
+    let today = Utc::now().date_naive();
+
+    let request = serde_json::json!({
+        "external_id": "RES-PACKAGE-001",
+        "check_in": today.to_string(),
+        "check_out": (today + Duration::days(1)).to_string(),
+        "room_class": "standard",
+        "booking_channel": "ota",
+        "plan_code": "BB",
+        "package_breakdowns": [
+            {
+                "package_code": "ROOM",
+                "revenue_category": "room",
+                "amount": "120.00"
+            },
+            {
+                "package_code": "BREAKFAST",
+                "revenue_category": "food_and_beverage",
+                "amount": "30.00"
+            },
+            {
+                "package_code": "TAX",
+                "revenue_category": "tax",
+                "amount": "15.00"
+            }
+        ],
+        "participants": [
+            {
+                "guest_id": participant.guest_id.to_string(),
+                "relation_type": participant.relation_type
+            }
+        ]
+    });
+
+    let response = post_json(&app.app, "/reservations", &request).await;
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    let created: ReservationResponse =
+        serde_json::from_value(response_json(response).await).unwrap();
+
+    assert_eq!(created.booking_channel, ReservationBookingChannel::Ota);
+    assert_eq!(created.plan_code.as_deref(), Some("BB"));
+    assert_eq!(created.package_breakdowns.len(), 3);
+    assert!(created.package_breakdowns.iter().any(|breakdown| {
+        breakdown.package_code == "ROOM"
+            && breakdown.revenue_category == ReservationRevenueCategory::Room
+            && breakdown.amount == rust_decimal::Decimal::new(12000, 2)
+    }));
+
+    let mut tx = app.db.begin_tx().await;
+
+    let breakdowns =
+        SqliteReservationPackageBreakdownRepository::list_by_reservation_id(&mut tx, created.id)
+            .await
+            .unwrap();
+
+    let _ = tx.rollback().await;
+
+    assert_eq!(breakdowns.len(), 3);
+    assert!(breakdowns.iter().any(|breakdown| {
+        breakdown.package_code == "BREAKFAST"
+            && breakdown.revenue_category == ReservationRevenueCategory::FoodAndBeverage
+            && breakdown.amount == rust_decimal::Decimal::new(3000, 2)
+    }));
 }
 
 #[tokio::test]

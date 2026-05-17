@@ -6,7 +6,10 @@ use uuid::Uuid;
 
 use crate::domain::{
     entity::reservation::{ReservationStatus, StayStatus},
-    semantic::reservation_guest_relation::ReservationGuestRelationType,
+    semantic::{
+        reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
+        reservation_guest_relation::ReservationGuestRelationType,
+    },
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -19,7 +22,17 @@ pub struct ReservationResponse {
     pub stay_status: Option<StayStatus>,
     pub room_class: String,
     pub room_id: Option<Uuid>,
+    pub booking_channel: ReservationBookingChannel,
+    pub plan_code: Option<String>,
+    pub package_breakdowns: Vec<ReservationPackageBreakdownResponse>,
     pub participants: Vec<ReservationParticipantResponse>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationPackageBreakdownResponse {
+    pub package_code: String,
+    pub revenue_category: ReservationRevenueCategory,
+    pub amount: rust_decimal::Decimal,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -38,6 +51,7 @@ pub struct ReservationSearchResponse {
     pub check_out: NaiveDate,
     pub room_class: String,
     pub room_id: Option<Uuid>,
+    pub booking_channel: ReservationBookingChannel,
     pub reservation_status: ReservationStatus,
     pub stay_status: Option<StayStatus>,
 }

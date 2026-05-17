@@ -3,9 +3,15 @@ use sqlx::{Row, Sqlite, Transaction};
 use uuid::Uuid;
 
 use crate::{
-    domain::entity::reservation::{Reservation, ReservationStatus, StayStatus},
+    domain::{
+        entity::reservation::{Reservation, ReservationStatus, StayStatus},
+        semantic::reservation_booking::ReservationBookingChannel,
+    },
     error::app_error::{infra, AppResult},
-    repository::sqlite::operational::reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
+    repository::sqlite::operational::{
+        reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
+        reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
+    },
 };
 
 pub struct SqliteReservationRepository;
@@ -26,6 +32,8 @@ impl SqliteReservationRepository {
                 stay_status,
                 room_class,
                 room_id,
+                booking_channel,
+                plan_code,
                 created_at
             )
             VALUES (
@@ -37,7 +45,9 @@ impl SqliteReservationRepository {
                 ?6,
                 ?7,
                 ?8,
-                ?9
+                ?9,
+                ?10,
+                ?11
             )
             "#,
         )
@@ -49,6 +59,8 @@ impl SqliteReservationRepository {
         .bind(reservation.stay_status.as_ref().map(StayStatus::to_snake))
         .bind(&reservation.room_class)
         .bind(reservation.room_id.map(|id| id.to_string()))
+        .bind(reservation.booking_channel.to_snake())
+        .bind(&reservation.plan_code)
         .bind(reservation.created_at.to_rfc3339())
         .execute(&mut **tx)
         .await
@@ -71,8 +83,10 @@ impl SqliteReservationRepository {
                 reservation_status = ?4,
                 stay_status = ?5,
                 room_class = ?6,
-                room_id = ?7
-            WHERE id = ?8
+                room_id = ?7,
+                booking_channel = ?8,
+                plan_code = ?9
+            WHERE id = ?10
             "#,
         )
         .bind(&reservation.external_id)
@@ -82,6 +96,8 @@ impl SqliteReservationRepository {
         .bind(reservation.stay_status.as_ref().map(StayStatus::to_snake))
         .bind(&reservation.room_class)
         .bind(reservation.room_id.map(|id| id.to_string()))
+        .bind(reservation.booking_channel.to_snake())
+        .bind(&reservation.plan_code)
         .bind(reservation.id.to_string())
         .execute(&mut **tx)
         .await
@@ -105,6 +121,8 @@ impl SqliteReservationRepository {
                     stay_status,
                     room_class,
                     room_id,
+                    booking_channel,
+                    plan_code,
                     created_at
                 FROM reservations
                 WHERE id = ?1
@@ -137,6 +155,8 @@ impl SqliteReservationRepository {
                     r.stay_status,
                     r.room_class,
                     r.room_id,
+                    r.booking_channel,
+                    r.plan_code,
                     r.created_at
                 FROM reservations r
                 INNER JOIN reservation_guest_relations rel
@@ -191,6 +211,13 @@ impl SqliteReservationRepository {
             SqliteReservationGuestRelationRepository::list_by_reservation_id(tx, &reservation_uuid)
                 .await?;
 
+        let package_breakdowns =
+            SqliteReservationPackageBreakdownRepository::list_by_reservation_id(
+                tx,
+                reservation_uuid,
+            )
+            .await?;
+
         Ok(Reservation {
             id: reservation_uuid,
 
@@ -218,6 +245,15 @@ impl SqliteReservationRepository {
                 .map(|id| Uuid::parse_str(&id))
                 .transpose()
                 .map_err(infra)?,
+
+            booking_channel: ReservationBookingChannel::from_snake(
+                row.get::<String, _>("booking_channel").as_str(),
+            )
+            .ok_or_else(|| infra("invalid booking channel"))?,
+
+            plan_code: row.get("plan_code"),
+
+            package_breakdowns,
 
             participants,
 

@@ -7,7 +7,10 @@ use uuid::Uuid;
 use pms_rs::{
     domain::{
         entity::reservation::{Reservation, ReservationStatus, StayStatus},
-        semantic::room_daily_state::{RoomDailyOccupancyStatus, RoomDailyState},
+        semantic::{
+            reservation_booking::ReservationBookingChannel,
+            room_daily_state::{RoomDailyOccupancyStatus, RoomDailyState},
+        },
     },
     projection::{
         aggregate::access::fetch_inventory_aggregates_by_date::fetch_inventory_aggregates_by_date,
@@ -83,6 +86,9 @@ async fn should_preserve_pending_and_out_of_order_inventory_inputs() {
         stay_status: Some(StayStatus::Confirmed),
         room_class: "standard".to_string(),
         room_id: None,
+        booking_channel: ReservationBookingChannel::Direct,
+        plan_code: None,
+        package_breakdowns: vec![],
         participants: vec![],
         created_at: Utc::now(),
     };

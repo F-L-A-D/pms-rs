@@ -6,8 +6,9 @@ use std::collections::HashSet;
 
 use uuid::Uuid;
 
-use crate::domain::semantic::reservation_guest_relation::{
-    ReservationGuestRelation, ReservationGuestRelationType,
+use crate::domain::semantic::{
+    reservation_booking::{ReservationBookingChannel, ReservationPackageBreakdown},
+    reservation_guest_relation::{ReservationGuestRelation, ReservationGuestRelationType},
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -99,6 +100,9 @@ pub struct Reservation {
     pub stay_status: Option<StayStatus>,
     pub room_class: String,
     pub room_id: Option<Uuid>,
+    pub booking_channel: ReservationBookingChannel,
+    pub plan_code: Option<String>,
+    pub package_breakdowns: Vec<ReservationPackageBreakdown>,
     pub participants: Vec<ReservationGuestRelation>,
     pub created_at: DateTime<Utc>,
 }
@@ -110,6 +114,9 @@ impl Reservation {
         check_in: NaiveDate,
         check_out: NaiveDate,
         room_class: String,
+        booking_channel: ReservationBookingChannel,
+        plan_code: Option<String>,
+        package_breakdowns: Vec<ReservationPackageBreakdown>,
         participants: Vec<ReservationGuestRelation>,
     ) -> Result<Self, String> {
         if check_in > check_out {
@@ -148,6 +155,9 @@ impl Reservation {
             stay_status: Some(StayStatus::Confirmed),
             room_class,
             room_id: None,
+            booking_channel,
+            plan_code,
+            package_breakdowns,
             participants,
             created_at: now,
         })

@@ -54,6 +54,8 @@ pub async fn get_reservation_search_result(
 
         room_id: reservation.room_id,
 
+        booking_channel: reservation.booking_channel,
+
         reservation_status: reservation.reservation_status,
 
         stay_status: reservation.stay_status,

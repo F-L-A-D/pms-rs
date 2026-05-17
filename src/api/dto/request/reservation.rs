@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::domain::semantic::reservation_guest_relation::ReservationGuestRelationType;
+use crate::domain::semantic::{
+    reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
+    reservation_guest_relation::ReservationGuestRelationType,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateReservationRequest {
@@ -9,7 +12,18 @@ pub struct CreateReservationRequest {
     pub check_in: String,
     pub check_out: String,
     pub room_class: String,
+    pub booking_channel: Option<ReservationBookingChannel>,
+    pub plan_code: Option<String>,
+    #[serde(default)]
+    pub package_breakdowns: Vec<ReservationPackageBreakdownRequest>,
     pub participants: Vec<ReservationParticipantRequest>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReservationPackageBreakdownRequest {
+    pub package_code: String,
+    pub revenue_category: ReservationRevenueCategory,
+    pub amount: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

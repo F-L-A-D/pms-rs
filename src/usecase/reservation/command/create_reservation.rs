@@ -7,6 +7,7 @@ use crate::{
         entity::reservation::Reservation,
         semantic::{
             guest_timeline_event::TimelineEventType,
+            reservation_booking::ReservationPackageBreakdown,
             reservation_guest_relation::ReservationGuestRelation,
         },
     },
@@ -22,6 +23,7 @@ use crate::{
     repository::sqlite::operational::{
         guest_repository::SqliteGuestRepository,
         reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
+        reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
         reservation_repository::SqliteReservationRepository,
     },
     usecase::timeline::command::record_event::record_event,
@@ -62,6 +64,18 @@ pub async fn execute(db: &Db, input: CreateReservationInput) -> AppResult<Reserv
             input.check_in,
             input.check_out,
             input.room_class,
+            input.booking_channel,
+            input.plan_code,
+            input
+                .package_breakdowns
+                .into_iter()
+                .map(|breakdown| ReservationPackageBreakdown {
+                    reservation_id,
+                    package_code: breakdown.package_code,
+                    revenue_category: breakdown.revenue_category,
+                    amount: breakdown.amount,
+                })
+                .collect(),
             participants,
         )
         .map_err(validation)?;
@@ -70,6 +84,10 @@ pub async fn execute(db: &Db, input: CreateReservationInput) -> AppResult<Reserv
 
         for participant in &reservation.participants {
             SqliteReservationGuestRelationRepository::save(&mut tx, participant).await?;
+        }
+
+        for breakdown in &reservation.package_breakdowns {
+            SqliteReservationPackageBreakdownRepository::save(&mut tx, breakdown).await?;
         }
 
         let primary_guest_id = reservation.primary_participant().map(|p| p.guest_id);

@@ -8,6 +8,8 @@ use crate::{
             guest_activity_signal_refresh::execute_guest_activity_signal_refresh,
             guest_aggregate_rebuild::execute_guest_aggregate_rebuild,
             guest_aggregate_refresh::execute_guest_aggregate_refresh,
+            inventory_aggregate_rebuild::execute_inventory_aggregate_rebuild,
+            inventory_aggregate_refresh::execute_inventory_aggregate_refresh,
         },
         invalidation::projection_invalidation::ProjectionRefreshTarget,
         topology::projection_node::ProjectionNode,
@@ -27,6 +29,9 @@ impl ProjectionExecutionRegistry {
             ProjectionNode::GuestActivitySignal => {
                 execute_guest_activity_signal_refresh(tx, target).await
             }
+            ProjectionNode::InventoryAggregate => {
+                execute_inventory_aggregate_refresh(tx, target).await
+            }
         }
     }
 
@@ -40,6 +45,9 @@ impl ProjectionExecutionRegistry {
             }
             ProjectionNode::GuestActivitySignal => {
                 execute_guest_activity_signal_rebuild(tx).await?;
+            }
+            ProjectionNode::InventoryAggregate => {
+                execute_inventory_aggregate_rebuild(tx).await?;
             }
         }
 

@@ -1,5 +1,7 @@
 use uuid::Uuid;
 
+use chrono::NaiveDate;
+
 use crate::{
     api::dto::input::reservation::ModifyReservationInput,
     db::connection::Db,
@@ -84,6 +86,20 @@ pub async fn execute(db: &Db, id: Uuid, input: ModifyReservationInput) -> AppRes
             .await?;
         }
 
+        for service_date in affected_inventory_dates(&before, &reservation) {
+            refresh_projection_chain(
+                &mut tx,
+                ProjectionInvalidation::new(
+                    ProjectionNode::InventoryAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::InventoryDate {
+                        date: service_date.to_string(),
+                    },
+                ),
+            )
+            .await?;
+        }
+
         Ok(reservation)
     }
     .await;
@@ -101,4 +117,16 @@ pub async fn execute(db: &Db, id: Uuid, input: ModifyReservationInput) -> AppRes
             Err(e)
         }
     }
+}
+
+fn affected_inventory_dates(before: &Reservation, after: &Reservation) -> Vec<NaiveDate> {
+    let mut dates = before.nights();
+
+    for date in after.nights() {
+        if !dates.contains(&date) {
+            dates.push(date);
+        }
+    }
+
+    dates
 }

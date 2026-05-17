@@ -5,10 +5,18 @@ use crate::{
     db::connection::Db,
     domain::entity::room::Room,
     error::app_error::{infra, AppResult},
+    projection::{
+        invalidation::{
+            projection_invalidation::{ProjectionInvalidation, ProjectionRefreshTarget},
+            projection_scope::ProjectionScope,
+        },
+        orchestrator::refresh_projection_chain::refresh_projection_chain,
+        topology::projection_node::ProjectionNode,
+    },
     repository::sqlite::operational::room_repository::SqliteRoomRepository,
 };
 
-pub async fn create_room(db: &Db, input: CreateRoomInput) -> AppResult<Room> {
+pub async fn execute(db: &Db, input: CreateRoomInput) -> AppResult<Room> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
@@ -27,6 +35,16 @@ pub async fn create_room(db: &Db, input: CreateRoomInput) -> AppResult<Room> {
         };
 
         SqliteRoomRepository::save(&mut tx, &room).await?;
+
+        refresh_projection_chain(
+            &mut tx,
+            ProjectionInvalidation::new(
+                ProjectionNode::InventoryAggregate,
+                ProjectionScope::Inventory,
+                ProjectionRefreshTarget::Global,
+            ),
+        )
+        .await?;
 
         Ok(room)
     }

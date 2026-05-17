@@ -20,8 +20,7 @@ use crate::{
     },
     usecase::room::{
         command::{
-            create_room::create_room, update_room::update_room,
-            update_room_activation::update_room_activation,
+            create_room, update_room::update_room, update_room_activation::update_room_activation,
         },
         detail::get_room::get_room,
         search::list_rooms::list_rooms,
@@ -44,7 +43,9 @@ pub async fn create_room_handler(
         is_physical: req.is_physical,
     };
 
-    let room = create_room(&state.db, input).await.map_err(map_app_error)?;
+    let room = create_room::execute(&state.db, input)
+        .await
+        .map_err(map_app_error)?;
 
     let response = RoomResponse::from(room);
 

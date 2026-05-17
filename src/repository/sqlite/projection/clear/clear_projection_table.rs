@@ -10,6 +10,8 @@ fn projection_table_name(node: &ProjectionNode) -> &'static str {
         ProjectionNode::GuestAggregate => "guest_aggregates",
 
         ProjectionNode::GuestActivitySignal => "guest_activities",
+
+        ProjectionNode::InventoryAggregate => "inventory_aggregates",
     }
 }
 

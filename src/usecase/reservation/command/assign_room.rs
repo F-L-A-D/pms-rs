@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-pub async fn assign_room(db: &Db, reservation_id: Uuid, room_id: Uuid) -> AppResult<()> {
+pub async fn execute(db: &Db, reservation_id: Uuid, room_id: Uuid) -> AppResult<()> {
     let mut tx = db.begin_tx().await;
 
     let result = async {

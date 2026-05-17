@@ -12,8 +12,8 @@ use crate::{
         state::AppState,
     },
     usecase::{
-        reservation::command::assign_room::assign_room,
-        stay::command::{check_in::check_in, check_out::check_out},
+        reservation::command::assign_room,
+        stay::command::{check_in, check_out},
     },
 };
 
@@ -27,7 +27,7 @@ pub async fn assign_room_handler(
     let room_id = Uuid::parse_str(&room_id)
         .map_err(|e| ApiError::new(axum::http::StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    assign_room(&state.db, reservation_id, room_id)
+    assign_room::execute(&state.db, reservation_id, room_id)
         .await
         .map_err(map_app_error)?;
 
@@ -45,7 +45,7 @@ pub async fn check_in_handler(
     let reservation_id = Uuid::parse_str(&id)
         .map_err(|e| ApiError::new(axum::http::StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    check_in(&state.db, reservation_id)
+    check_in::execute(&state.db, reservation_id)
         .await
         .map_err(map_app_error)?;
 
@@ -63,7 +63,7 @@ pub async fn check_out_handler(
     let reservation_id = Uuid::parse_str(&id)
         .map_err(|e| ApiError::new(axum::http::StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    check_out(&state.db, reservation_id)
+    check_out::execute(&state.db, reservation_id)
         .await
         .map_err(map_app_error)?;
 

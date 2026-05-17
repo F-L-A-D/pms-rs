@@ -4,14 +4,20 @@ use crate::{
     db::connection::Db,
     domain::{
         entity::reservation::{ReservationStatus, StayStatus},
-        semantic::guest_timeline_event::TimelineEventType,
+        semantic::{
+            guest_timeline_event::TimelineEventType,
+            room_daily_state::{RoomDailyOccupancyStatus, RoomDailyState},
+        },
     },
     error::app_error::{conflict, infra, not_found, AppResult},
-    repository::sqlite::operational::reservation_repository::SqliteReservationRepository,
+    repository::sqlite::operational::{
+        reservation_repository::SqliteReservationRepository,
+        room_daily_state_repository::SqliteRoomDailyStateRepository,
+    },
     usecase::timeline::command::record_event::record_event,
 };
 
-pub async fn check_in(db: &Db, reservation_id: Uuid) -> AppResult<()> {
+pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
@@ -29,6 +35,32 @@ pub async fn check_in(db: &Db, reservation_id: Uuid) -> AppResult<()> {
 
         if reservation.room_id.is_none() {
             return Err(conflict("room not assigned"));
+        }
+
+        let room_id = reservation
+            .room_id
+            .ok_or_else(|| conflict("room not assigned"))?;
+
+        for service_date in reservation.nights() {
+            let mut room_state =
+                match SqliteRoomDailyStateRepository::find_by_room_and_service_date(
+                    &mut tx,
+                    room_id,
+                    service_date,
+                )
+                .await?
+                {
+                    Some(state) => state,
+                    None => RoomDailyState::new(room_id, service_date),
+                };
+
+            if room_state.occupancy_status == RoomDailyOccupancyStatus::OutOfOrder {
+                return Err(conflict("room out of order"));
+            }
+
+            room_state.set_occupancy_status(RoomDailyOccupancyStatus::Occupied);
+
+            SqliteRoomDailyStateRepository::save(&mut tx, &room_state).await?;
         }
 
         reservation.stay_status = Some(StayStatus::CheckedIn);

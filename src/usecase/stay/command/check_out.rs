@@ -4,14 +4,20 @@ use crate::{
     db::connection::Db,
     domain::{
         entity::reservation::{ReservationStatus, StayStatus},
-        semantic::guest_timeline_event::TimelineEventType,
+        semantic::{
+            guest_timeline_event::TimelineEventType,
+            room_daily_state::{RoomDailyOccupancyStatus, RoomDailyState},
+        },
     },
     error::app_error::{conflict, infra, not_found, AppResult},
-    repository::sqlite::operational::reservation_repository::SqliteReservationRepository,
+    repository::sqlite::operational::{
+        reservation_repository::SqliteReservationRepository,
+        room_daily_state_repository::SqliteRoomDailyStateRepository,
+    },
     usecase::timeline::command::record_event::record_event,
 };
 
-pub async fn check_out(db: &Db, reservation_id: Uuid) -> AppResult<()> {
+pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
@@ -26,6 +32,26 @@ pub async fn check_out(db: &Db, reservation_id: Uuid) -> AppResult<()> {
         if reservation.stay_status != Some(StayStatus::CheckedIn) {
             return Err(conflict("invalid stay status"));
         }
+
+        let room_id = reservation
+            .room_id
+            .ok_or_else(|| conflict("room not assigned"))?;
+
+        let mut room_state = match SqliteRoomDailyStateRepository::find_by_room_and_service_date(
+            &mut tx,
+            room_id,
+            reservation.check_out,
+        )
+        .await?
+        {
+            Some(state) => state,
+            None => RoomDailyState::new(room_id, reservation.check_out),
+        };
+
+        room_state.set_occupancy_status(RoomDailyOccupancyStatus::Vacant);
+        room_state.mark_dirty();
+
+        SqliteRoomDailyStateRepository::save(&mut tx, &room_state).await?;
 
         reservation.stay_status = Some(StayStatus::CheckedOut);
 

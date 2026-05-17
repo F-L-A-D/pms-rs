@@ -1,3 +1,5 @@
+pub mod daily_room_class_kpi_aggregate;
+pub mod daily_room_class_kpi_aggregate_row;
 pub mod guest_aggregate;
 pub mod guest_aggregate_row;
 pub mod housekeeping_daily_workload_aggregate;

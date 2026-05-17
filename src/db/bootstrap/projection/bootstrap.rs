@@ -20,4 +20,9 @@ pub async fn bootstrap(pool: &SqlitePool) {
         .execute(pool)
         .await
         .unwrap();
+
+    sqlx::query(include_str!("daily_room_class_kpi_aggregates.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
 }

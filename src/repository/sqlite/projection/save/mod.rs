@@ -1,5 +1,7 @@
+pub mod delete_daily_room_class_kpi_aggregates_by_date;
 pub mod delete_housekeeping_daily_workload_aggregates_by_date;
 pub mod delete_inventory_aggregates_by_date;
+pub mod save_daily_room_class_kpi_aggregate;
 pub mod save_guest_activity;
 pub mod save_guest_aggregate;
 pub mod save_housekeeping_daily_workload_aggregate;

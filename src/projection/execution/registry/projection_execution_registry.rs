@@ -4,6 +4,8 @@ use crate::{
     error::app_error::AppResult,
     projection::{
         execution::binding::{
+            daily_room_class_kpi_aggregate_rebuild::execute_daily_room_class_kpi_aggregate_rebuild,
+            daily_room_class_kpi_aggregate_refresh::execute_daily_room_class_kpi_aggregate_refresh,
             guest_activity_signal_rebuild::execute_guest_activity_signal_rebuild,
             guest_activity_signal_refresh::execute_guest_activity_signal_refresh,
             guest_aggregate_rebuild::execute_guest_aggregate_rebuild,
@@ -27,6 +29,9 @@ impl ProjectionExecutionRegistry {
         target: &ProjectionRefreshTarget,
     ) -> AppResult<()> {
         match node {
+            ProjectionNode::DailyRoomClassKpiAggregate => {
+                execute_daily_room_class_kpi_aggregate_refresh(tx, target).await
+            }
             ProjectionNode::GuestAggregate => execute_guest_aggregate_refresh(tx, target).await,
             ProjectionNode::GuestActivitySignal => {
                 execute_guest_activity_signal_refresh(tx, target).await
@@ -45,6 +50,9 @@ impl ProjectionExecutionRegistry {
         node: &ProjectionNode,
     ) -> AppResult<()> {
         match node {
+            ProjectionNode::DailyRoomClassKpiAggregate => {
+                execute_daily_room_class_kpi_aggregate_rebuild(tx).await?;
+            }
             ProjectionNode::GuestAggregate => {
                 execute_guest_aggregate_rebuild(tx).await?;
             }

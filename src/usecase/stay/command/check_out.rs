@@ -73,6 +73,18 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
         )
         .await?;
 
+        refresh_projection_chain(
+            &mut tx,
+            ProjectionInvalidation::new(
+                ProjectionNode::DailyRoomClassKpiAggregate,
+                ProjectionScope::Inventory,
+                ProjectionRefreshTarget::KpiDate {
+                    date: reservation.check_out.to_string(),
+                },
+            ),
+        )
+        .await?;
+
         reservation.stay_status = Some(StayStatus::CheckedOut);
 
         SqliteReservationRepository::modify(&mut tx, &reservation).await?;

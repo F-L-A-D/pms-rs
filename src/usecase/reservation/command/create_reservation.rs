@@ -128,6 +128,18 @@ pub async fn execute(db: &Db, input: CreateReservationInput) -> AppResult<Reserv
                 ),
             )
             .await?;
+
+            refresh_projection_chain(
+                &mut tx,
+                ProjectionInvalidation::new(
+                    ProjectionNode::DailyRoomClassKpiAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::KpiDate {
+                        date: service_date.to_string(),
+                    },
+                ),
+            )
+            .await?;
         }
 
         Ok(reservation)

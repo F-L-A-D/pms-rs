@@ -21,6 +21,8 @@ pub enum ProjectionRefreshTarget {
 
     InventoryDate { date: String },
 
+    KpiDate { date: String },
+
     RoomDate { date: String },
 }
 

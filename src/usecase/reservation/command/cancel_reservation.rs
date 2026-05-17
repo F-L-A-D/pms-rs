@@ -75,6 +75,18 @@ pub async fn cancel_reservation(db: &Db, id: Uuid) -> AppResult<Reservation> {
                 ),
             )
             .await?;
+
+            refresh_projection_chain(
+                &mut tx,
+                ProjectionInvalidation::new(
+                    ProjectionNode::DailyRoomClassKpiAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::KpiDate {
+                        date: service_date.to_string(),
+                    },
+                ),
+            )
+            .await?;
         }
 
         Ok(reservation)

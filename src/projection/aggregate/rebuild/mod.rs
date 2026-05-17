@@ -1,3 +1,4 @@
+pub mod rebuild_daily_room_class_kpi_aggregate;
 pub mod rebuild_guest_aggregate;
 pub mod rebuild_housekeeping_daily_workload_aggregate;
 pub mod rebuild_inventory_aggregate;

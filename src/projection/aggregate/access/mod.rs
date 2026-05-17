@@ -1,3 +1,5 @@
+pub mod fetch_daily_room_class_kpi_aggregate_rows;
+pub mod fetch_daily_room_class_kpi_aggregates_by_date;
 pub mod fetch_guest_aggregate;
 pub mod fetch_guest_aggregate_row;
 pub mod fetch_housekeeping_daily_workload_aggregate_rows;

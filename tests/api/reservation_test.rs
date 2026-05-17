@@ -7,7 +7,7 @@ use pms_rs::{
     domain::{
         reservation_guest_relation::ReservationGuestRelationType,
         semantic::{
-            operation_change_event::OperationType,
+            operation_change_event::{ChangedField, OperationType},
             operation_context::{OperationActor, OperationSource},
             reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
             reservation_transition::ReservationTransitionType,
@@ -242,6 +242,17 @@ async fn should_record_operation_change_event_and_activation_on_reservation_crea
     assert!(event.actor_id.is_none());
     assert!(event.before_json.is_none());
     assert!(event.after_json.contains(created.id.to_string().as_str()));
+    let changed_fields: Vec<ChangedField> =
+        serde_json::from_str(&event.changed_fields_json).unwrap();
+    let room_class_change = changed_fields
+        .iter()
+        .find(|field| field.field_name == "room_class")
+        .unwrap();
+    assert!(room_class_change.before_value.is_none());
+    assert_eq!(
+        room_class_change.after_value.as_deref(),
+        Some(created.room_class.as_str())
+    );
 
     let activation = fetch_semantic_activation(&mut tx, event.id)
         .await
@@ -499,11 +510,23 @@ async fn should_record_operation_change_events_for_modify_and_cancel() {
 
     assert!(modify_event.before_json.is_some());
     assert!(modify_event.after_json.contains("deluxe"));
-    assert!(modify_event.changed_fields_json.contains("room_class"));
+    let modify_changed_fields: Vec<ChangedField> =
+        serde_json::from_str(&modify_event.changed_fields_json).unwrap();
+    let room_class_change = modify_changed_fields
+        .iter()
+        .find(|field| field.field_name == "room_class")
+        .unwrap();
+    assert_eq!(
+        room_class_change.before_value.as_deref(),
+        Some(created.room_class.as_str())
+    );
+    assert_eq!(room_class_change.after_value.as_deref(), Some("deluxe"));
     assert!(cancel_event.before_json.is_some());
-    assert!(cancel_event
-        .changed_fields_json
-        .contains("reservation_status"));
+    let cancel_changed_fields: Vec<ChangedField> =
+        serde_json::from_str(&cancel_event.changed_fields_json).unwrap();
+    assert!(cancel_changed_fields
+        .iter()
+        .any(|field| field.field_name == "reservation_status"));
 
     let modify_activation = fetch_semantic_activation(&mut tx, modify_event.id)
         .await
@@ -518,7 +541,7 @@ async fn should_record_operation_change_events_for_modify_and_cancel() {
 
     assert_eq!(
         modify_activation.activation_key,
-        SemanticActivationKey::StayShapeChanged
+        SemanticActivationKey::InventoryRelevantChange
     );
     assert_eq!(
         cancel_activation.activation_key,

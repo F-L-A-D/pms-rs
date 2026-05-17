@@ -11,7 +11,7 @@ use crate::{
         entity::reservation::Reservation,
         semantic::{
             guest_timeline_event::TimelineEventType,
-            operation_change_event::{OperationChangeEvent, OperationType},
+            operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
             operation_context::OperationContext,
             reservation_booking::{
                 ReservationDailyRevenueAllocation, ReservationDailyStayDetail,
@@ -137,18 +137,8 @@ pub async fn execute(
             source: context.source,
             before_json: None,
             after_json: reservation_json(&reservation).to_string(),
-            changed_fields_json: serde_json::json!([
-                "external_id",
-                "check_in",
-                "check_out",
-                "room_class",
-                "booking_channel",
-                "plan_code",
-                "package_breakdowns",
-                "daily_details",
-                "participants"
-            ])
-            .to_string(),
+            changed_fields_json: serde_json::to_string(&created_changed_fields(&reservation))
+                .map_err(infra)?,
             occurred_at: chrono::Utc::now(),
         };
 
@@ -286,6 +276,48 @@ fn reservation_json(reservation: &Reservation) -> serde_json::Value {
         "booking_channel": reservation.booking_channel,
         "plan_code": reservation.plan_code,
     })
+}
+
+fn created_changed_fields(reservation: &Reservation) -> Vec<ChangedField> {
+    vec![
+        ChangedField::new(
+            "external_id",
+            None,
+            reservation
+                .external_id
+                .as_ref()
+                .map(|value| value.to_string()),
+        ),
+        ChangedField::new("check_in", None, Some(reservation.check_in.to_string())),
+        ChangedField::new("check_out", None, Some(reservation.check_out.to_string())),
+        ChangedField::new("room_class", None, Some(reservation.room_class.clone())),
+        ChangedField::new(
+            "booking_channel",
+            None,
+            Some(reservation.booking_channel.to_snake().to_string()),
+        ),
+        ChangedField::new("plan_code", None, reservation.plan_code.clone()),
+        ChangedField::new(
+            "package_breakdowns",
+            None,
+            Some(reservation.package_breakdowns.len().to_string()),
+        ),
+        ChangedField::new(
+            "daily_details",
+            None,
+            Some(reservation.daily_stay_details.len().to_string()),
+        ),
+        ChangedField::new(
+            "daily_revenue_allocations",
+            None,
+            Some(reservation.daily_revenue_allocations.len().to_string()),
+        ),
+        ChangedField::new(
+            "participants",
+            None,
+            Some(reservation.participants.len().to_string()),
+        ),
+    ]
 }
 
 fn build_daily_stay_details(

@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use pms_rs::{
     domain::semantic::{
-        operation_change_event::{OperationChangeEvent, OperationType},
+        operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
         operation_context::{OperationActor, OperationSource},
     },
     projection::{
@@ -75,7 +75,12 @@ async fn should_execute_semantic_activation_flow_in_topology_order() {
             source: OperationSource::Api,
             before_json: Some(serde_json::json!({"room_class": "standard"}).to_string()),
             after_json: serde_json::json!({"room_class": "deluxe"}).to_string(),
-            changed_fields_json: serde_json::json!(["room_class"]).to_string(),
+            changed_fields_json: serde_json::to_string(&vec![ChangedField::new(
+                "room_class",
+                Some("standard".to_string()),
+                Some("deluxe".to_string()),
+            )])
+            .unwrap(),
             occurred_at: Utc::now(),
         },
     )

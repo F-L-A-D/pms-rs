@@ -6,7 +6,7 @@ use crate::{
         entity::reservation::{Reservation, ReservationStatus},
         semantic::{
             guest_timeline_event::TimelineEventType,
-            operation_change_event::{OperationChangeEvent, OperationType},
+            operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
             operation_context::OperationContext,
         },
     },
@@ -63,8 +63,11 @@ pub async fn cancel_reservation(
             source: context.source,
             before_json: Some(reservation_json(&before).to_string()),
             after_json: reservation_json(&reservation).to_string(),
-            changed_fields_json: serde_json::json!(["reservation_status", "stay_status"])
-                .to_string(),
+            changed_fields_json: serde_json::to_string(&cancel_changed_fields(
+                &before,
+                &reservation,
+            ))
+            .map_err(infra)?,
             occurred_at: chrono::Utc::now(),
         };
 
@@ -200,4 +203,25 @@ fn reservation_json(reservation: &Reservation) -> serde_json::Value {
         "booking_channel": reservation.booking_channel,
         "plan_code": reservation.plan_code,
     })
+}
+
+fn cancel_changed_fields(before: &Reservation, after: &Reservation) -> Vec<ChangedField> {
+    vec![
+        ChangedField::new(
+            "reservation_status",
+            Some(before.reservation_status.to_snake().to_string()),
+            Some(after.reservation_status.to_snake().to_string()),
+        ),
+        ChangedField::new(
+            "stay_status",
+            before
+                .stay_status
+                .as_ref()
+                .map(|status| status.to_snake().to_string()),
+            after
+                .stay_status
+                .as_ref()
+                .map(|status| status.to_snake().to_string()),
+        ),
+    ]
 }

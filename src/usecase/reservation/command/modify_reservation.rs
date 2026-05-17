@@ -9,7 +9,7 @@ use crate::{
     db::connection::Db,
     domain::{
         entity::reservation::Reservation,
-        semantic::operation_change_event::{OperationChangeEvent, OperationType},
+        semantic::operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
         semantic::operation_context::OperationContext,
         semantic::reservation_booking::{
             ReservationDailyRevenueAllocation, ReservationDailyStayDetail,
@@ -238,23 +238,43 @@ pub async fn execute(
     }
 }
 
-fn changed_fields(before: &Reservation, after: &Reservation) -> Vec<&'static str> {
+fn changed_fields(before: &Reservation, after: &Reservation) -> Vec<ChangedField> {
     let mut fields = Vec::new();
 
     if before.check_in != after.check_in {
-        fields.push("check_in");
+        fields.push(ChangedField::new(
+            "check_in",
+            Some(before.check_in.to_string()),
+            Some(after.check_in.to_string()),
+        ));
     }
     if before.check_out != after.check_out {
-        fields.push("check_out");
+        fields.push(ChangedField::new(
+            "check_out",
+            Some(before.check_out.to_string()),
+            Some(after.check_out.to_string()),
+        ));
     }
     if before.room_class != after.room_class {
-        fields.push("room_class");
+        fields.push(ChangedField::new(
+            "room_class",
+            Some(before.room_class.clone()),
+            Some(after.room_class.clone()),
+        ));
     }
     if before.daily_stay_details != after.daily_stay_details {
-        fields.push("daily_details");
+        fields.push(ChangedField::new(
+            "daily_details",
+            Some(before.daily_stay_details.len().to_string()),
+            Some(after.daily_stay_details.len().to_string()),
+        ));
     }
     if before.daily_revenue_allocations != after.daily_revenue_allocations {
-        fields.push("daily_revenue_allocations");
+        fields.push(ChangedField::new(
+            "daily_revenue_allocations",
+            Some(before.daily_revenue_allocations.len().to_string()),
+            Some(after.daily_revenue_allocations.len().to_string()),
+        ));
     }
 
     fields

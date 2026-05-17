@@ -6,6 +6,27 @@ use uuid::Uuid;
 
 use super::operation_context::{OperationActor, OperationSource};
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChangedField {
+    pub field_name: String,
+    pub before_value: Option<String>,
+    pub after_value: Option<String>,
+}
+
+impl ChangedField {
+    pub fn new(
+        field_name: impl Into<String>,
+        before_value: Option<String>,
+        after_value: Option<String>,
+    ) -> Self {
+        Self {
+            field_name: field_name.into(),
+            before_value,
+            after_value,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OperationType {

@@ -1,5 +1,7 @@
 pub mod guest_aggregate_rebuild;
 pub mod guest_aggregate_refresh;
+pub mod housekeeping_daily_workload_aggregate_rebuild;
+pub mod housekeeping_daily_workload_aggregate_refresh;
 pub mod inventory_aggregate_rebuild;
 pub mod inventory_aggregate_refresh;
 

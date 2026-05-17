@@ -20,6 +20,8 @@ pub enum ProjectionRefreshTarget {
     Guest { guest_id: Uuid },
 
     InventoryDate { date: String },
+
+    RoomDate { date: String },
 }
 
 impl ProjectionInvalidation {

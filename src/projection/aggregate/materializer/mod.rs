@@ -1,2 +1,3 @@
 pub mod materialize_guest_aggregate;
+pub mod materialize_housekeeping_daily_workload_aggregates;
 pub mod materialize_inventory_aggregates;

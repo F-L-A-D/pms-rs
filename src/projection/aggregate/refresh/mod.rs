@@ -1,2 +1,3 @@
 pub mod refresh_guest_aggregate;
+pub mod refresh_housekeeping_daily_workload_aggregate;
 pub mod refresh_inventory_aggregate;

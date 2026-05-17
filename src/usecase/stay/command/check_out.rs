@@ -10,6 +10,14 @@ use crate::{
         },
     },
     error::app_error::{conflict, infra, not_found, AppResult},
+    projection::{
+        invalidation::{
+            projection_invalidation::{ProjectionInvalidation, ProjectionRefreshTarget},
+            projection_scope::ProjectionScope,
+        },
+        orchestrator::refresh_projection_chain::refresh_projection_chain,
+        topology::projection_node::ProjectionNode,
+    },
     repository::sqlite::operational::{
         reservation_repository::SqliteReservationRepository,
         room_daily_state_repository::SqliteRoomDailyStateRepository,
@@ -52,6 +60,18 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
         room_state.mark_dirty();
 
         SqliteRoomDailyStateRepository::save(&mut tx, &room_state).await?;
+
+        refresh_projection_chain(
+            &mut tx,
+            ProjectionInvalidation::new(
+                ProjectionNode::HousekeepingDailyWorkloadAggregate,
+                ProjectionScope::Inventory,
+                ProjectionRefreshTarget::RoomDate {
+                    date: reservation.check_out.to_string(),
+                },
+            ),
+        )
+        .await?;
 
         reservation.stay_status = Some(StayStatus::CheckedOut);
 

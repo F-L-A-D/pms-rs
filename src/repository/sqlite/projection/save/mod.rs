@@ -1,4 +1,6 @@
+pub mod delete_housekeeping_daily_workload_aggregates_by_date;
 pub mod delete_inventory_aggregates_by_date;
 pub mod save_guest_activity;
 pub mod save_guest_aggregate;
+pub mod save_housekeeping_daily_workload_aggregate;
 pub mod save_inventory_aggregate;

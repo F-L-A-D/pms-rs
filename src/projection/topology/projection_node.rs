@@ -2,5 +2,6 @@
 pub enum ProjectionNode {
     GuestAggregate,
     GuestActivitySignal,
+    HousekeepingDailyWorkloadAggregate,
     InventoryAggregate,
 }

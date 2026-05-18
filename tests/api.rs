@@ -1,6 +1,7 @@
 mod common;
 
 mod api {
+    pub mod billing_workflow_test;
     pub mod guest_test;
     pub mod health_test;
     pub mod housekeeping_test;

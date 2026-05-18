@@ -7,11 +7,13 @@ use axum::{
 use crate::api::handlers::billing::{
     allocate_receivable_payment::allocate_receivable_payment_handler,
     assign_billing_account::assign_billing_account_handler,
+    create_deposit::create_deposit_handler,
     create_folio_entry::create_folio_entry_handler,
     create_invoice::create_invoice_handler,
     create_payment::create_payment_handler,
     folio_query::get_folio_handler,
     invoice_query::{get_invoice_handler, list_billing_account_invoices_handler},
+    open_reservation_folio::open_reservation_folio_handler,
     receivable_detail::get_receivable_handler,
     receivable_query::get_receivable_aging_handler,
     reverse_payment_allocation::reverse_payment_allocation_handler,
@@ -85,6 +87,10 @@ pub fn create_router(state: AppState) -> Router {
             "/reservations/:id/reinstate",
             post(reinstate_reservation_handler),
         )
+        .route(
+            "/reservations/:id/folios",
+            post(open_reservation_folio_handler),
+        )
         // stay
         .route(
             "/reservations/:id/assign-room/:room_id",
@@ -147,9 +153,10 @@ pub fn create_router(state: AppState) -> Router {
             get(get_monthly_revenue_summary_handler),
         )
         // billing
-        .route("/folios/:id", get(get_folio_handler))
         .route("/folios/entries", post(create_folio_entry_handler))
         .route("/folios/payments", post(create_payment_handler))
+        .route("/folios/deposits", post(create_deposit_handler))
+        .route("/folios/:id", get(get_folio_handler))
         .route("/receivables/aging", get(get_receivable_aging_handler))
         .route("/receivables/:id", get(get_receivable_handler))
         .route(

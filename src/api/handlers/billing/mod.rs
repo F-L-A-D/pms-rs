@@ -2,6 +2,8 @@
 pub mod allocate_receivable_payment;
 #[path = "folio/assign_billing_account.rs"]
 pub mod assign_billing_account;
+#[path = "payment/create_deposit.rs"]
+pub mod create_deposit;
 #[path = "folio/create_folio_entry.rs"]
 pub mod create_folio_entry;
 #[path = "invoice/create_invoice.rs"]
@@ -12,6 +14,8 @@ pub mod create_payment;
 pub mod folio_query;
 #[path = "invoice/invoice_query.rs"]
 pub mod invoice_query;
+#[path = "folio/open_reservation_folio.rs"]
+pub mod open_reservation_folio;
 #[path = "receivable/receivable_detail.rs"]
 pub mod receivable_detail;
 #[path = "receivable/receivable_query.rs"]

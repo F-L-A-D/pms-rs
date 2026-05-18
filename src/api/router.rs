@@ -28,6 +28,8 @@ use crate::api::handlers::room::{
     update_room_handler,
 };
 
+use crate::api::handlers::semantic_signal::get_operation_semantic_signal_handler;
+
 use crate::api::handlers::stay::{assign_room_handler, check_in_handler, check_out_handler};
 
 use crate::api::handlers::timeline::get_guest_timelines_handler;
@@ -88,6 +90,11 @@ pub fn create_router(state: AppState) -> Router {
         )
         // timeline
         .route("/guests/:id/timelines", get(get_guest_timelines_handler))
+        // semantic signal
+        .route(
+            "/operation-events/:id/semantic-signal",
+            get(get_operation_semantic_signal_handler),
+        )
         // invoice
         .route(
             "/folios/:id/billing-account",

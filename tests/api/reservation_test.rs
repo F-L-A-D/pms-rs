@@ -2,6 +2,8 @@ use axum::http::StatusCode;
 
 use chrono::{Duration, Utc};
 
+use uuid::Uuid;
+
 use pms_rs::{
     api::dto::reservation::ReservationResponse,
     domain::{
@@ -266,6 +268,70 @@ async fn should_record_operation_change_event_and_activation_on_reservation_crea
         SemanticActivationKey::ReservationCreated
     );
     assert!(activation.is_active);
+}
+
+#[tokio::test]
+async fn should_fetch_operation_semantic_signal_for_reservation_change_event() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+
+    let mut tx = app.db.begin_tx().await;
+
+    let events = SqliteOperationChangeEventRepository::list_all(&mut tx)
+        .await
+        .unwrap();
+    let event = events
+        .iter()
+        .find(|event| {
+            event.aggregate_id == created.id && event.operation_type == OperationType::Create
+        })
+        .unwrap();
+    let event_id = event.id;
+
+    let _ = tx.rollback().await;
+
+    let response = get(
+        &app.app,
+        &format!("/operation-events/{}/semantic-signal", event_id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = response_json(response).await;
+
+    assert_eq!(body["event_id"], event_id.to_string());
+    assert_eq!(
+        body["change_pattern"]["pattern_type"],
+        "reservation_created"
+    );
+    assert_eq!(
+        body["confidence_profile"]["reasons"][0]["rule"],
+        "fixed_operation_type_baseline"
+    );
+    assert_eq!(
+        body["semantic_activation"]["activation_key"],
+        "reservation_created"
+    );
+    assert!(body["change_pattern"]["changed_fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|field| field["field_name"] == "room_class"));
+}
+
+#[tokio::test]
+async fn should_return_not_found_for_missing_operation_semantic_signal_event() {
+    let app = spawn_app().await;
+
+    let response = get(
+        &app.app,
+        &format!("/operation-events/{}/semantic-signal", Uuid::new_v4()),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]

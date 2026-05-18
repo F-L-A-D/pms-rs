@@ -7,5 +7,6 @@ pub mod error;
 pub mod guest;
 pub mod reservation;
 pub mod room;
+pub mod semantic_signal;
 pub mod stay;
 pub mod timeline;

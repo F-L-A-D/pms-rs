@@ -9,6 +9,7 @@ use crate::{
         dto::package::{
             AssignPackageToPlanRequest, CreatePackageDefinitionRequest, CreateRatePlanRequest,
             PackageDefinitionResponse, RatePlanPackageResponse, RatePlanResponse,
+            UpdateActivationRequest, UpdatePackageDefinitionRequest,
         },
         error::{map_app_error, ApiError},
         state::AppState,
@@ -16,7 +17,10 @@ use crate::{
     domain::entity::package_definition::{PackageDefinition, RatePlanDefinition, RatePlanPackage},
     error::app_error::{infra, not_found},
     repository::sqlite::operational::package_definition_repository::SqlitePackageDefinitionRepository,
-    usecase::rate_plan::command::{assign_package_to_plan, define_package, define_rate_plan},
+    usecase::rate_plan::command::{
+        assign_package_to_plan, define_package, define_rate_plan, update_package_activation,
+        update_package_definition, update_rate_plan_activation,
+    },
 };
 
 pub async fn create_rate_plan_handler(
@@ -74,6 +78,51 @@ pub async fn create_package_definition_handler(
     Ok((StatusCode::CREATED, Json(package.into())))
 }
 
+pub async fn update_package_definition_handler(
+    State(state): State<AppState>,
+    Path(package_code): Path<String>,
+    Json(req): Json<UpdatePackageDefinitionRequest>,
+) -> Result<Json<PackageDefinitionResponse>, ApiError> {
+    let existing = {
+        let mut tx = state.db.begin_tx().await;
+        let package =
+            SqlitePackageDefinitionRepository::find_by_package_code(&mut tx, &package_code)
+                .await
+                .map_err(map_app_error)?
+                .ok_or_else(|| map_app_error(not_found("package not found")))?;
+        let _ = tx.rollback().await.map_err(infra);
+        package
+    };
+
+    let package = update_package_definition::execute(
+        &state.db,
+        PackageDefinition {
+            package_code,
+            display_name: req.display_name,
+            revenue_category: req.revenue_category,
+            department_code: req.department_code,
+            account_code: req.account_code,
+            is_active: existing.is_active,
+        },
+    )
+    .await
+    .map_err(map_app_error)?;
+
+    Ok(Json(package.into()))
+}
+
+pub async fn update_package_activation_handler(
+    State(state): State<AppState>,
+    Path(package_code): Path<String>,
+    Json(req): Json<UpdateActivationRequest>,
+) -> Result<Json<PackageDefinitionResponse>, ApiError> {
+    let package = update_package_activation::execute(&state.db, package_code, req.is_active)
+        .await
+        .map_err(map_app_error)?;
+
+    Ok(Json(package.into()))
+}
+
 pub async fn get_package_definition_handler(
     State(state): State<AppState>,
     Path(package_code): Path<String>,
@@ -107,6 +156,18 @@ pub async fn assign_package_to_plan_handler(
     .map_err(map_app_error)?;
 
     Ok(Json(assignment.into()))
+}
+
+pub async fn update_rate_plan_activation_handler(
+    State(state): State<AppState>,
+    Path(plan_code): Path<String>,
+    Json(req): Json<UpdateActivationRequest>,
+) -> Result<Json<RatePlanResponse>, ApiError> {
+    let rate_plan = update_rate_plan_activation::execute(&state.db, plan_code, req.is_active)
+        .await
+        .map_err(map_app_error)?;
+
+    Ok(Json(rate_plan.into()))
 }
 
 pub async fn list_plan_packages_handler(

@@ -9,6 +9,7 @@ pub mod reservation_booking;
 pub mod reservation_guest_relation;
 pub mod reservation_semantics;
 pub mod reservation_transition;
+pub mod revenue_summary;
 pub mod room_daily_state;
 pub mod semantic_activation;
 pub mod settlement_event;

@@ -25,6 +25,19 @@ pub struct CreatePackageDefinitionRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdatePackageDefinitionRequest {
+    pub display_name: String,
+    pub revenue_category: ReservationRevenueCategory,
+    pub department_code: String,
+    pub account_code: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateActivationRequest {
+    pub is_active: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PackageDefinitionResponse {
     pub package_code: String,
     pub display_name: String,

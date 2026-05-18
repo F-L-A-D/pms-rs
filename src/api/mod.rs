@@ -8,6 +8,7 @@ pub mod handlers {
     pub mod housekeeping;
     pub mod package;
     pub mod reservation;
+    pub mod revenue_summary;
     pub mod room;
     pub mod semantic_signal;
     pub mod stay;

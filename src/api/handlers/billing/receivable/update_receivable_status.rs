@@ -11,7 +11,6 @@ use crate::{
         error::{map_app_error, ApiError},
         state::AppState,
     },
-    domain::entity::receivable::Receivable,
     error::app_error::validation,
     usecase::billing::command::{
         dispute_receivable, resolve_receivable_dispute, write_off_receivable,
@@ -55,16 +54,4 @@ pub async fn write_off_receivable_handler(
         .map_err(map_app_error)?;
 
     Ok(Json(receivable.into()))
-}
-
-impl From<Receivable> for ReceivableResponse {
-    fn from(receivable: Receivable) -> Self {
-        Self {
-            id: receivable.id,
-            invoice_id: receivable.invoice_id,
-            outstanding_amount: receivable.outstanding_amount,
-            due_date: receivable.due_date,
-            status: receivable.status,
-        }
-    }
 }

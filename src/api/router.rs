@@ -10,6 +10,9 @@ use crate::api::handlers::billing::{
     create_folio_entry::create_folio_entry_handler,
     create_invoice::create_invoice_handler,
     create_payment::create_payment_handler,
+    folio_query::get_folio_handler,
+    invoice_query::{get_invoice_handler, list_billing_account_invoices_handler},
+    receivable_detail::get_receivable_handler,
     receivable_query::get_receivable_aging_handler,
     reverse_payment_allocation::reverse_payment_allocation_handler,
     update_receivable_status::{
@@ -33,12 +36,18 @@ use crate::api::handlers::housekeeping::{
 use crate::api::handlers::package::{
     assign_package_to_plan_handler, create_package_definition_handler, create_rate_plan_handler,
     get_package_definition_handler, get_rate_plan_handler, list_plan_packages_handler,
+    update_package_activation_handler, update_package_definition_handler,
+    update_rate_plan_activation_handler,
 };
 
 use crate::api::handlers::reservation::{
     cancel_reservation_handler, create_reservation_handler, get_guest_reservations_handler,
     get_reservation_handler, mark_no_show_handler, modify_reservation_handler,
     reinstate_reservation_handler,
+};
+
+use crate::api::handlers::revenue_summary::{
+    get_daily_revenue_summary_handler, get_monthly_revenue_summary_handler,
 };
 
 use crate::api::handlers::room::{
@@ -112,18 +121,37 @@ pub fn create_router(state: AppState) -> Router {
         .route("/packages", post(create_package_definition_handler))
         .route(
             "/packages/:package_code",
-            get(get_package_definition_handler),
+            get(get_package_definition_handler).patch(update_package_definition_handler),
+        )
+        .route(
+            "/packages/:package_code/activation",
+            patch(update_package_activation_handler),
         )
         .route("/rate-plans", post(create_rate_plan_handler))
         .route("/rate-plans/:plan_code", get(get_rate_plan_handler))
         .route(
+            "/rate-plans/:plan_code/activation",
+            patch(update_rate_plan_activation_handler),
+        )
+        .route(
             "/rate-plans/:plan_code/packages",
             post(assign_package_to_plan_handler).get(list_plan_packages_handler),
         )
+        // revenue summary
+        .route(
+            "/revenue-summary/daily",
+            get(get_daily_revenue_summary_handler),
+        )
+        .route(
+            "/revenue-summary/monthly",
+            get(get_monthly_revenue_summary_handler),
+        )
         // billing
+        .route("/folios/:id", get(get_folio_handler))
         .route("/folios/entries", post(create_folio_entry_handler))
         .route("/folios/payments", post(create_payment_handler))
         .route("/receivables/aging", get(get_receivable_aging_handler))
+        .route("/receivables/:id", get(get_receivable_handler))
         .route(
             "/receivables/:id/payments",
             post(allocate_receivable_payment_handler),
@@ -164,6 +192,11 @@ pub fn create_router(state: AppState) -> Router {
             post(assign_billing_account_handler),
         )
         .route("/invoices", post(create_invoice_handler))
+        .route("/invoices/:id", get(get_invoice_handler))
         .route("/invoices/:id/void", post(void_invoice_handler))
+        .route(
+            "/billing-accounts/:id/invoices",
+            get(list_billing_account_invoices_handler),
+        )
         .with_state(state)
 }

@@ -11,7 +11,6 @@ use crate::{
         error::{map_app_error, ApiError},
         state::AppState,
     },
-    domain::entity::invoice::Invoice,
     error::app_error::validation,
     usecase::billing::command::void_invoice,
 };
@@ -27,19 +26,4 @@ pub async fn void_invoice_handler(
         .map_err(map_app_error)?;
 
     Ok(Json(invoice.into()))
-}
-
-impl From<Invoice> for InvoiceResponse {
-    fn from(invoice: Invoice) -> Self {
-        Self {
-            id: invoice.id,
-            folio_id: invoice.folio_id,
-            billing_account_id: invoice.billing_account_id,
-            invoice_number: invoice.invoice_number,
-            issued_amount: invoice.issued_amount,
-            due_date: invoice.due_date,
-            status: invoice.status,
-            issued_at: invoice.issued_at,
-        }
-    }
 }

@@ -1,30 +1,29 @@
-use sqlx::{
-    Sqlite,
-    Transaction,
-};
+use sqlx::{Sqlite, Transaction};
+
+use uuid::Uuid;
 
 use crate::{
     error::app_error::AppResult,
-
     projection::{
-        invalidation::
-            projection_invalidation::
-                ProjectionRefreshTarget,
         execution::execution_trace::push_trace,
-
+        signal::{
+            materializer::materialize_guest_activity_signal::materialize_guest_activity_signal,
+            model::guest_activity_signal::GuestActivitySignal,
+        },
         topology::projection_node::ProjectionNode,
     },
+    repository::sqlite::projection::save::save_guest_activity::save_guest_activity,
 };
 
 pub async fn refresh_guest_activity_signal(
-    _tx: &mut Transaction<'_, Sqlite>,
-    _target: &ProjectionRefreshTarget,
-) -> AppResult<()>
-{
+    tx: &mut Transaction<'_, Sqlite>,
+    guest_id: Uuid,
+) -> AppResult<GuestActivitySignal> {
+    push_trace(ProjectionNode::GuestActivitySignal);
 
-    push_trace(
-        ProjectionNode::GuestActivitySignal,
-    );
-    
-    Ok(())
+    let signal = materialize_guest_activity_signal(tx, guest_id).await?;
+
+    save_guest_activity(tx, &signal).await?;
+
+    Ok(signal)
 }

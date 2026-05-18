@@ -1,1 +1,2 @@
+pub mod reservation_transition_repository;
 pub mod settlement_transition_repository;

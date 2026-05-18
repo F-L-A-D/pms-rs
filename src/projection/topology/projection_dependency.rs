@@ -1,83 +1,40 @@
 use crate::projection::invalidation::{
-    projection_invalidation::
-        ProjectionInvalidation,
-
-    projection_scope::
-        ProjectionScope,
+    projection_invalidation::ProjectionInvalidation, projection_scope::ProjectionScope,
 };
 
-use super::projection_node::
-    ProjectionNode;
+use super::projection_node::ProjectionNode;
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidationPolicy {
-
     Always,
 
-    ScopeMatch {
-        scope: ProjectionScope,
-    },
+    ScopeMatch { scope: ProjectionScope },
 }
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectionDependency {
+    pub upstream: ProjectionNode,
 
-    pub upstream:
-        ProjectionNode,
+    pub downstream: ProjectionNode,
 
-    pub downstream:
-        ProjectionNode,
-
-    pub invalidation_policy:
-        InvalidationPolicy,
+    pub invalidation_policy: InvalidationPolicy,
 }
 
 impl ProjectionDependency {
-
-    pub fn new(
-        upstream: ProjectionNode,
-        downstream: ProjectionNode,
-    ) -> Self {
-
+    pub fn new(upstream: ProjectionNode, downstream: ProjectionNode) -> Self {
         Self {
             upstream,
             downstream,
 
-            invalidation_policy:
-                InvalidationPolicy::Always,
+            invalidation_policy: InvalidationPolicy::Always,
         }
     }
 
-    pub fn should_propagate(
-        &self,
-        invalidation:
-            &ProjectionInvalidation,
-    ) -> bool {
+    pub fn should_propagate(&self, invalidation: &ProjectionInvalidation) -> bool {
+        match &self.invalidation_policy {
+            InvalidationPolicy::Always => true,
 
-        match
-            &self.invalidation_policy
-        {
-            InvalidationPolicy::Always => {
-                true
-            }
-
-            InvalidationPolicy::ScopeMatch {
-                scope
-            } => {
-
-                invalidation.scope
-                    == *scope
-            }
+            InvalidationPolicy::ScopeMatch { scope } => invalidation.scope == *scope,
         }
     }
 }

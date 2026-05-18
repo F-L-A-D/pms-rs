@@ -1,12 +1,6 @@
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 
 use uuid::Uuid;
 
@@ -25,63 +19,38 @@ pub struct TimelineEventResponse {
     pub occurred_at: DateTime<Utc>,
 }
 
-use crate::domain::guest_timeline_event::{
-    GuestTimelineEvent,
-    TimelineEventType,
-};
+use crate::domain::semantic::guest_timeline_event::{GuestTimelineEvent, TimelineEventType};
 
-impl From<GuestTimelineEvent>
-    for TimelineEventResponse
-{
-    fn from(
-        event: GuestTimelineEvent,
-    ) -> Self {
-
+impl From<GuestTimelineEvent> for TimelineEventResponse {
+    fn from(event: GuestTimelineEvent) -> Self {
         Self {
-            event_type:
-                match event.event_type {
+            event_type: match event.event_type {
+                TimelineEventType::ReservationCreated => "ReservationCreated".into(),
 
-                    TimelineEventType
-                        ::ReservationCreated =>
-                    {
-                        "ReservationCreated"
-                            .into()
-                    }
+                TimelineEventType::ReservationModified => "ReservationModified".into(),
 
-                    TimelineEventType
-                        ::CheckedIn =>
-                    {
-                        "CheckedIn"
-                            .into()
-                    }
+                TimelineEventType::ReservationDatesChanged => "ReservationDatesChanged".into(),
 
-                    TimelineEventType
-                        ::CheckedOut =>
-                    {
-                        "CheckedOut"
-                            .into()
-                    }
+                TimelineEventType::ReservationExtended => "ReservationExtended".into(),
 
-                    TimelineEventType
-                        ::RoomChargePosted =>
-                    {
-                        "RoomChargePosted"
-                            .into()
-                    }
+                TimelineEventType::ReservationShortened => "ReservationShortened".into(),
 
-                    TimelineEventType
-                        ::ReservationCancelled =>
-                    {
-                        "ReservationCancelled"
-                            .into()
-                    }
-                },
+                TimelineEventType::ReservationRoomClassChanged => {
+                    "ReservationRoomClassChanged".into()
+                }
 
-            reference_id:
-                event.reference_id,
+                TimelineEventType::CheckedIn => "CheckedIn".into(),
 
-            occurred_at:
-                event.occurred_at,
+                TimelineEventType::CheckedOut => "CheckedOut".into(),
+
+                TimelineEventType::RoomChargePosted => "RoomChargePosted".into(),
+
+                TimelineEventType::ReservationCancelled => "ReservationCancelled".into(),
+            },
+
+            reference_id: event.reference_id,
+
+            occurred_at: event.occurred_at,
         }
     }
 }

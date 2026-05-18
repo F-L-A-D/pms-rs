@@ -1,150 +1,119 @@
 use axum::{
     extract::{Path, State},
+    http::StatusCode,
     Json,
 };
 
-use serde_json::json;
+use chrono::NaiveDate;
 
 use uuid::Uuid;
 
 use crate::{
     api::{
-        error::{
-            map_app_error,
-            ApiError,
+        dto::{
+            input::housekeeping::HousekeepingRoomDailyStateInput,
+            request::housekeeping::HousekeepingRoomDailyStateRequest,
+            response::housekeeping::RoomDailyStateResponse,
         },
-
+        error::{map_app_error, ApiError},
         state::AppState,
     },
-
-    usecase::housekeeping::command::{
-        finish_cleaning::finish_cleaning,
-        inspect_room::inspect_room,
-        mark_dirty::mark_dirty,
-        start_cleaning::start_cleaning,
-    },
+    usecase::housekeeping::command::{finish_cleaning, inspect_room, mark_dirty, start_cleaning},
 };
 
 pub async fn mark_dirty_handler(
     State(state): State<AppState>,
     Path(room_id): Path<String>,
-) -> Result<Json<serde_json::Value>, ApiError> {
+    Json(req): Json<HousekeepingRoomDailyStateRequest>,
+) -> Result<(StatusCode, Json<RoomDailyStateResponse>), ApiError> {
+    let room_id = Uuid::parse_str(&room_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let room_id =
-        Uuid::parse_str(&room_id)
-            .map_err(|e| {
-                ApiError::new(
-                    axum::http::StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                )
-            })?;
+    let service_date = parse_service_date(req.service_date)?;
 
-    mark_dirty(
+    let state = mark_dirty::execute(
         &state.db,
-        room_id,
+        HousekeepingRoomDailyStateInput {
+            room_id,
+            service_date,
+        },
     )
     .await
     .map_err(map_app_error)?;
 
-    Ok(
-        Json(
-            json!({
-                "room_id": room_id,
-                "status": "dirty"
-            })
-        )
-    )
+    Ok((StatusCode::OK, Json(RoomDailyStateResponse::from(state))))
 }
 
 pub async fn start_cleaning_handler(
     State(state): State<AppState>,
     Path(room_id): Path<String>,
-) -> Result<Json<serde_json::Value>, ApiError> {
+    Json(req): Json<HousekeepingRoomDailyStateRequest>,
+) -> Result<(StatusCode, Json<RoomDailyStateResponse>), ApiError> {
+    let room_id = Uuid::parse_str(&room_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let room_id =
-        Uuid::parse_str(&room_id)
-            .map_err(|e| {
-                ApiError::new(
-                    axum::http::StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                )
-            })?;
+    let service_date = parse_service_date(req.service_date)?;
 
-    start_cleaning(
+    let state = start_cleaning::execute(
         &state.db,
-        room_id,
+        HousekeepingRoomDailyStateInput {
+            room_id,
+            service_date,
+        },
     )
     .await
     .map_err(map_app_error)?;
 
-    Ok(
-        Json(
-            json!({
-                "room_id": room_id,
-                "status": "cleaning"
-            })
-        )
-    )
+    Ok((StatusCode::OK, Json(RoomDailyStateResponse::from(state))))
 }
 
 pub async fn finish_cleaning_handler(
     State(state): State<AppState>,
     Path(room_id): Path<String>,
-) -> Result<Json<serde_json::Value>, ApiError> {
+    Json(req): Json<HousekeepingRoomDailyStateRequest>,
+) -> Result<(StatusCode, Json<RoomDailyStateResponse>), ApiError> {
+    let room_id = Uuid::parse_str(&room_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let room_id =
-        Uuid::parse_str(&room_id)
-            .map_err(|e| {
-                ApiError::new(
-                    axum::http::StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                )
-            })?;
+    let service_date = parse_service_date(req.service_date)?;
 
-    finish_cleaning(
+    let state = finish_cleaning::execute(
         &state.db,
-        room_id,
+        HousekeepingRoomDailyStateInput {
+            room_id,
+            service_date,
+        },
     )
     .await
     .map_err(map_app_error)?;
 
-    Ok(
-        Json(
-            json!({
-                "room_id": room_id,
-                "status": "cleaned"
-            })
-        )
-    )
+    Ok((StatusCode::OK, Json(RoomDailyStateResponse::from(state))))
 }
 
 pub async fn inspect_room_handler(
     State(state): State<AppState>,
     Path(room_id): Path<String>,
-) -> Result<Json<serde_json::Value>, ApiError> {
+    Json(req): Json<HousekeepingRoomDailyStateRequest>,
+) -> Result<(StatusCode, Json<RoomDailyStateResponse>), ApiError> {
+    let room_id = Uuid::parse_str(&room_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let room_id =
-        Uuid::parse_str(&room_id)
-            .map_err(|e| {
-                ApiError::new(
-                    axum::http::StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                )
-            })?;
+    let service_date = parse_service_date(req.service_date)?;
 
-    inspect_room(
+    let state = inspect_room::execute(
         &state.db,
-        room_id,
+        HousekeepingRoomDailyStateInput {
+            room_id,
+            service_date,
+        },
     )
     .await
     .map_err(map_app_error)?;
 
-    Ok(
-        Json(
-            json!({
-                "room_id": room_id,
-                "status": "inspected"
-            })
-        )
-    )
+    Ok((StatusCode::OK, Json(RoomDailyStateResponse::from(state))))
+}
+
+fn parse_service_date(value: String) -> Result<NaiveDate, ApiError> {
+    NaiveDate::parse_from_str(&value, "%Y-%m-%d")
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))
 }

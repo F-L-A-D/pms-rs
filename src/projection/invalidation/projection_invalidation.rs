@@ -1,56 +1,41 @@
 use uuid::Uuid;
 
-use crate::projection::topology::
-    projection_node::ProjectionNode;
+use crate::projection::topology::projection_node::ProjectionNode;
 
-use super::projection_scope::
-    ProjectionScope;
+use super::projection_scope::ProjectionScope;
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectionInvalidation {
+    pub source: ProjectionNode,
 
-    pub source:
-        ProjectionNode,
+    pub scope: ProjectionScope,
 
-    pub scope:
-        ProjectionScope,
-
-    pub target:
-        ProjectionRefreshTarget,
+    pub target: ProjectionRefreshTarget,
 }
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectionRefreshTarget {
-
     Global,
-    
-    Guest {
-        guest_id: Uuid,
-    },
 
-    InventoryDate {
-        date: String,
-    },
+    Guest { guest_id: Uuid },
+
+    InventoryDate { date: String },
+
+    KpiDate { date: String },
+
+    KpiMonth { year_month: String },
+
+    OperationEvent { event_id: Uuid },
+
+    RoomDate { date: String },
 }
 
 impl ProjectionInvalidation {
-
     pub fn new(
         source: ProjectionNode,
         scope: ProjectionScope,
         target: ProjectionRefreshTarget,
     ) -> Self {
-
         Self {
             source,
             scope,

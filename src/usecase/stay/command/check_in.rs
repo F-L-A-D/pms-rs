@@ -2,132 +2,140 @@ use uuid::Uuid;
 
 use crate::{
     db::connection::Db,
-
     domain::{
-        guest_timeline_event::TimelineEventType,
-
-        reservation::{
-            ReservationStatus,
-            StayStatus,
+        entity::reservation::{ReservationStatus, StayStatus},
+        semantic::{
+            guest_timeline_event::TimelineEventType,
+            room_daily_state::{RoomDailyOccupancyStatus, RoomDailyState},
         },
     },
-
-    error::app_error::{
-        AppResult,
-        conflict,
-        infra,
-        not_found,
+    error::app_error::{conflict, infra, not_found, AppResult},
+    projection::{
+        invalidation::{
+            projection_invalidation::{ProjectionInvalidation, ProjectionRefreshTarget},
+            projection_scope::ProjectionScope,
+        },
+        orchestrator::refresh_projection_chain::refresh_projection_chain,
+        topology::projection_node::ProjectionNode,
     },
-
     repository::sqlite::operational::{
-        reservation_repository::
-            SqliteReservationRepository,
-
-        room_repository::
-            SqliteRoomRepository,
+        reservation_repository::SqliteReservationRepository,
+        room_daily_state_repository::SqliteRoomDailyStateRepository,
     },
-
     usecase::timeline::command::record_event::record_event,
 };
 
-pub async fn check_in(
-    db: &Db,
-    reservation_id: Uuid,
-) -> AppResult<()> {
-
-    let mut tx =
-        db.begin_tx().await;
+pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
+    let mut tx = db.begin_tx().await;
 
     let result = async {
+        let mut reservation = SqliteReservationRepository::find_by_id(&mut tx, reservation_id)
+            .await?
+            .ok_or_else(|| not_found("reservation not found"))?;
 
-        let mut reservation =
-            SqliteReservationRepository
-                ::find_by_id(
-                    &mut tx,
-                    reservation_id,
-                )
-                .await?
-                .ok_or(
-                    not_found(
-                        "reservation not found"
-                    )
-                )?;
-
-        if reservation.reservation_status
-            != ReservationStatus::Active
-        {
-
-            return Err(
-                conflict(
-                    "reservation inactive"
-                )
-            );
+        if reservation.reservation_status != ReservationStatus::Confirmed {
+            return Err(conflict("reservation inactive"));
         }
 
-        if reservation.stay_status
-            != Some(StayStatus::Confirmed)
-        {
-
-            return Err(
-                conflict(
-                    "invalid stay status"
-                )
-            );
+        if reservation.stay_status != Some(StayStatus::Confirmed) {
+            return Err(conflict("invalid stay status"));
         }
 
-        let room_id =
-            reservation
-                .room_id
-                .ok_or(
-                    conflict(
-                        "room not assigned"
-                    )
-                )?;
+        if reservation.room_id.is_none() {
+            return Err(conflict("room not assigned"));
+        }
 
-        let mut room =
-            SqliteRoomRepository
-                ::find_by_id(
+        let room_id = reservation
+            .room_id
+            .ok_or_else(|| conflict("room not assigned"))?;
+
+        for service_date in reservation.nights() {
+            let mut room_state =
+                match SqliteRoomDailyStateRepository::find_by_room_and_service_date(
                     &mut tx,
                     room_id,
+                    service_date,
                 )
                 .await?
-                .ok_or(
-                    not_found(
-                        "room not found"
-                    )
-                )?;
+                {
+                    Some(state) => state,
+                    None => RoomDailyState::new(room_id, service_date),
+                };
 
-        room.check_in()
-            .map_err(conflict)?;
+            if room_state.occupancy_status == RoomDailyOccupancyStatus::OutOfOrder {
+                return Err(conflict("room out of order"));
+            }
 
-        reservation.stay_status =
-            Some(
-                StayStatus::CheckedIn
-            );
+            room_state.set_occupancy_status(RoomDailyOccupancyStatus::Occupied);
 
-        SqliteRoomRepository
-            ::save(
+            SqliteRoomDailyStateRepository::save(&mut tx, &room_state).await?;
+
+            refresh_projection_chain(
                 &mut tx,
-                &room,
+                ProjectionInvalidation::new(
+                    ProjectionNode::HousekeepingDailyWorkloadAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::RoomDate {
+                        date: service_date.to_string(),
+                    },
+                ),
             )
             .await?;
 
-        SqliteReservationRepository
-            ::modify(
+            refresh_projection_chain(
                 &mut tx,
-                &reservation,
+                ProjectionInvalidation::new(
+                    ProjectionNode::DailyRoomClassKpiAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::KpiDate {
+                        date: service_date.to_string(),
+                    },
+                ),
             )
             .await?;
 
-        let primary_guest_id =
-            reservation
-                .primary_participant()
-                .map(|p| p.guest_id);
+            refresh_projection_chain(
+                &mut tx,
+                ProjectionInvalidation::new(
+                    ProjectionNode::DailyHotelKpiAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::KpiDate {
+                        date: service_date.to_string(),
+                    },
+                ),
+            )
+            .await?;
 
-        if let Some(guest_id)
-            = primary_guest_id
-        {
+            refresh_projection_chain(
+                &mut tx,
+                ProjectionInvalidation::new(
+                    ProjectionNode::MonthlyRoomClassKpiAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::KpiMonth {
+                        year_month: service_date.format("%Y-%m").to_string(),
+                    },
+                ),
+            )
+            .await?;
 
+            refresh_projection_chain(
+                &mut tx,
+                ProjectionInvalidation::new(
+                    ProjectionNode::MonthlyHotelKpiAggregate,
+                    ProjectionScope::Inventory,
+                    ProjectionRefreshTarget::KpiMonth {
+                        year_month: service_date.format("%Y-%m").to_string(),
+                    },
+                ),
+            )
+            .await?;
+        }
+
+        reservation.stay_status = Some(StayStatus::CheckedIn);
+
+        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+
+        if let Some(guest_id) = reservation.primary_participant().map(|p| p.guest_id) {
             record_event(
                 &mut tx,
                 guest_id,
@@ -138,24 +146,18 @@ pub async fn check_in(
         }
 
         Ok(())
-
-    }.await;
+    }
+    .await;
 
     match result {
-
-        Ok(_) => {
-
-            tx.commit()
-                .await
-                .map_err(infra)?;
+        Ok(()) => {
+            tx.commit().await.map_err(infra)?;
 
             Ok(())
         }
 
         Err(e) => {
-
-            let _ =
-                tx.rollback().await;
+            let _ = tx.rollback().await;
 
             Err(e)
         }

@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS reservations (
     stay_status TEXT,
     room_class TEXT NOT NULL,
     room_id TEXT,
+    booking_channel TEXT NOT NULL DEFAULT 'direct',
+    plan_code TEXT,
     created_at TEXT NOT NULL,
     channel TEXT
 );

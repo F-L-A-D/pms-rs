@@ -1,1 +1,1 @@
-pub mod get_rooms;
+pub mod list_rooms;

@@ -1,6 +1,5 @@
 pub mod assign_billing_account;
 pub mod close_folio;
-pub mod issue_invoice;
-pub mod open_folio;
-pub mod post_payment;
-pub mod post_room_charge;
+pub mod create_folio_entry;
+pub mod create_invoice;
+pub mod create_payment;

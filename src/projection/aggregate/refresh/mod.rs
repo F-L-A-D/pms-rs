@@ -1,1 +1,7 @@
+pub mod refresh_daily_hotel_kpi_aggregate;
+pub mod refresh_daily_room_class_kpi_aggregate;
 pub mod refresh_guest_aggregate;
+pub mod refresh_housekeeping_daily_workload_aggregate;
+pub mod refresh_inventory_aggregate;
+pub mod refresh_monthly_hotel_kpi_aggregate;
+pub mod refresh_monthly_room_class_kpi_aggregate;

@@ -1,65 +1,39 @@
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 
-use sqlx::{
-    Row,
-    Sqlite,
-    Transaction,
-};
+use sqlx::{Row, Sqlite, Transaction};
 
 use uuid::Uuid;
 
 use crate::{
-    domain::invoice::{
-        Invoice,
-        InvoiceStatus,
-    },
-
-    error::app_error::{
-        AppResult,
-        infra,
-    },
+    domain::entity::invoice::{Invoice, InvoiceStatus},
+    error::app_error::{infra, AppResult},
 };
 
 pub struct SqliteInvoiceRepository;
 
 impl SqliteInvoiceRepository {
-
-    pub async fn save(
-        tx: &mut Transaction<'_, Sqlite>,
-        invoice: &Invoice,
-    ) -> AppResult<()> {
-
+    pub async fn save(tx: &mut Transaction<'_, Sqlite>, invoice: &Invoice) -> AppResult<()> {
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO invoices (
                 id,
                 folio_id,
                 billing_account_id,
+                invoice_number,
                 issued_amount,
                 issued_at,
                 status
             )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-            "#
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            "#,
         )
         .bind(invoice.id.to_string())
         .bind(invoice.folio_id.to_string())
         .bind(invoice.billing_account_id.to_string())
-        .bind(invoice.issued_amount)
+        .bind(&invoice.invoice_number)
+        .bind(invoice.issued_amount.to_string())
         .bind(invoice.issued_at.to_rfc3339())
-        .bind(
-            match invoice.status {
-
-                InvoiceStatus::Issued =>
-                    "Issued",
-
-                InvoiceStatus::Voided =>
-                    "Voided",
-            }
-        )
+        .bind(invoice.status.to_snake())
         .execute(&mut **tx)
         .await
         .map_err(infra)?;
@@ -71,35 +45,27 @@ impl SqliteInvoiceRepository {
         tx: &mut Transaction<'_, Sqlite>,
         id: Uuid,
     ) -> AppResult<Option<Invoice>> {
-
-        let row =
-            sqlx::query(
-                r#"
+        let row = sqlx::query(
+            r#"
                 SELECT
                     id,
                     folio_id,
                     billing_account_id,
+                    invoice_number,
                     issued_amount,
                     issued_at,
                     status
                 FROM invoices
                 WHERE id = ?1
-                "#
-            )
-            .bind(id.to_string())
-            .fetch_optional(&mut **tx)
-            .await
-            .map_err(infra)?;
+                "#,
+        )
+        .bind(id.to_string())
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(infra)?;
 
         match row {
-
-            Some(row) => {
-                Ok(
-                    Some(
-                        Self::row_to_invoice(&row)?
-                    )
-                )
-            }
+            Some(row) => Ok(Some(Self::row_to_invoice(&row)?)),
 
             None => Ok(None),
         }
@@ -109,35 +75,27 @@ impl SqliteInvoiceRepository {
         tx: &mut Transaction<'_, Sqlite>,
         folio_id: Uuid,
     ) -> AppResult<Option<Invoice>> {
-
-        let row =
-            sqlx::query(
-                r#"
+        let row = sqlx::query(
+            r#"
                 SELECT
-                    id,
+                   id,
                     folio_id,
                     billing_account_id,
+                    invoice_number,
                     issued_amount,
                     issued_at,
                     status
                 FROM invoices
                 WHERE folio_id = ?1
-                "#
-            )
-            .bind(folio_id.to_string())
-            .fetch_optional(&mut **tx)
-            .await
-            .map_err(infra)?;
+                "#,
+        )
+        .bind(folio_id.to_string())
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(infra)?;
 
         match row {
-
-            Some(row) => {
-                Ok(
-                    Some(
-                        Self::row_to_invoice(&row)?
-                    )
-                )
-            }
+            Some(row) => Ok(Some(Self::row_to_invoice(&row)?)),
 
             None => Ok(None),
         }
@@ -147,102 +105,60 @@ impl SqliteInvoiceRepository {
         tx: &mut Transaction<'_, Sqlite>,
         billing_account_id: Uuid,
     ) -> AppResult<Vec<Invoice>> {
-
-        let rows =
-            sqlx::query(
-                r#"
+        let rows = sqlx::query(
+            r#"
                 SELECT
                     id,
                     folio_id,
                     billing_account_id,
+                    invoice_number,
                     issued_amount,
                     issued_at,
                     status
                 FROM invoices
                 WHERE billing_account_id = ?1
                 ORDER BY issued_at DESC
-                "#
-            )
-            .bind(
-                billing_account_id.to_string()
-            )
-            .fetch_all(&mut **tx)
-            .await
-            .map_err(infra)?;
-
-        Ok(
-            rows.iter()
-                .map(Self::row_to_invoice)
-                .collect::<AppResult<Vec<_>>>()?
+                "#,
         )
+        .bind(billing_account_id.to_string())
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(infra)?;
+
+        Ok(rows
+            .iter()
+            .map(Self::row_to_invoice)
+            .collect::<AppResult<Vec<_>>>()?)
     }
 
-    fn row_to_invoice(
-        row: &sqlx::sqlite::SqliteRow,
-    ) -> AppResult<Invoice> {
+    fn row_to_invoice(row: &sqlx::sqlite::SqliteRow) -> AppResult<Invoice> {
+        let status = InvoiceStatus::from_snake(row.get::<String, _>("status").as_str())
+            .ok_or_else(|| infra("invalid invoice status"))?;
 
-        let status =
-            match row
-                .get::<String, _>("status")
-                .as_str()
-            {
-
-                "Issued" =>
-                    InvoiceStatus::Issued,
-
-                "Voided" =>
-                    InvoiceStatus::Voided,
-
-                _ => {
-                    return Err(
-                        infra(
-                            "invalid invoice status"
-                        )
-                    )
-                }
-            };
-
-        let issued_at =
-            DateTime::parse_from_rfc3339(
-                row.get::<String, _>("issued_at")
-                    .as_str()
-            )
+        let issued_at = DateTime::parse_from_rfc3339(row.get::<String, _>("issued_at").as_str())
             .map_err(infra)?
             .with_timezone(&Utc);
 
-        Ok(
-            Invoice {
+        Ok(Invoice {
+            id: Uuid::parse_str(row.get::<String, _>("id").as_str()).map_err(infra)?,
 
-                id:
-                    Uuid::parse_str(
-                        row.get::<String, _>("id")
-                            .as_str()
-                    )
-                    .map_err(infra)?,
+            folio_id: Uuid::parse_str(row.get::<String, _>("folio_id").as_str()).map_err(infra)?,
 
-                folio_id:
-                    Uuid::parse_str(
-                        row.get::<String, _>("folio_id")
-                            .as_str()
-                    )
-                    .map_err(infra)?,
+            billing_account_id: Uuid::parse_str(
+                row.get::<String, _>("billing_account_id").as_str(),
+            )
+            .map_err(infra)?,
 
-                billing_account_id:
-                    Uuid::parse_str(
-                        row.get::<String, _>(
-                            "billing_account_id"
-                        )
-                        .as_str()
-                    )
-                    .map_err(infra)?,
+            invoice_number: row.get("invoice_number"),
 
-                issued_amount:
-                    row.get("issued_amount"),
+            issued_amount: row
+                .get::<String, _>("issued_amount")
+                .parse()
+                .map_err(infra)?,
 
-                issued_at,
+            issued_at,
 
-                status,
-            }
-        )
+            status,
+        })
     }
 }

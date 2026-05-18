@@ -1,19 +1,12 @@
-use sqlx::{
-    Sqlite,
-    Transaction,
-};
+use sqlx::{Sqlite, Transaction};
 
 use uuid::Uuid;
 
-use crate::domain::guest_timeline_event::{
-    GuestTimelineEvent,
-    TimelineEventType,
+use crate::{
+    domain::semantic::guest_timeline_event::{GuestTimelineEvent, TimelineEventType},
+    error::app_error::AppResult,
+    repository::sqlite::operational::guest_timeline_event_repository::SqliteGuestTimelineEventRepository,
 };
-
-use crate::error::app_error::AppResult;
-
-use crate::repository::sqlite::operational::
-    guest_timeline_event_repository::SqliteGuestTimelineEventRepository;
 
 pub async fn record_event(
     tx: &mut Transaction<'_, Sqlite>,
@@ -21,20 +14,9 @@ pub async fn record_event(
     event_type: TimelineEventType,
     reference_id: Uuid,
 ) -> AppResult<()> {
+    let event = GuestTimelineEvent::new(Uuid::new_v4(), guest_id, event_type, reference_id);
 
-    let event =
-        GuestTimelineEvent::new(
-            Uuid::new_v4(),
-            guest_id,
-            event_type,
-            reference_id,
-        );
-
-    SqliteGuestTimelineEventRepository::save(
-        tx,
-        &event,
-    )
-    .await?;
+    SqliteGuestTimelineEventRepository::save(tx, &event).await?;
 
     Ok(())
 }

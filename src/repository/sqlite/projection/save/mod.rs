@@ -1,1 +1,17 @@
+pub mod delete_daily_hotel_kpi_aggregate_by_date;
+pub mod delete_daily_room_class_kpi_aggregates_by_date;
+pub mod delete_housekeeping_daily_workload_aggregates_by_date;
+pub mod delete_inventory_aggregates_by_date;
+pub mod delete_monthly_hotel_kpi_aggregate_by_month;
+pub mod delete_monthly_room_class_kpi_aggregates_by_month;
+pub mod save_change_pattern;
+pub mod save_confidence_profile;
+pub mod save_daily_hotel_kpi_aggregate;
+pub mod save_daily_room_class_kpi_aggregate;
+pub mod save_guest_activity;
 pub mod save_guest_aggregate;
+pub mod save_housekeeping_daily_workload_aggregate;
+pub mod save_inventory_aggregate;
+pub mod save_monthly_hotel_kpi_aggregate;
+pub mod save_monthly_room_class_kpi_aggregate;
+pub mod save_semantic_activation;

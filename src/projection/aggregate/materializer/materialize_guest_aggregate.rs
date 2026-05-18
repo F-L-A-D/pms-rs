@@ -1,23 +1,14 @@
 use chrono::Utc;
 
-use sqlx::{
-    Sqlite,
-    Transaction,
-};
+use sqlx::{Sqlite, Transaction};
 
 use uuid::Uuid;
 
 use crate::{
     error::app_error::AppResult,
-
     projection::aggregate::{
-        access::get_guest_aggregate::
-            get_guest_aggregate_row,
-
-        model::{
-            guest_aggregate::GuestAggregate,
-            guest_aggregate_row::GuestAggregateRow,
-        },
+        access::fetch_guest_aggregate_row::fetch_guest_aggregate_row,
+        model::{guest_aggregate::GuestAggregate, guest_aggregate_row::GuestAggregateRow},
     },
 };
 
@@ -25,34 +16,21 @@ pub async fn materialize_guest_aggregate(
     tx: &mut Transaction<'_, Sqlite>,
     guest_id: Uuid,
 ) -> AppResult<GuestAggregate> {
+    let row: GuestAggregateRow = fetch_guest_aggregate_row(tx, guest_id).await?;
 
-    let row: GuestAggregateRow =
-        get_guest_aggregate_row(
-            tx,
-            guest_id,
-        )
-        .await?;
+    Ok(GuestAggregate {
+        guest_id,
 
-    Ok(
-        GuestAggregate {
-            guest_id,
+        total_stays: row.total_stays,
 
-            total_stays:
-                row.total_stays,
+        total_nights: row.total_nights as i64,
 
-            total_nights:
-                row.total_nights as i64,
+        total_spending: row.total_spending,
 
-            total_spending:
-                row.total_spending,
+        last_stay_at: row.last_stay_at,
 
-            last_stay_at:
-                row.last_stay_at,
+        projection_version: 1,
 
-            projection_version: 1,
-
-            updated_at:
-                Utc::now(),
-        }
-    )
+        updated_at: Utc::now(),
+    })
 }

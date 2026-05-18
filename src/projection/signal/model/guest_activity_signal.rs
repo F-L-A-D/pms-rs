@@ -1,38 +1,19 @@
+use chrono::{DateTime, Utc};
+
 use uuid::Uuid;
 
-#[derive(
-    Debug,
-    Clone,
-)]
+#[derive(Debug, Clone)]
 pub struct GuestActivitySignal {
-    guest_id: Uuid,
-    active: bool,
+    pub guest_id: Uuid,
+    pub is_active: bool,
+    pub projection_version: i32,
+    pub updated_at: DateTime<Utc>,
 }
 
-impl GuestActivitySignal {
-
-    pub fn new(
-        guest_id: Uuid,
-        active: bool,
-    ) -> Self
-    {
-        Self {
-            guest_id,
-            active,
-        }
-    }
-
-    pub fn guest_id(
-        &self,
-    ) -> Uuid
-    {
-        self.guest_id
-    }
-
-    pub fn active(
-        &self,
-    ) -> bool
-    {
-        self.active
+impl PartialEq for GuestActivitySignal {
+    fn eq(&self, other: &Self) -> bool {
+        self.guest_id == other.guest_id
+            && self.is_active == other.is_active
+            && self.projection_version == other.projection_version
     }
 }

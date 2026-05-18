@@ -1,0 +1,72 @@
+# PMS-RS project-scoped Codex configuration.
+# Place this file at: <repo-root>/.codex/config.toml
+#
+# Keep personal defaults in ~/.codex/config.toml.
+# Keep repository-specific behavior here.
+
+# Use a project-local AGENTS.md as the primary instruction document.
+# The project_doc_* keys are intentionally conservative to avoid wasting context.
+project_doc_fallback_filenames = ["AGENTS.md"]
+project_doc_max_bytes = 65536
+
+# Default execution posture for this repository.
+# Use workspace-write rather than danger-full-access.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+default_permissions = ":workspace"
+
+# Keep web search available but non-live by default.
+# Most pms-rs tasks should be solved from repository context.
+web_search = "cached"
+
+# Reasoning defaults.
+# Raise to high manually for architecture reviews or semantic redesign.
+model_reasoning_effort = "medium"
+model_verbosity = "medium"
+personality = "pragmatic"
+
+# Recommended model can be overridden per session with:
+# codex --model <model>
+# model = "gpt-5.5"
+
+[features]
+# Speeds up repeated shell sessions where supported.
+shell_snapshot = true
+
+# Do not enable automatic Codex commits by default.
+codex_git_commit = false
+
+[shell_environment_policy]
+# Keep command environment minimal and predictable.
+include_only = [
+  "PATH",
+  "HOME",
+  "USER",
+  "SHELL",
+  "PWD",
+  "RUST_LOG",
+  "DATABASE_URL",
+  "CARGO_HOME",
+  "RUSTUP_HOME"
+]
+
+# Optional named profiles.
+# Use read_only for review-only sessions.
+[profiles.read_only]
+sandbox_mode = "read-only"
+approval_policy = "on-request"
+model_reasoning_effort = "medium"
+
+# Use careful for broad or architecture-sensitive edits.
+[profiles.careful]
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+model_reasoning_effort = "high"
+model_verbosity = "medium"
+
+# Use implementation for small, scoped code changes.
+[profiles.implementation]
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+model_reasoning_effort = "medium"
+model_verbosity = "medium"

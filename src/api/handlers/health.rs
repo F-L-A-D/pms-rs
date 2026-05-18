@@ -7,10 +7,7 @@ pub struct HealthResponse {
 }
 
 pub async fn health() -> Json<HealthResponse> {
-
-    Json(
-        HealthResponse {
-            status: "ok".into(),
-        }
-    )
+    Json(HealthResponse {
+        status: "ok".into(),
+    })
 }

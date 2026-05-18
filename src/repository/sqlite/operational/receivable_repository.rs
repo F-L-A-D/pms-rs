@@ -1,5 +1,7 @@
 use sqlx::{Row, Sqlite, Transaction};
 
+use chrono::NaiveDate;
+
 use uuid::Uuid;
 
 use crate::{
@@ -17,14 +19,16 @@ impl SqliteReceivableRepository {
                 id,
                 invoice_id,
                 outstanding_amount,
+                due_date,
                 status
             )
-            VALUES (?1, ?2, ?3, ?4)
+            VALUES (?1, ?2, ?3, ?4, ?5)
             "#,
         )
         .bind(receivable.id.to_string())
         .bind(receivable.invoice_id.to_string())
         .bind(receivable.outstanding_amount.to_string())
+        .bind(receivable.due_date.to_string())
         .bind(receivable.status.to_snake())
         .execute(&mut **tx)
         .await
@@ -43,6 +47,7 @@ impl SqliteReceivableRepository {
                     id,
                     invoice_id,
                     outstanding_amount,
+                    due_date,
                     status
                 FROM receivables
                 WHERE id = ?1
@@ -70,6 +75,7 @@ impl SqliteReceivableRepository {
                     id,
                     invoice_id,
                     outstanding_amount,
+                    due_date,
                     status
                 FROM receivables
                 WHERE invoice_id = ?1
@@ -87,6 +93,26 @@ impl SqliteReceivableRepository {
         }
     }
 
+    pub async fn list_all(tx: &mut Transaction<'_, Sqlite>) -> AppResult<Vec<Receivable>> {
+        let rows = sqlx::query(
+            r#"
+                SELECT
+                    id,
+                    invoice_id,
+                    outstanding_amount,
+                    due_date,
+                    status
+                FROM receivables
+                ORDER BY due_date, id
+                "#,
+        )
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(infra)?;
+
+        rows.iter().map(Self::row_to_receivable).collect()
+    }
+
     fn row_to_receivable(row: &sqlx::sqlite::SqliteRow) -> AppResult<Receivable> {
         let status = ReceivableStatus::from_snake(row.get::<String, _>("status").as_str())
             .ok_or_else(|| infra("invalid receivable status"))?;
@@ -101,6 +127,12 @@ impl SqliteReceivableRepository {
                 .get::<String, _>("outstanding_amount")
                 .parse()
                 .map_err(infra)?,
+
+            due_date: NaiveDate::parse_from_str(
+                row.get::<String, _>("due_date").as_str(),
+                "%Y-%m-%d",
+            )
+            .map_err(infra)?,
 
             status,
         })

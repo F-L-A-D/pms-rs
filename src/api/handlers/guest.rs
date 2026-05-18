@@ -11,17 +11,21 @@ use uuid::Uuid;
 use crate::{
     api::{
         dto::{
-            input::guest::{CreateGuestInput, GuestSearchInput, UpdateGuestInput},
-            request::guest::{CreateGuestRequest, GuestSearchQuery, UpdateGuestRequest},
-            response::guest::GuestResponse,
+            input::guest::{
+                AddGuestPreferenceInput, CreateGuestInput, GuestSearchInput, UpdateGuestInput,
+            },
+            request::guest::{
+                AddGuestPreferenceRequest, CreateGuestRequest, GuestSearchQuery, UpdateGuestRequest,
+            },
+            response::guest::{GuestPreferenceResponse, GuestResponse},
         },
         error::{map_app_error, ApiError},
         state::AppState,
     },
     usecase::guest::{
-        command::{create_guest::create_guest, update_guest::update_guest},
+        command::{add_guest_preference, create_guest::create_guest, update_guest::update_guest},
         detail::get_guest::get_guest,
-        search::get_guests::get_guests,
+        search::{get_guest_preferences, get_guests::get_guests},
     },
 };
 
@@ -137,4 +141,41 @@ pub async fn update_guest_handler(
         .map_err(map_app_error)?;
 
     Ok(Json(guest.into()))
+}
+
+pub async fn add_guest_preference_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(req): Json<AddGuestPreferenceRequest>,
+) -> Result<(StatusCode, Json<GuestPreferenceResponse>), ApiError> {
+    let guest_id =
+        Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let preference = add_guest_preference::execute(
+        &state.db,
+        AddGuestPreferenceInput {
+            guest_id,
+            preference_type: req.preference_type,
+            value: req.value,
+            notes: req.notes,
+        },
+    )
+    .await
+    .map_err(map_app_error)?;
+
+    Ok((StatusCode::CREATED, Json(preference.into())))
+}
+
+pub async fn get_guest_preferences_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<Vec<GuestPreferenceResponse>>, ApiError> {
+    let guest_id =
+        Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let preferences = get_guest_preferences::execute(&state.db, guest_id)
+        .await
+        .map_err(map_app_error)?;
+
+    Ok(Json(preferences.into_iter().map(Into::into).collect()))
 }

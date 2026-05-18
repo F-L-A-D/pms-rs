@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use pms_rs::{
     api::dto::billing::input::{
+        allocate_receivable_payment_input::AllocateReceivablePaymentInput,
         assign_billing_account_input::AssignBillingAccountInput,
         close_folio_input::CloseFolioInput, create_folio_entry_input::CreateFolioEntryInput,
         create_invoice_input::CreateInvoiceInput, create_payment_input::CreatePaymentInput,
@@ -15,7 +16,9 @@ use pms_rs::{
         billing_account::{BillingAccount, BillingAccountStatus},
         folio::{Folio, FolioStatus},
         folio_entry::FolioEntryType,
+        invoice::InvoiceStatus,
         payment::PaymentMethod,
+        receivable::ReceivableStatus,
     },
     domain::semantic::settlement_transition::SettlementTransitionType,
     error::app_error::AppError,
@@ -24,12 +27,16 @@ use pms_rs::{
         operational::{
             billing_account_repository::SqliteBillingAccountRepository,
             folio_repository::SqliteFolioRepository, invoice_repository::SqliteInvoiceRepository,
+            payment_allocation_repository::SqlitePaymentAllocationRepository,
             receivable_repository::SqliteReceivableRepository,
         },
     },
     usecase::billing::command::{
-        assign_billing_account, close_folio, create_folio_entry, create_invoice, create_payment,
+        allocate_receivable_payment, assign_billing_account, close_folio, create_folio_entry,
+        create_invoice, create_payment, dispute_receivable, resolve_receivable_dispute,
+        reverse_payment_allocation, void_invoice, write_off_receivable,
     },
+    usecase::billing::search::list_receivable_aging,
 };
 
 #[tokio::test]
@@ -53,6 +60,7 @@ async fn should_issue_invoice_and_create_receivable_and_settlement_history() {
             folio_id,
             invoice_number: "INV-001".to_string(),
             issued_amount: Decimal::new(12500, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
         },
     )
     .await
@@ -61,6 +69,10 @@ async fn should_issue_invoice_and_create_receivable_and_settlement_history() {
     assert_eq!(invoice.folio_id, folio_id);
     assert_eq!(invoice.billing_account_id, billing_account_id);
     assert_eq!(invoice.invoice_number, "INV-001");
+    assert_eq!(
+        invoice.due_date,
+        Utc::now().date_naive() + chrono::Duration::days(30)
+    );
 
     let mut tx = db.begin_tx().await;
 
@@ -78,6 +90,7 @@ async fn should_issue_invoice_and_create_receivable_and_settlement_history() {
 
     assert_eq!(receivable.invoice_id, invoice.id);
     assert_eq!(receivable.outstanding_amount, invoice.issued_amount);
+    assert_eq!(receivable.due_date, invoice.due_date);
 
     let transitions =
         SqliteSettlementTransitionRepository::find_by_receivable_id(&mut tx, receivable.id)
@@ -112,6 +125,7 @@ async fn should_reject_invoice_for_open_folio() {
             folio_id,
             invoice_number: "INV-OPEN".to_string(),
             issued_amount: Decimal::new(10000, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
         },
     )
     .await;
@@ -135,6 +149,7 @@ async fn should_reject_invoice_for_locked_folio() {
             folio_id,
             invoice_number: "INV-LOCKED".to_string(),
             issued_amount: Decimal::new(10000, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
         },
     )
     .await;
@@ -156,6 +171,7 @@ async fn should_reject_invoice_when_billing_account_is_not_assigned() {
             folio_id,
             invoice_number: "INV-NO-ACCOUNT".to_string(),
             issued_amount: Decimal::new(10000, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
         },
     )
     .await;
@@ -179,6 +195,7 @@ async fn should_reject_duplicate_invoice_for_same_folio() {
             folio_id,
             invoice_number: "INV-FIRST".to_string(),
             issued_amount: Decimal::new(10000, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
         },
     )
     .await
@@ -190,11 +207,412 @@ async fn should_reject_duplicate_invoice_for_same_folio() {
             folio_id,
             invoice_number: "INV-SECOND".to_string(),
             issued_amount: Decimal::new(10000, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
         },
     )
     .await;
 
     assert!(matches!(result, Err(AppError::Conflict(_))));
+}
+
+#[tokio::test]
+async fn should_reject_duplicate_invoice_number_across_folios() {
+    let db = Db::new_test().await;
+    let folio_id_1 = Uuid::new_v4();
+    let folio_id_2 = Uuid::new_v4();
+    let billing_account_id = Uuid::new_v4();
+
+    seed_billing_account(&db, billing_account_id).await;
+    seed_folio(
+        &db,
+        folio_id_1,
+        FolioStatus::Closed,
+        Some(billing_account_id),
+    )
+    .await;
+    seed_folio(
+        &db,
+        folio_id_2,
+        FolioStatus::Closed,
+        Some(billing_account_id),
+    )
+    .await;
+
+    create_invoice::execute(
+        &db,
+        CreateInvoiceInput {
+            folio_id: folio_id_1,
+            invoice_number: "INV-DUPLICATE-NUMBER".to_string(),
+            issued_amount: Decimal::new(10000, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
+        },
+    )
+    .await
+    .unwrap();
+
+    let result = create_invoice::execute(
+        &db,
+        CreateInvoiceInput {
+            folio_id: folio_id_2,
+            invoice_number: "INV-DUPLICATE-NUMBER".to_string(),
+            issued_amount: Decimal::new(10000, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
+        },
+    )
+    .await;
+
+    assert!(matches!(result, Err(AppError::Conflict(_))));
+}
+
+#[tokio::test]
+async fn should_allocate_partial_payment_to_receivable() {
+    let db = Db::new_test().await;
+    let folio_id = Uuid::new_v4();
+    let billing_account_id = Uuid::new_v4();
+
+    seed_billing_account(&db, billing_account_id).await;
+    seed_folio(&db, folio_id, FolioStatus::Closed, Some(billing_account_id)).await;
+
+    let invoice = create_invoice::execute(
+        &db,
+        CreateInvoiceInput {
+            folio_id,
+            invoice_number: "INV-PARTIAL".to_string(),
+            issued_amount: Decimal::new(10000, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
+        },
+    )
+    .await
+    .unwrap();
+
+    let mut tx = db.begin_tx().await;
+    let receivable = SqliteReceivableRepository::find_by_invoice_id(&mut tx, invoice.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let _ = tx.rollback().await;
+
+    let result = allocate_receivable_payment::execute(
+        &db,
+        AllocateReceivablePaymentInput {
+            receivable_id: receivable.id,
+            amount: Decimal::new(4000, 2),
+            method: PaymentMethod::BankTransfer,
+            external_reference: Some("BANK-001".to_string()),
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.remaining_outstanding_amount, Decimal::new(6000, 2));
+
+    let mut tx = db.begin_tx().await;
+    let updated = SqliteReceivableRepository::find_by_id(&mut tx, receivable.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let allocations =
+        SqlitePaymentAllocationRepository::list_by_receivable_id(&mut tx, receivable.id)
+            .await
+            .unwrap();
+    let transitions =
+        SqliteSettlementTransitionRepository::find_by_receivable_id(&mut tx, receivable.id)
+            .await
+            .unwrap();
+    let _ = tx.rollback().await;
+
+    assert_eq!(updated.outstanding_amount, Decimal::new(6000, 2));
+    assert_eq!(updated.status, ReceivableStatus::Open);
+    assert_eq!(allocations.len(), 1);
+    assert_eq!(allocations[0].amount, Decimal::new(4000, 2));
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == SettlementTransitionType::PaymentAllocated
+            && transition.amount == Decimal::new(4000, 2)
+    }));
+}
+
+#[tokio::test]
+async fn should_settle_receivable_when_payment_covers_outstanding_amount() {
+    let db = Db::new_test().await;
+    let folio_id = Uuid::new_v4();
+    let billing_account_id = Uuid::new_v4();
+
+    seed_billing_account(&db, billing_account_id).await;
+    seed_folio(&db, folio_id, FolioStatus::Closed, Some(billing_account_id)).await;
+
+    let invoice = create_invoice::execute(
+        &db,
+        CreateInvoiceInput {
+            folio_id,
+            invoice_number: "INV-SETTLED".to_string(),
+            issued_amount: Decimal::new(7500, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
+        },
+    )
+    .await
+    .unwrap();
+
+    let mut tx = db.begin_tx().await;
+    let receivable = SqliteReceivableRepository::find_by_invoice_id(&mut tx, invoice.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let _ = tx.rollback().await;
+
+    allocate_receivable_payment::execute(
+        &db,
+        AllocateReceivablePaymentInput {
+            receivable_id: receivable.id,
+            amount: Decimal::new(7500, 2),
+            method: PaymentMethod::CreditCard,
+            external_reference: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let mut tx = db.begin_tx().await;
+    let updated = SqliteReceivableRepository::find_by_id(&mut tx, receivable.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let transitions =
+        SqliteSettlementTransitionRepository::find_by_receivable_id(&mut tx, receivable.id)
+            .await
+            .unwrap();
+    let _ = tx.rollback().await;
+
+    assert_eq!(updated.outstanding_amount, Decimal::ZERO);
+    assert_eq!(updated.status, ReceivableStatus::Settled);
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == SettlementTransitionType::ReceivableSettled
+    }));
+}
+
+#[tokio::test]
+async fn should_reverse_payment_allocation_and_reopen_receivable() {
+    let db = Db::new_test().await;
+    let receivable = seed_invoiced_receivable(&db, "INV-REVERSE", Decimal::new(10000, 2)).await;
+
+    let result = allocate_receivable_payment::execute(
+        &db,
+        AllocateReceivablePaymentInput {
+            receivable_id: receivable.id,
+            amount: Decimal::new(10000, 2),
+            method: PaymentMethod::BankTransfer,
+            external_reference: Some("BANK-REV".to_string()),
+        },
+    )
+    .await
+    .unwrap();
+
+    reverse_payment_allocation::execute(&db, result.allocation.id)
+        .await
+        .unwrap();
+
+    let mut tx = db.begin_tx().await;
+    let updated = SqliteReceivableRepository::find_by_id(&mut tx, receivable.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let allocations =
+        SqlitePaymentAllocationRepository::list_by_receivable_id(&mut tx, receivable.id)
+            .await
+            .unwrap();
+    let transitions =
+        SqliteSettlementTransitionRepository::find_by_receivable_id(&mut tx, receivable.id)
+            .await
+            .unwrap();
+    let _ = tx.rollback().await;
+
+    assert_eq!(updated.status, ReceivableStatus::Open);
+    assert_eq!(updated.outstanding_amount, Decimal::new(10000, 2));
+    assert!(allocations[0].reversed_at.is_some());
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == SettlementTransitionType::PaymentAllocationReversed
+            && transition.amount == Decimal::new(10000, 2)
+    }));
+}
+
+#[tokio::test]
+async fn should_void_invoice_without_active_payment_allocations() {
+    let db = Db::new_test().await;
+    let invoice = seed_invoice(&db, "INV-VOID", Decimal::new(6000, 2), 30).await;
+
+    let voided = void_invoice::execute(&db, invoice.id).await.unwrap();
+
+    assert_eq!(voided.status, InvoiceStatus::Voided);
+
+    let mut tx = db.begin_tx().await;
+    let receivable = SqliteReceivableRepository::find_by_invoice_id(&mut tx, invoice.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let transitions =
+        SqliteSettlementTransitionRepository::find_by_receivable_id(&mut tx, receivable.id)
+            .await
+            .unwrap();
+    let _ = tx.rollback().await;
+
+    assert_eq!(receivable.status, ReceivableStatus::Voided);
+    assert_eq!(receivable.outstanding_amount, Decimal::ZERO);
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == SettlementTransitionType::InvoiceVoided
+    }));
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == SettlementTransitionType::ReceivableVoided
+    }));
+}
+
+#[tokio::test]
+async fn should_reject_invoice_void_with_active_payment_allocation() {
+    let db = Db::new_test().await;
+    let invoice = seed_invoice(&db, "INV-VOID-PAID", Decimal::new(6000, 2), 30).await;
+
+    let mut tx = db.begin_tx().await;
+    let receivable = SqliteReceivableRepository::find_by_invoice_id(&mut tx, invoice.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let _ = tx.rollback().await;
+
+    allocate_receivable_payment::execute(
+        &db,
+        AllocateReceivablePaymentInput {
+            receivable_id: receivable.id,
+            amount: Decimal::new(1000, 2),
+            method: PaymentMethod::Cash,
+            external_reference: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let result = void_invoice::execute(&db, invoice.id).await;
+
+    assert!(matches!(result, Err(AppError::Conflict(_))));
+}
+
+#[tokio::test]
+async fn should_report_receivable_aging_buckets() {
+    let db = Db::new_test().await;
+    let as_of_date = Utc::now().date_naive();
+
+    seed_invoice(&db, "INV-AGING-CURRENT", Decimal::new(1000, 2), 10).await;
+    seed_invoice(&db, "INV-AGING-15", Decimal::new(2000, 2), -15).await;
+    seed_invoice(&db, "INV-AGING-45", Decimal::new(3000, 2), -45).await;
+    seed_invoice(&db, "INV-AGING-75", Decimal::new(4000, 2), -75).await;
+    seed_invoice(&db, "INV-AGING-120", Decimal::new(5000, 2), -120).await;
+
+    let aging = list_receivable_aging::execute(&db, as_of_date)
+        .await
+        .unwrap();
+
+    assert_eq!(aging.current_amount, Decimal::new(1000, 2));
+    assert_eq!(aging.overdue_1_30_amount, Decimal::new(2000, 2));
+    assert_eq!(aging.overdue_31_60_amount, Decimal::new(3000, 2));
+    assert_eq!(aging.overdue_61_90_amount, Decimal::new(4000, 2));
+    assert_eq!(aging.overdue_90_plus_amount, Decimal::new(5000, 2));
+    assert_eq!(aging.total_open_amount, Decimal::new(15000, 2));
+}
+
+#[tokio::test]
+async fn should_reject_receivable_overpayment() {
+    let db = Db::new_test().await;
+    let folio_id = Uuid::new_v4();
+    let billing_account_id = Uuid::new_v4();
+
+    seed_billing_account(&db, billing_account_id).await;
+    seed_folio(&db, folio_id, FolioStatus::Closed, Some(billing_account_id)).await;
+
+    let invoice = create_invoice::execute(
+        &db,
+        CreateInvoiceInput {
+            folio_id,
+            invoice_number: "INV-OVERPAY".to_string(),
+            issued_amount: Decimal::new(5000, 2),
+            due_date: Utc::now().date_naive() + chrono::Duration::days(30),
+        },
+    )
+    .await
+    .unwrap();
+
+    let mut tx = db.begin_tx().await;
+    let receivable = SqliteReceivableRepository::find_by_invoice_id(&mut tx, invoice.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let _ = tx.rollback().await;
+
+    let result = allocate_receivable_payment::execute(
+        &db,
+        AllocateReceivablePaymentInput {
+            receivable_id: receivable.id,
+            amount: Decimal::new(5001, 2),
+            method: PaymentMethod::Cash,
+            external_reference: None,
+        },
+    )
+    .await;
+
+    assert!(matches!(result, Err(AppError::Conflict(_))));
+}
+
+#[tokio::test]
+async fn should_dispute_and_resolve_receivable() {
+    let db = Db::new_test().await;
+    let receivable = seed_invoiced_receivable(&db, "INV-DISPUTE", Decimal::new(10000, 2)).await;
+
+    let disputed = dispute_receivable::execute(&db, receivable.id)
+        .await
+        .unwrap();
+
+    assert_eq!(disputed.status, ReceivableStatus::Disputed);
+
+    let resolved = resolve_receivable_dispute::execute(&db, receivable.id)
+        .await
+        .unwrap();
+
+    assert_eq!(resolved.status, ReceivableStatus::Open);
+
+    let mut tx = db.begin_tx().await;
+    let transitions =
+        SqliteSettlementTransitionRepository::find_by_receivable_id(&mut tx, receivable.id)
+            .await
+            .unwrap();
+    let _ = tx.rollback().await;
+
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == SettlementTransitionType::ReceivableDisputed
+    }));
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == SettlementTransitionType::ReceivableDisputeResolved
+    }));
+}
+
+#[tokio::test]
+async fn should_write_off_open_receivable() {
+    let db = Db::new_test().await;
+    let receivable = seed_invoiced_receivable(&db, "INV-WRITE-OFF", Decimal::new(4300, 2)).await;
+
+    let written_off = write_off_receivable::execute(&db, receivable.id)
+        .await
+        .unwrap();
+
+    assert_eq!(written_off.status, ReceivableStatus::WrittenOff);
+    assert_eq!(written_off.outstanding_amount, Decimal::ZERO);
+
+    let mut tx = db.begin_tx().await;
+    let transitions =
+        SqliteSettlementTransitionRepository::find_by_receivable_id(&mut tx, receivable.id)
+            .await
+            .unwrap();
+    let _ = tx.rollback().await;
+
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == SettlementTransitionType::ReceivableWrittenOff
+            && transition.amount == Decimal::new(4300, 2)
+    }));
 }
 
 #[tokio::test]
@@ -383,6 +801,48 @@ async fn should_reject_payment_for_closed_folio() {
     .await;
 
     assert!(matches!(result, Err(AppError::Domain(_))));
+}
+
+async fn seed_invoiced_receivable(
+    db: &Db,
+    invoice_number: &str,
+    issued_amount: Decimal,
+) -> pms_rs::domain::entity::receivable::Receivable {
+    let invoice = seed_invoice(db, invoice_number, issued_amount, 30).await;
+
+    let mut tx = db.begin_tx().await;
+    let receivable = SqliteReceivableRepository::find_by_invoice_id(&mut tx, invoice.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let _ = tx.rollback().await;
+
+    receivable
+}
+
+async fn seed_invoice(
+    db: &Db,
+    invoice_number: &str,
+    issued_amount: Decimal,
+    due_in_days: i64,
+) -> pms_rs::domain::entity::invoice::Invoice {
+    let folio_id = Uuid::new_v4();
+    let billing_account_id = Uuid::new_v4();
+
+    seed_billing_account(db, billing_account_id).await;
+    seed_folio(db, folio_id, FolioStatus::Closed, Some(billing_account_id)).await;
+
+    create_invoice::execute(
+        db,
+        CreateInvoiceInput {
+            folio_id,
+            invoice_number: invoice_number.to_string(),
+            issued_amount,
+            due_date: Utc::now().date_naive() + chrono::Duration::days(due_in_days),
+        },
+    )
+    .await
+    .unwrap()
 }
 
 async fn seed_billing_account(db: &Db, billing_account_id: Uuid) {

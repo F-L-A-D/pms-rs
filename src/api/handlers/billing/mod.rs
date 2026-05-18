@@ -1,4 +1,9 @@
+pub mod allocate_receivable_payment;
 pub mod assign_billing_account;
 pub mod create_folio_entry;
 pub mod create_invoice;
 pub mod create_payment;
+pub mod receivable_query;
+pub mod reverse_payment_allocation;
+pub mod update_receivable_status;
+pub mod void_invoice;

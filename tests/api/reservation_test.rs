@@ -7,6 +7,7 @@ use uuid::Uuid;
 use pms_rs::{
     api::dto::reservation::ReservationResponse,
     domain::{
+        entity::reservation::{ReservationStatus, StayStatus},
         reservation_guest_relation::ReservationGuestRelationType,
         semantic::{
             operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
@@ -531,6 +532,537 @@ async fn should_reject_daily_details_that_do_not_cover_every_reservation_night()
     let response = post_json(&app.app, "/reservations", &request).await;
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn should_modify_reservation_daily_details_and_revenue_allocations() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+    let next_check_out = created.check_out + Duration::days(1);
+
+    let request = serde_json::json!({
+        "check_out": next_check_out.to_string(),
+        "room_class": "deluxe",
+        "package_breakdowns": [
+            {
+                "package_code": "ROOM",
+                "revenue_category": "room",
+                "amount": "300.00"
+            },
+            {
+                "package_code": "DINNER",
+                "revenue_category": "food_and_beverage",
+                "amount": "80.00"
+            }
+        ],
+        "daily_details": [
+            {
+                "service_date": created.check_in.to_string(),
+                "room_class": "standard",
+                "plan_code": "BB",
+                "adult_count": 1,
+                "child_count": 0
+            },
+            {
+                "service_date": (created.check_in + Duration::days(1)).to_string(),
+                "room_class": "deluxe",
+                "plan_code": "HB",
+                "adult_count": 2,
+                "child_count": 1
+            }
+        ],
+        "daily_revenue_allocations": [
+            {
+                "service_date": created.check_in.to_string(),
+                "package_code": "ROOM",
+                "revenue_category": "room",
+                "amount": "120.00"
+            },
+            {
+                "service_date": (created.check_in + Duration::days(1)).to_string(),
+                "package_code": "ROOM",
+                "revenue_category": "room",
+                "amount": "180.00"
+            },
+            {
+                "service_date": (created.check_in + Duration::days(1)).to_string(),
+                "package_code": "DINNER",
+                "revenue_category": "food_and_beverage",
+                "amount": "80.00"
+            }
+        ]
+    });
+
+    let response = patch_json(&app.app, &format!("/reservations/{}", created.id), &request).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let modified: ReservationResponse =
+        serde_json::from_value(response_json(response).await).unwrap();
+
+    assert_eq!(modified.check_out, next_check_out);
+    assert_eq!(modified.room_class, "deluxe");
+    assert_eq!(modified.package_breakdowns.len(), 2);
+    assert_eq!(modified.daily_details.len(), 2);
+    assert_eq!(modified.daily_revenue_allocations.len(), 3);
+    assert!(modified.daily_details.iter().any(|detail| {
+        detail.service_date == created.check_in + Duration::days(1)
+            && detail.room_class == "deluxe"
+            && detail.plan_code.as_deref() == Some("HB")
+            && detail.adult_count == 2
+            && detail.child_count == 1
+    }));
+
+    let mut tx = app.db.begin_tx().await;
+
+    let breakdowns =
+        SqliteReservationPackageBreakdownRepository::list_by_reservation_id(&mut tx, created.id)
+            .await
+            .unwrap();
+    let details =
+        SqliteReservationDailyStayDetailRepository::list_by_reservation_id(&mut tx, created.id)
+            .await
+            .unwrap();
+    let allocations = SqliteReservationDailyRevenueAllocationRepository::list_by_reservation_id(
+        &mut tx, created.id,
+    )
+    .await
+    .unwrap();
+    let events = SqliteOperationChangeEventRepository::list_all(&mut tx)
+        .await
+        .unwrap();
+
+    let modify_event = events
+        .iter()
+        .find(|event| {
+            event.aggregate_id == created.id && event.operation_type == OperationType::Modify
+        })
+        .unwrap();
+    let changed_fields: Vec<ChangedField> =
+        serde_json::from_str(&modify_event.changed_fields_json).unwrap();
+
+    let _ = tx.rollback().await;
+
+    assert_eq!(breakdowns.len(), 2);
+    assert_eq!(details.len(), 2);
+    assert_eq!(allocations.len(), 3);
+    assert!(allocations.iter().any(|allocation| {
+        allocation.service_date == created.check_in + Duration::days(1)
+            && allocation.package_code == "DINNER"
+            && allocation.revenue_category == ReservationRevenueCategory::FoodAndBeverage
+            && allocation.amount == rust_decimal::Decimal::new(8000, 2)
+    }));
+    assert!(changed_fields
+        .iter()
+        .any(|field| field.field_name == "package_breakdowns"));
+    assert!(changed_fields
+        .iter()
+        .any(|field| field.field_name == "daily_details"));
+    assert!(changed_fields
+        .iter()
+        .any(|field| field.field_name == "daily_revenue_allocations"));
+    assert!(changed_fields.iter().any(|field| {
+        field.field_name == "package_breakdowns.DINNER.food_and_beverage"
+            && field.before_value.is_none()
+            && field.after_value.as_deref() == Some("80.00")
+    }));
+    assert!(changed_fields.iter().any(|field| {
+        field.field_name
+            == format!(
+                "daily_details.{}.adult_count",
+                created.check_in + Duration::days(1)
+            )
+            && field.before_value.is_none()
+            && field.after_value.as_deref() == Some("2")
+    }));
+    assert!(changed_fields.iter().any(|field| {
+        field.field_name
+            == format!(
+                "daily_revenue_allocations.{}.DINNER.food_and_beverage.amount",
+                created.check_in + Duration::days(1)
+            )
+            && field.before_value.is_none()
+            && field.after_value.as_deref() == Some("80.00")
+    }));
+}
+
+#[tokio::test]
+async fn should_reject_modified_daily_details_outside_reservation_range() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+
+    let request = serde_json::json!({
+        "daily_details": [
+            {
+                "service_date": (created.check_out + Duration::days(1)).to_string(),
+                "room_class": "standard",
+                "adult_count": 1,
+                "child_count": 0
+            }
+        ]
+    });
+
+    let response = patch_json(&app.app, &format!("/reservations/{}", created.id), &request).await;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn should_reject_modified_daily_revenue_allocations_outside_reservation_range() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+
+    let request = serde_json::json!({
+        "daily_revenue_allocations": [
+            {
+                "service_date": created.check_out.to_string(),
+                "package_code": "ROOM",
+                "revenue_category": "room",
+                "amount": "100.00"
+            }
+        ]
+    });
+
+    let response = patch_json(&app.app, &format!("/reservations/{}", created.id), &request).await;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn should_preserve_daily_details_when_modifying_package_breakdowns_only() {
+    let app = spawn_app().await;
+
+    let guest = create_guest(&app.app).await;
+    let participant = ReservationParticipantBuilder::new(guest.id).build();
+    let today = Utc::now().date_naive();
+
+    let create_request = serde_json::json!({
+        "check_in": today.to_string(),
+        "check_out": (today + Duration::days(2)).to_string(),
+        "room_class": "standard",
+        "daily_details": [
+            {
+                "service_date": today.to_string(),
+                "room_class": "standard",
+                "plan_code": "BB",
+                "adult_count": 1,
+                "child_count": 0
+            },
+            {
+                "service_date": (today + Duration::days(1)).to_string(),
+                "room_class": "deluxe",
+                "plan_code": "HB",
+                "adult_count": 2,
+                "child_count": 1
+            }
+        ],
+        "participants": [
+            {
+                "guest_id": participant.guest_id.to_string(),
+                "relation_type": participant.relation_type
+            }
+        ]
+    });
+
+    let create_response = post_json(&app.app, "/reservations", &create_request).await;
+
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+
+    let created: ReservationResponse =
+        serde_json::from_value(response_json(create_response).await).unwrap();
+
+    let modify_request = serde_json::json!({
+        "package_breakdowns": [
+            {
+                "package_code": "ROOM",
+                "revenue_category": "room",
+                "amount": "300.00"
+            }
+        ]
+    });
+
+    let modify_response = patch_json(
+        &app.app,
+        &format!("/reservations/{}", created.id),
+        &modify_request,
+    )
+    .await;
+
+    assert_eq!(modify_response.status(), StatusCode::OK);
+
+    let modified: ReservationResponse =
+        serde_json::from_value(response_json(modify_response).await).unwrap();
+
+    assert!(modified.daily_details.iter().any(|detail| {
+        detail.service_date == today + Duration::days(1)
+            && detail.room_class == "deluxe"
+            && detail.plan_code.as_deref() == Some("HB")
+            && detail.adult_count == 2
+            && detail.child_count == 1
+    }));
+    assert_eq!(modified.daily_revenue_allocations.len(), 2);
+    assert!(modified
+        .daily_revenue_allocations
+        .iter()
+        .all(|allocation| allocation.amount == rust_decimal::Decimal::new(15000, 2)));
+}
+
+#[tokio::test]
+async fn should_modify_reservation_participants() {
+    let app = spawn_app().await;
+
+    let original_guest = create_guest(&app.app).await;
+    let new_primary_guest = create_guest(&app.app).await;
+    let accompany_guest = create_guest(&app.app).await;
+    let participant = ReservationParticipantBuilder::new(original_guest.id).build();
+
+    let request = ReservationBuilder::new()
+        .with_participant(participant)
+        .build();
+    let create_response = post_json(&app.app, "/reservations", &request).await;
+
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+
+    let created: ReservationResponse =
+        serde_json::from_value(response_json(create_response).await).unwrap();
+
+    let modify_request = serde_json::json!({
+        "participants": [
+            {
+                "guest_id": new_primary_guest.id.to_string(),
+                "relation_type": "primary"
+            },
+            {
+                "guest_id": accompany_guest.id.to_string(),
+                "relation_type": "accompany"
+            }
+        ]
+    });
+
+    let modify_response = patch_json(
+        &app.app,
+        &format!("/reservations/{}", created.id),
+        &modify_request,
+    )
+    .await;
+
+    assert_eq!(modify_response.status(), StatusCode::OK);
+
+    let modified: ReservationResponse =
+        serde_json::from_value(response_json(modify_response).await).unwrap();
+
+    assert_eq!(modified.participants.len(), 2);
+    assert!(modified.participants.iter().any(|participant| {
+        participant.guest_id == new_primary_guest.id
+            && participant.relation_type == ReservationGuestRelationType::Primary
+    }));
+    assert!(modified.participants.iter().any(|participant| {
+        participant.guest_id == accompany_guest.id
+            && participant.relation_type == ReservationGuestRelationType::Accompany
+    }));
+
+    let original_guest_response = get(
+        &app.app,
+        &format!("/guests/{}/reservations", original_guest.id),
+    )
+    .await;
+    let new_primary_response = get(
+        &app.app,
+        &format!("/guests/{}/reservations", new_primary_guest.id),
+    )
+    .await;
+    let accompany_response = get(
+        &app.app,
+        &format!("/guests/{}/reservations", accompany_guest.id),
+    )
+    .await;
+
+    assert_eq!(original_guest_response.status(), StatusCode::OK);
+    assert_eq!(new_primary_response.status(), StatusCode::OK);
+    assert_eq!(accompany_response.status(), StatusCode::OK);
+
+    let original_guest_reservations: Vec<ReservationResponse> =
+        serde_json::from_value(response_json(original_guest_response).await).unwrap();
+    let new_primary_reservations: Vec<ReservationResponse> =
+        serde_json::from_value(response_json(new_primary_response).await).unwrap();
+    let accompany_reservations: Vec<ReservationResponse> =
+        serde_json::from_value(response_json(accompany_response).await).unwrap();
+
+    assert!(original_guest_reservations
+        .iter()
+        .all(|reservation| reservation.id != created.id));
+    assert!(new_primary_reservations
+        .iter()
+        .any(|reservation| reservation.id == created.id));
+    assert!(accompany_reservations
+        .iter()
+        .any(|reservation| reservation.id == created.id));
+
+    let mut tx = app.db.begin_tx().await;
+
+    let events = SqliteOperationChangeEventRepository::list_all(&mut tx)
+        .await
+        .unwrap();
+    let modify_event = events
+        .iter()
+        .find(|event| {
+            event.aggregate_id == created.id && event.operation_type == OperationType::Modify
+        })
+        .unwrap();
+    let changed_fields: Vec<ChangedField> =
+        serde_json::from_str(&modify_event.changed_fields_json).unwrap();
+
+    let _ = tx.rollback().await;
+
+    assert!(changed_fields
+        .iter()
+        .any(|field| field.field_name == "participants"));
+    assert!(changed_fields.iter().any(|field| {
+        field.field_name == format!("participants.{}", original_guest.id)
+            && field.before_value.as_deref() == Some("primary")
+            && field.after_value.is_none()
+    }));
+    assert!(changed_fields.iter().any(|field| {
+        field.field_name == format!("participants.{}", new_primary_guest.id)
+            && field.before_value.is_none()
+            && field.after_value.as_deref() == Some("primary")
+    }));
+}
+
+#[tokio::test]
+async fn should_reject_participant_modification_without_single_primary() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+    let guest = create_guest(&app.app).await;
+
+    let request = serde_json::json!({
+        "participants": [
+            {
+                "guest_id": guest.id.to_string(),
+                "relation_type": "accompany"
+            }
+        ]
+    });
+
+    let response = patch_json(&app.app, &format!("/reservations/{}", created.id), &request).await;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn should_mark_reservation_no_show_and_reinstate() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+
+    let no_show_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/no-show", created.id),
+        &serde_json::json!({}),
+    )
+    .await;
+
+    assert_eq!(no_show_response.status(), StatusCode::OK);
+
+    let no_show: ReservationResponse =
+        serde_json::from_value(response_json(no_show_response).await).unwrap();
+
+    assert_eq!(no_show.reservation_status, ReservationStatus::NoShow);
+    assert_eq!(no_show.stay_status, Some(StayStatus::NoShow));
+
+    let reinstate_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/reinstate", created.id),
+        &serde_json::json!({}),
+    )
+    .await;
+
+    assert_eq!(reinstate_response.status(), StatusCode::OK);
+
+    let reinstated: ReservationResponse =
+        serde_json::from_value(response_json(reinstate_response).await).unwrap();
+
+    assert_eq!(reinstated.reservation_status, ReservationStatus::Confirmed);
+    assert_eq!(reinstated.stay_status, Some(StayStatus::Confirmed));
+
+    let mut tx = app.db.begin_tx().await;
+
+    let transitions =
+        SqliteReservationTransitionRepository::find_by_reservation_id(&mut tx, created.id)
+            .await
+            .unwrap();
+    let events = SqliteOperationChangeEventRepository::list_all(&mut tx)
+        .await
+        .unwrap();
+
+    let _ = tx.rollback().await;
+
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == ReservationTransitionType::NoShowMarked
+            && transition.before_value == "confirmed"
+            && transition.after_value == "no_show"
+    }));
+    assert!(transitions.iter().any(|transition| {
+        transition.transition_type == ReservationTransitionType::ReservationReinstated
+            && transition.before_value == "no_show"
+            && transition.after_value == "confirmed"
+    }));
+
+    let no_show_event = events
+        .iter()
+        .find(|event| {
+            event.aggregate_id == created.id
+                && event.operation_type == OperationType::Modify
+                && event.after_json.contains("no_show")
+        })
+        .unwrap();
+    let changed_fields: Vec<ChangedField> =
+        serde_json::from_str(&no_show_event.changed_fields_json).unwrap();
+
+    assert!(changed_fields.iter().any(|field| {
+        field.field_name == "reservation_status"
+            && field.before_value.as_deref() == Some("confirmed")
+            && field.after_value.as_deref() == Some("no_show")
+    }));
+}
+
+#[tokio::test]
+async fn should_reject_no_show_after_check_in() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+    let room = crate::common::room::create_room(&app.app).await;
+
+    let assign_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/assign-room/{}", created.id, room.id),
+        &serde_json::json!({}),
+    )
+    .await;
+
+    assert_eq!(assign_response.status(), StatusCode::OK);
+
+    let check_in_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/check-in", created.id),
+        &serde_json::json!({}),
+    )
+    .await;
+
+    assert_eq!(check_in_response.status(), StatusCode::OK);
+
+    let no_show_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/no-show", created.id),
+        &serde_json::json!({}),
+    )
+    .await;
+
+    assert_eq!(no_show_response.status(), StatusCode::CONFLICT);
 }
 
 #[tokio::test]

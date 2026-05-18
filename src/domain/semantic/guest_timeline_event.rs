@@ -6,6 +6,8 @@ use uuid::Uuid;
 pub enum TimelineEventType {
     ReservationCreated,
     ReservationCancelled,
+    ReservationNoShow,
+    ReservationReinstated,
 
     ReservationModified,
 
@@ -17,6 +19,7 @@ pub enum TimelineEventType {
 
     CheckedIn,
     CheckedOut,
+    RoomMoved,
 
     RoomChargePosted,
 }
@@ -26,6 +29,8 @@ impl TimelineEventType {
         match self {
             Self::ReservationCreated => "reservation_created",
             Self::ReservationCancelled => "reservation_cancelled",
+            Self::ReservationNoShow => "reservation_no_show",
+            Self::ReservationReinstated => "reservation_reinstated",
             Self::ReservationModified => "reservation_modified",
             Self::ReservationDatesChanged => "reservation_dates_changed",
             Self::ReservationExtended => "reservation_extended",
@@ -33,6 +38,7 @@ impl TimelineEventType {
             Self::ReservationRoomClassChanged => "reservation_room_class_changed",
             Self::CheckedIn => "checked_in",
             Self::CheckedOut => "checked_out",
+            Self::RoomMoved => "room_moved",
             Self::RoomChargePosted => "room_charge_posted",
         }
     }
@@ -41,6 +47,8 @@ impl TimelineEventType {
         match value {
             "reservation_created" => Some(Self::ReservationCreated),
             "reservation_cancelled" => Some(Self::ReservationCancelled),
+            "reservation_no_show" => Some(Self::ReservationNoShow),
+            "reservation_reinstated" => Some(Self::ReservationReinstated),
             "reservation_modified" => Some(Self::ReservationModified),
             "reservation_dates_changed" => Some(Self::ReservationDatesChanged),
             "reservation_extended" => Some(Self::ReservationExtended),
@@ -48,6 +56,7 @@ impl TimelineEventType {
             "reservation_room_class_changed" => Some(Self::ReservationRoomClassChanged),
             "checked_in" => Some(Self::CheckedIn),
             "checked_out" => Some(Self::CheckedOut),
+            "room_moved" => Some(Self::RoomMoved),
             "room_charge_posted" => Some(Self::RoomChargePosted),
             _ => None,
         }

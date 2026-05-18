@@ -1,21 +1,37 @@
-use std::sync::{Mutex, OnceLock};
+use std::{
+    sync::{Mutex, OnceLock},
+    thread::{self, ThreadId},
+};
 
 use crate::projection::topology::projection_node::ProjectionNode;
 
-static TRACE: OnceLock<Mutex<Vec<ProjectionNode>>> = OnceLock::new();
+#[derive(Default)]
+struct ExecutionTrace {
+    owner: Option<ThreadId>,
+    nodes: Vec<ProjectionNode>,
+}
 
-fn trace_storage() -> &'static Mutex<Vec<ProjectionNode>> {
-    TRACE.get_or_init(|| Mutex::new(vec![]))
+static TRACE: OnceLock<Mutex<ExecutionTrace>> = OnceLock::new();
+
+fn trace_storage() -> &'static Mutex<ExecutionTrace> {
+    TRACE.get_or_init(|| Mutex::new(ExecutionTrace::default()))
 }
 
 pub fn clear_trace() {
-    trace_storage().lock().unwrap().clear();
+    let mut trace = trace_storage().lock().unwrap();
+
+    trace.owner = Some(thread::current().id());
+    trace.nodes.clear();
 }
 
 pub fn push_trace(node: ProjectionNode) {
-    trace_storage().lock().unwrap().push(node);
+    let mut trace = trace_storage().lock().unwrap();
+
+    if trace.owner == Some(thread::current().id()) {
+        trace.nodes.push(node);
+    }
 }
 
 pub fn execution_trace() -> Vec<ProjectionNode> {
-    trace_storage().lock().unwrap().clone()
+    trace_storage().lock().unwrap().nodes.clone()
 }

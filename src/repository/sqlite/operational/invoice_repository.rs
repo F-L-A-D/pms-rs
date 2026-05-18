@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 
 use sqlx::{Row, Sqlite, Transaction};
 
@@ -21,10 +21,11 @@ impl SqliteInvoiceRepository {
                 billing_account_id,
                 invoice_number,
                 issued_amount,
+                due_date,
                 issued_at,
                 status
             )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
             "#,
         )
         .bind(invoice.id.to_string())
@@ -32,6 +33,7 @@ impl SqliteInvoiceRepository {
         .bind(invoice.billing_account_id.to_string())
         .bind(&invoice.invoice_number)
         .bind(invoice.issued_amount.to_string())
+        .bind(invoice.due_date.to_string())
         .bind(invoice.issued_at.to_rfc3339())
         .bind(invoice.status.to_snake())
         .execute(&mut **tx)
@@ -53,6 +55,7 @@ impl SqliteInvoiceRepository {
                     billing_account_id,
                     invoice_number,
                     issued_amount,
+                    due_date,
                     issued_at,
                     status
                 FROM invoices
@@ -83,6 +86,7 @@ impl SqliteInvoiceRepository {
                     billing_account_id,
                     invoice_number,
                     issued_amount,
+                    due_date,
                     issued_at,
                     status
                 FROM invoices
@@ -90,6 +94,37 @@ impl SqliteInvoiceRepository {
                 "#,
         )
         .bind(folio_id.to_string())
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(infra)?;
+
+        match row {
+            Some(row) => Ok(Some(Self::row_to_invoice(&row)?)),
+
+            None => Ok(None),
+        }
+    }
+
+    pub async fn find_by_invoice_number(
+        tx: &mut Transaction<'_, Sqlite>,
+        invoice_number: &str,
+    ) -> AppResult<Option<Invoice>> {
+        let row = sqlx::query(
+            r#"
+                SELECT
+                    id,
+                    folio_id,
+                    billing_account_id,
+                    invoice_number,
+                    issued_amount,
+                    due_date,
+                    issued_at,
+                    status
+                FROM invoices
+                WHERE invoice_number = ?1
+                "#,
+        )
+        .bind(invoice_number)
         .fetch_optional(&mut **tx)
         .await
         .map_err(infra)?;
@@ -113,6 +148,7 @@ impl SqliteInvoiceRepository {
                     billing_account_id,
                     invoice_number,
                     issued_amount,
+                    due_date,
                     issued_at,
                     status
                 FROM invoices
@@ -155,6 +191,12 @@ impl SqliteInvoiceRepository {
                 .get::<String, _>("issued_amount")
                 .parse()
                 .map_err(infra)?,
+
+            due_date: NaiveDate::parse_from_str(
+                row.get::<String, _>("due_date").as_str(),
+                "%Y-%m-%d",
+            )
+            .map_err(infra)?,
 
             issued_at,
 

@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 
 use rust_decimal::Decimal;
 
@@ -45,7 +45,15 @@ pub struct Invoice {
 
     pub issued_amount: Decimal,
 
+    pub due_date: NaiveDate,
+
     pub status: InvoiceStatus,
 
     pub issued_at: DateTime<Utc>,
+}
+
+impl Invoice {
+    pub fn void(&mut self) {
+        self.status = InvoiceStatus::Voided;
+    }
 }

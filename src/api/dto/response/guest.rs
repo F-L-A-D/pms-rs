@@ -4,7 +4,10 @@ use chrono::NaiveDate;
 
 use uuid::Uuid;
 
-use crate::domain::entity::guest::{Gender, Guest};
+use crate::{
+    domain::entity::guest::{Gender, Guest},
+    domain::semantic::guest_preference::{GuestPreference, GuestPreferenceType},
+};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GuestResponse {
@@ -42,6 +45,27 @@ impl From<Guest> for GuestResponse {
             membership_code: guest.profile.membership_code,
 
             marketing_opt_in: guest.profile.marketing_opt_in,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GuestPreferenceResponse {
+    pub id: Uuid,
+    pub guest_id: Uuid,
+    pub preference_type: GuestPreferenceType,
+    pub value: String,
+    pub notes: Option<String>,
+}
+
+impl From<GuestPreference> for GuestPreferenceResponse {
+    fn from(preference: GuestPreference) -> Self {
+        Self {
+            id: preference.id,
+            guest_id: preference.guest_id,
+            preference_type: preference.preference_type,
+            value: preference.value,
+            notes: preference.notes,
         }
     }
 }

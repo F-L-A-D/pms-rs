@@ -35,6 +35,8 @@ pub async fn create_invoice_handler(
         invoice_number: req.invoice_number,
 
         issued_amount,
+
+        due_date: req.due_date,
     };
 
     let invoice = create_invoice::execute(&state.db, input)
@@ -51,6 +53,8 @@ pub async fn create_invoice_handler(
         invoice_number: invoice.invoice_number,
 
         issued_amount: invoice.issued_amount,
+
+        due_date: invoice.due_date,
 
         status: invoice.status,
 

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::entity::guest::{Gender, GuestSearchField};
+use crate::domain::semantic::guest_preference::GuestPreferenceType;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateGuestRequest {
@@ -43,4 +44,11 @@ pub struct UpdateGuestRequest {
 pub struct GuestSearchQuery {
     pub query: Option<String>,
     pub field: Option<GuestSearchField>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AddGuestPreferenceRequest {
+    pub preference_type: GuestPreferenceType,
+    pub value: String,
+    pub notes: Option<String>,
 }

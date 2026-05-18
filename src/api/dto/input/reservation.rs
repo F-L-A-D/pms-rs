@@ -36,6 +36,15 @@ pub struct ReservationDailyDetailInput {
     pub package_breakdowns: Vec<ReservationPackageBreakdownInput>,
 }
 
+pub struct ReservationDailyRevenueAllocationInput {
+    pub service_date: NaiveDate,
+    pub package_code: String,
+    pub revenue_category: ReservationRevenueCategory,
+    pub department_code: Option<String>,
+    pub account_code: Option<String>,
+    pub amount: Decimal,
+}
+
 pub struct ReservationParticipantInput {
     pub guest_id: Uuid,
     pub relation_type: ReservationGuestRelationType,
@@ -45,4 +54,8 @@ pub struct ModifyReservationInput {
     pub check_in: Option<NaiveDate>,
     pub check_out: Option<NaiveDate>,
     pub room_class: Option<String>,
+    pub package_breakdowns: Option<Vec<ReservationPackageBreakdownInput>>,
+    pub daily_details: Option<Vec<ReservationDailyDetailInput>>,
+    pub daily_revenue_allocations: Option<Vec<ReservationDailyRevenueAllocationInput>>,
+    pub participants: Option<Vec<ReservationParticipantInput>>,
 }

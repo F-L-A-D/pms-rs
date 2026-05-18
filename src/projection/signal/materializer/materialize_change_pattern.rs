@@ -70,7 +70,13 @@ fn parse_changed_fields(changed_fields_json: &str) -> Vec<ChangedField> {
 }
 
 fn has_changed_field(changed_fields: &[ChangedField], field_names: &[&str]) -> bool {
-    changed_fields
-        .iter()
-        .any(|field| field_names.contains(&field.field_name.as_str()))
+    changed_fields.iter().any(|field| {
+        field_names.iter().any(|field_name| {
+            field.field_name == *field_name
+                || field
+                    .field_name
+                    .strip_prefix(field_name)
+                    .is_some_and(|suffix| suffix.starts_with('.'))
+        })
+    })
 }

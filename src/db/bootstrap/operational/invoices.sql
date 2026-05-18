@@ -4,8 +4,10 @@ CREATE TABLE IF NOT EXISTS invoices (
     billing_account_id TEXT NOT NULL,
     invoice_number TEXT NOT NULL,
     issued_amount TEXT NOT NULL,
+    due_date TEXT NOT NULL,
     issued_at TEXT NOT NULL,
     status TEXT NOT NULL,
+    UNIQUE(invoice_number),
 
     FOREIGN KEY(folio_id)
         REFERENCES folios(id),

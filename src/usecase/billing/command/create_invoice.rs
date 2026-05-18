@@ -46,11 +46,26 @@ pub async fn execute(db: &Db, input: CreateInvoiceInput) -> AppResult<Invoice> {
             .await?
             .ok_or_else(|| not_found("billing account not found"))?;
 
+        if input.invoice_number.trim().is_empty() {
+            return Err(validation("invoice number must not be empty"));
+        }
+
+        if input.issued_amount <= rust_decimal::Decimal::ZERO {
+            return Err(validation("issued amount must be positive"));
+        }
+
         if SqliteInvoiceRepository::find_by_folio_id(&mut tx, folio.id)
             .await?
             .is_some()
         {
             return Err(conflict("invoice already exists for folio"));
+        }
+
+        if SqliteInvoiceRepository::find_by_invoice_number(&mut tx, &input.invoice_number)
+            .await?
+            .is_some()
+        {
+            return Err(conflict("invoice number already exists"));
         }
 
         let invoice = Invoice {
@@ -64,6 +79,8 @@ pub async fn execute(db: &Db, input: CreateInvoiceInput) -> AppResult<Invoice> {
 
             issued_amount: input.issued_amount,
 
+            due_date: input.due_date,
+
             status: InvoiceStatus::Issued,
 
             issued_at: Utc::now(),
@@ -71,8 +88,13 @@ pub async fn execute(db: &Db, input: CreateInvoiceInput) -> AppResult<Invoice> {
 
         SqliteInvoiceRepository::save(&mut tx, &invoice).await?;
 
-        let receivable = Receivable::new(Uuid::new_v4(), invoice.id, invoice.issued_amount)
-            .map_err(validation)?;
+        let receivable = Receivable::new(
+            Uuid::new_v4(),
+            invoice.id,
+            invoice.issued_amount,
+            invoice.due_date,
+        )
+        .map_err(validation)?;
 
         SqliteReceivableRepository::save(&mut tx, &receivable).await?;
 

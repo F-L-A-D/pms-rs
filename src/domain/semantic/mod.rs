@@ -1,4 +1,5 @@
 pub mod billing_responsibility;
+pub mod guest_preference;
 pub mod guest_timeline_event;
 pub mod invoice_settlement;
 pub mod operation_change_event;

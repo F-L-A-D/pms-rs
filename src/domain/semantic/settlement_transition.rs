@@ -11,6 +11,14 @@ use uuid::Uuid;
 pub enum SettlementTransitionType {
     InvoiceIssued,
     ReceivableOpened,
+    PaymentAllocated,
+    ReceivableSettled,
+    ReceivableDisputed,
+    ReceivableDisputeResolved,
+    ReceivableWrittenOff,
+    PaymentAllocationReversed,
+    InvoiceVoided,
+    ReceivableVoided,
 }
 
 impl SettlementTransitionType {
@@ -18,6 +26,14 @@ impl SettlementTransitionType {
         match self {
             Self::InvoiceIssued => "invoice_issued",
             Self::ReceivableOpened => "receivable_opened",
+            Self::PaymentAllocated => "payment_allocated",
+            Self::ReceivableSettled => "receivable_settled",
+            Self::ReceivableDisputed => "receivable_disputed",
+            Self::ReceivableDisputeResolved => "receivable_dispute_resolved",
+            Self::ReceivableWrittenOff => "receivable_written_off",
+            Self::PaymentAllocationReversed => "payment_allocation_reversed",
+            Self::InvoiceVoided => "invoice_voided",
+            Self::ReceivableVoided => "receivable_voided",
         }
     }
 
@@ -25,6 +41,14 @@ impl SettlementTransitionType {
         match value {
             "invoice_issued" => Some(Self::InvoiceIssued),
             "receivable_opened" => Some(Self::ReceivableOpened),
+            "payment_allocated" => Some(Self::PaymentAllocated),
+            "receivable_settled" => Some(Self::ReceivableSettled),
+            "receivable_disputed" => Some(Self::ReceivableDisputed),
+            "receivable_dispute_resolved" => Some(Self::ReceivableDisputeResolved),
+            "receivable_written_off" => Some(Self::ReceivableWrittenOff),
+            "payment_allocation_reversed" => Some(Self::PaymentAllocationReversed),
+            "invoice_voided" => Some(Self::InvoiceVoided),
+            "receivable_voided" => Some(Self::ReceivableVoided),
             _ => None,
         }
     }

@@ -5,6 +5,7 @@ pub mod response;
 pub mod billing;
 pub mod error;
 pub mod guest;
+pub mod package;
 pub mod reservation;
 pub mod room;
 pub mod semantic_signal;

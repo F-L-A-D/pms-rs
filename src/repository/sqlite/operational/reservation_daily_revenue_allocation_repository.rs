@@ -27,15 +27,19 @@ impl SqliteReservationDailyRevenueAllocationRepository {
                 service_date,
                 package_code,
                 revenue_category,
+                department_code,
+                account_code,
                 amount
             )
-            VALUES (?1, ?2, ?3, ?4, ?5)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             "#,
         )
         .bind(allocation.reservation_id.to_string())
         .bind(allocation.service_date.to_string())
         .bind(&allocation.package_code)
         .bind(allocation.revenue_category.to_snake())
+        .bind(&allocation.department_code)
+        .bind(&allocation.account_code)
         .bind(allocation.amount.to_string())
         .execute(&mut **tx)
         .await
@@ -55,6 +59,8 @@ impl SqliteReservationDailyRevenueAllocationRepository {
                 service_date,
                 package_code,
                 revenue_category,
+                department_code,
+                account_code,
                 amount
             FROM reservation_daily_revenue_allocations
             WHERE reservation_id = ?1
@@ -97,6 +103,8 @@ impl SqliteReservationDailyRevenueAllocationRepository {
                 row.get::<String, _>("revenue_category").as_str(),
             )
             .ok_or_else(|| infra("invalid reservation revenue category"))?,
+            department_code: row.get("department_code"),
+            account_code: row.get("account_code"),
             amount: row
                 .get::<String, _>("amount")
                 .parse::<Decimal>()

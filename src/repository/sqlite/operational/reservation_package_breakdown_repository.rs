@@ -62,6 +62,19 @@ impl SqliteReservationPackageBreakdownRepository {
         rows.iter().map(Self::row_to_breakdown).collect()
     }
 
+    pub async fn delete_by_reservation_id(
+        tx: &mut Transaction<'_, Sqlite>,
+        reservation_id: Uuid,
+    ) -> AppResult<()> {
+        sqlx::query("DELETE FROM reservation_package_breakdowns WHERE reservation_id = ?1")
+            .bind(reservation_id.to_string())
+            .execute(&mut **tx)
+            .await
+            .map_err(infra)?;
+
+        Ok(())
+    }
+
     fn row_to_breakdown(row: &sqlx::sqlite::SqliteRow) -> AppResult<ReservationPackageBreakdown> {
         let revenue_category = ReservationRevenueCategory::from_snake(
             row.get::<String, _>("revenue_category").as_str(),

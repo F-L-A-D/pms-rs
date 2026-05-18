@@ -32,6 +32,7 @@ use crate::{
     repository::sqlite::operational::{
         guest_repository::SqliteGuestRepository,
         operation_change_event_repository::SqliteOperationChangeEventRepository,
+        package_definition_repository::SqlitePackageDefinitionRepository,
         reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
         reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
         reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
@@ -98,6 +99,8 @@ pub async fn execute(
         )
         .map_err(validation)?;
 
+        resolve_package_catalog_revenue_categories(&mut tx, &mut reservation).await?;
+
         let daily_stay_details = build_daily_stay_details(&reservation, &daily_inputs)?;
         let daily_revenue_allocations = build_daily_revenue_allocations(
             &reservation,
@@ -107,6 +110,8 @@ pub async fn execute(
 
         reservation.daily_stay_details = daily_stay_details;
         reservation.daily_revenue_allocations = daily_revenue_allocations;
+
+        resolve_package_catalog_revenue_categories(&mut tx, &mut reservation).await?;
 
         SqliteReservationRepository::save(&mut tx, &reservation).await?;
 
@@ -263,6 +268,47 @@ pub async fn execute(
     }
 }
 
+async fn resolve_package_catalog_revenue_categories(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    reservation: &mut Reservation,
+) -> AppResult<()> {
+    for breakdown in &mut reservation.package_breakdowns {
+        if let Some(package) =
+            SqlitePackageDefinitionRepository::find_by_package_code(tx, &breakdown.package_code)
+                .await?
+        {
+            if !package.is_active {
+                return Err(validation(format!(
+                    "package inactive: {}",
+                    breakdown.package_code
+                )));
+            }
+
+            breakdown.revenue_category = package.revenue_category;
+        }
+    }
+
+    for allocation in &mut reservation.daily_revenue_allocations {
+        if let Some(package) =
+            SqlitePackageDefinitionRepository::find_by_package_code(tx, &allocation.package_code)
+                .await?
+        {
+            if !package.is_active {
+                return Err(validation(format!(
+                    "package inactive: {}",
+                    allocation.package_code
+                )));
+            }
+
+            allocation.revenue_category = package.revenue_category;
+            allocation.department_code = Some(package.department_code);
+            allocation.account_code = Some(package.account_code);
+        }
+    }
+
+    Ok(())
+}
+
 fn reservation_json(reservation: &Reservation) -> serde_json::Value {
     serde_json::json!({
         "id": reservation.id,
@@ -402,6 +448,8 @@ fn build_daily_revenue_allocations(
                         service_date: detail.service_date,
                         package_code: breakdown.package_code.clone(),
                         revenue_category: breakdown.revenue_category,
+                        department_code: None,
+                        account_code: None,
                         amount: breakdown.amount,
                     }
                 })
@@ -427,6 +475,8 @@ fn build_daily_revenue_allocations(
                     service_date,
                     package_code: breakdown.package_code.clone(),
                     revenue_category: breakdown.revenue_category,
+                    department_code: None,
+                    account_code: None,
                     amount: breakdown.amount / divisor,
                 })
         })

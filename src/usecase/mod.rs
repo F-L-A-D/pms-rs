@@ -1,6 +1,7 @@
 pub mod billing;
 pub mod guest;
 pub mod housekeeping;
+pub mod rate_plan;
 pub mod reservation;
 pub mod room;
 pub mod semantic_signal;

@@ -9,7 +9,7 @@ use pms_rs::{
     domain::{
         reservation_guest_relation::ReservationGuestRelationType,
         semantic::{
-            operation_change_event::{ChangedField, OperationType},
+            operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
             operation_context::{OperationActor, OperationSource},
             reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
             reservation_transition::ReservationTransitionType,
@@ -332,6 +332,56 @@ async fn should_return_not_found_for_missing_operation_semantic_signal_event() {
     .await;
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn should_fetch_operation_semantic_signal_with_missing_projection_rows() {
+    let app = spawn_app().await;
+    let event_id = Uuid::new_v4();
+
+    let mut tx = app.db.begin_tx().await;
+
+    SqliteOperationChangeEventRepository::save(
+        &mut tx,
+        &OperationChangeEvent {
+            id: event_id,
+            operation_id: Uuid::new_v4(),
+            aggregate_type: "reservation".to_string(),
+            aggregate_id: Uuid::new_v4(),
+            operation_type: OperationType::Modify,
+            actor: OperationActor::System,
+            actor_id: None,
+            source: OperationSource::Api,
+            before_json: Some(serde_json::json!({"room_class": "standard"}).to_string()),
+            after_json: serde_json::json!({"room_class": "deluxe"}).to_string(),
+            changed_fields_json: serde_json::to_string(&vec![ChangedField::new(
+                "room_class",
+                Some("standard".to_string()),
+                Some("deluxe".to_string()),
+            )])
+            .unwrap(),
+            occurred_at: Utc::now(),
+        },
+    )
+    .await
+    .unwrap();
+
+    tx.commit().await.unwrap();
+
+    let response = get(
+        &app.app,
+        &format!("/operation-events/{}/semantic-signal", event_id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = response_json(response).await;
+
+    assert_eq!(body["event_id"], event_id.to_string());
+    assert!(body["change_pattern"].is_null());
+    assert!(body["confidence_profile"].is_null());
+    assert!(body["semantic_activation"].is_null());
 }
 
 #[tokio::test]

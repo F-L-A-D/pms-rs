@@ -111,3 +111,9 @@ pub struct DeleteReservationNoteInput {
     pub note_id: Uuid,
     pub actor_id: Option<String>,
 }
+
+pub struct DeleteReservationTraceInput {
+    pub reservation_id: Uuid,
+    pub trace_id: Uuid,
+    pub actor_id: Option<String>,
+}

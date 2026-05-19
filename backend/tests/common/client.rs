@@ -116,3 +116,22 @@ pub async fn delete(app: &axum::Router, uri: &str) -> Response<Body> {
         .await
         .unwrap()
 }
+
+pub async fn delete_json<T>(app: &axum::Router, uri: &str, body: &T) -> Response<Body>
+where
+    T: Serialize,
+{
+    let json = serde_json::to_vec(body).unwrap();
+
+    app.clone()
+        .oneshot(
+            Request::builder()
+                .uri(uri)
+                .method("DELETE")
+                .header("content-type", "application/json")
+                .body(Body::from(json))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+}

@@ -5,6 +5,7 @@ pub mod create_reservation;
 pub mod create_reservation_note;
 pub mod create_reservation_trace;
 pub mod delete_reservation_note;
+pub mod delete_reservation_trace;
 pub mod mark_no_show;
 pub mod modify_reservation;
 pub mod open_edit_session;

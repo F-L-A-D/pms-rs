@@ -124,3 +124,8 @@ pub struct ResolveReservationTraceRequest {
 pub struct DeleteReservationNoteRequest {
     pub actor_id: Option<String>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteReservationTraceRequest {
+    pub actor_id: Option<String>,
+}

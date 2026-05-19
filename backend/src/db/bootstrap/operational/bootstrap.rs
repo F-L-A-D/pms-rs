@@ -55,12 +55,6 @@ pub async fn bootstrap(pool: &SqlitePool) {
     .await
     .unwrap();
 
-    let _ = sqlx::query(
-        "ALTER TABLE reservation_daily_stay_details ADD COLUMN sleep_sharing_child_count INTEGER NOT NULL DEFAULT 0",
-    )
-    .execute(pool)
-    .await;
-
     sqlx::query(include_str!(
         "reservation/reservation_sleep_sharing_children.sql"
     ))

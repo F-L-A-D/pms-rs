@@ -3,7 +3,10 @@ use uuid::Uuid;
 use crate::{
     db::connection::Db,
     domain::{
-        entity::reservation::{ReservationStatus, StayStatus},
+        entity::{
+            folio::{Folio, FolioStatus},
+            reservation::{ReservationStatus, StayStatus},
+        },
         semantic::{
             guest_timeline_event::TimelineEventType,
             room_daily_state::{RoomDailyOccupancyStatus, RoomDailyState},
@@ -19,6 +22,7 @@ use crate::{
         topology::projection_node::ProjectionNode,
     },
     repository::sqlite::operational::{
+        folio_repository::SqliteFolioRepository,
         reservation_repository::SqliteReservationRepository,
         room_daily_state_repository::SqliteRoomDailyStateRepository,
     },
@@ -134,6 +138,24 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
         reservation.stay_status = Some(StayStatus::CheckedIn);
 
         SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+
+        let existing_folios =
+            SqliteFolioRepository::list_by_reservation_id(&mut tx, reservation.id).await?;
+
+        if !existing_folios
+            .iter()
+            .any(|folio| matches!(folio.status, FolioStatus::Open | FolioStatus::Locked))
+        {
+            let folio = Folio {
+                id: Uuid::new_v4(),
+                reservation_id: reservation.id,
+                billing_account_id: None,
+                status: FolioStatus::Open,
+                created_at: chrono::Utc::now(),
+            };
+
+            SqliteFolioRepository::save(&mut tx, &folio).await?;
+        }
 
         if let Some(guest_id) = reservation.primary_participant().map(|p| p.guest_id) {
             record_event(

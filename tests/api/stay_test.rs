@@ -4,13 +4,17 @@ use chrono::{Duration, Utc};
 
 use pms_rs::{
     api::dto::reservation::ReservationResponse,
+    domain::entity::folio::FolioStatus,
     domain::semantic::reservation_transition::ReservationTransitionType,
     domain::semantic::room_daily_state::{
         RoomDailyHousekeepingStatus, RoomDailyOccupancyStatus, RoomDailyState,
     },
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
-        operational::room_daily_state_repository::SqliteRoomDailyStateRepository,
+        operational::{
+            folio_repository::SqliteFolioRepository,
+            room_daily_state_repository::SqliteRoomDailyStateRepository,
+        },
     },
 };
 
@@ -46,6 +50,17 @@ async fn should_chek_in_reservation() {
         room_state.occupancy_status,
         RoomDailyOccupancyStatus::Occupied,
     );
+
+    let mut tx = app.db.begin_tx().await;
+
+    let folios = SqliteFolioRepository::list_by_reservation_id(&mut tx, reservation.id)
+        .await
+        .unwrap();
+
+    let _ = tx.rollback().await;
+
+    assert_eq!(folios.len(), 1);
+    assert_eq!(folios[0].status, FolioStatus::Open);
 }
 
 #[tokio::test]

@@ -4,6 +4,7 @@ pub mod guest_timeline_event;
 pub mod invoice_settlement;
 pub mod operation_change_event;
 pub mod operation_context;
+pub mod operational_audit_log;
 pub mod receivable_state;
 pub mod reservation_booking;
 pub mod reservation_edit_session;

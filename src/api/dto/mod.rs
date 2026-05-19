@@ -2,6 +2,7 @@ pub mod input;
 pub mod request;
 pub mod response;
 
+pub mod audit;
 pub mod billing;
 pub mod error;
 pub mod guest;

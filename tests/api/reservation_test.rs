@@ -424,6 +424,73 @@ async fn should_record_operation_change_event_and_activation_on_reservation_crea
 }
 
 #[tokio::test]
+async fn should_record_operational_audit_logs_for_reservation_workflow() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+
+    let modify_response = patch_json(
+        &app.app,
+        &format!("/reservations/{}", created.id),
+        &serde_json::json!({
+            "expected_version": created.version,
+            "check_out": (created.check_out + Duration::days(1)).to_string()
+        }),
+    )
+    .await;
+
+    assert_eq!(modify_response.status(), StatusCode::OK);
+
+    let modified: ReservationResponse =
+        serde_json::from_value(response_json(modify_response).await).unwrap();
+
+    let stale_response = patch_json(
+        &app.app,
+        &format!("/reservations/{}", created.id),
+        &serde_json::json!({
+            "expected_version": created.version,
+            "room_class": "deluxe"
+        }),
+    )
+    .await;
+
+    assert_eq!(stale_response.status(), StatusCode::CONFLICT);
+
+    let cancel_response = delete(&app.app, &format!("/reservations/{}", created.id)).await;
+
+    assert_eq!(cancel_response.status(), StatusCode::OK);
+
+    let response = get(&app.app, &format!("/audit-logs/reservation/{}", created.id)).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = response_json(response).await;
+    let logs = body.as_array().unwrap();
+
+    assert_eq!(logs.len(), 3);
+    assert!(logs.iter().any(|log| log["action"] == "reservation.create"));
+    assert!(logs.iter().any(|log| log["action"] == "reservation.modify"));
+    assert!(logs.iter().any(|log| log["action"] == "reservation.cancel"));
+    assert!(!logs
+        .iter()
+        .any(|log| log["after_json"].as_str().unwrap().contains("deluxe")));
+
+    let modify_log = logs
+        .iter()
+        .find(|log| log["action"] == "reservation.modify")
+        .unwrap();
+
+    assert!(modify_log["changed_fields_json"]
+        .as_str()
+        .unwrap()
+        .contains("check_out"));
+    assert!(modify_log["after_json"]
+        .as_str()
+        .unwrap()
+        .contains(&modified.version.to_string()));
+}
+
+#[tokio::test]
 async fn should_fetch_operation_semantic_signal_for_reservation_change_event() {
     let app = spawn_app().await;
 

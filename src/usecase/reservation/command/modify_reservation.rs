@@ -50,6 +50,7 @@ use crate::{
             reservation_repository::SqliteReservationRepository,
         },
     },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
     usecase::timeline::command::record_event::record_event,
 };
 
@@ -183,6 +184,9 @@ pub async fn execute(
         }
 
         let changed_fields = changed_fields(&before, &reservation);
+        let before_json = reservation_json(&before).to_string();
+        let after_json = reservation_json(&reservation).to_string();
+        let changed_fields_json = serde_json::to_string(&changed_fields).map_err(infra)?;
         let change_event = OperationChangeEvent {
             id: Uuid::new_v4(),
             operation_id: context.operation_id,
@@ -192,13 +196,28 @@ pub async fn execute(
             actor: context.actor,
             actor_id: context.actor_id.clone(),
             source: context.source,
-            before_json: Some(reservation_json(&before).to_string()),
-            after_json: reservation_json(&reservation).to_string(),
-            changed_fields_json: serde_json::to_string(&changed_fields).map_err(infra)?,
+            before_json: Some(before_json.clone()),
+            after_json: after_json.clone(),
+            changed_fields_json: changed_fields_json.clone(),
             occurred_at: chrono::Utc::now(),
         };
 
         SqliteOperationChangeEventRepository::save(&mut tx, &change_event).await?;
+
+        record_audit_log(
+            &mut tx,
+            &context,
+            RecordAuditLogInput {
+                aggregate_type: "reservation".to_string(),
+                aggregate_id: reservation.id,
+                action: "reservation.modify".to_string(),
+                before_json: Some(before_json),
+                after_json,
+                changed_fields_json,
+                reason: None,
+            },
+        )
+        .await?;
 
         refresh_projection_chain(
             &mut tx,

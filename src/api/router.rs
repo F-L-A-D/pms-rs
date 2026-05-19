@@ -24,6 +24,8 @@ use crate::api::handlers::billing::{
     void_invoice::void_invoice_handler,
 };
 
+use crate::api::handlers::audit::list_audit_logs_handler;
+
 use crate::api::handlers::guest::{
     add_guest_preference_handler, create_guest_handler, get_guest_handler,
     get_guest_preferences_handler, update_guest_handler,
@@ -71,6 +73,11 @@ use crate::api::state::AppState;
 pub fn create_router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
+        // audit
+        .route(
+            "/audit-logs/:aggregate_type/:aggregate_id",
+            get(list_audit_logs_handler),
+        )
         // reservation
         .route("/reservations", post(create_reservation_handler))
         .route(

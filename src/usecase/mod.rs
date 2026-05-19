@@ -1,3 +1,4 @@
+pub mod audit;
 pub mod billing;
 pub mod guest;
 pub mod housekeeping;

@@ -39,6 +39,7 @@ use crate::{
         reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
         reservation_repository::SqliteReservationRepository,
     },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
     usecase::timeline::command::record_event::record_event,
 };
 
@@ -131,6 +132,10 @@ pub async fn execute(
             SqliteReservationDailyRevenueAllocationRepository::save(&mut tx, allocation).await?;
         }
 
+        let after_json = reservation_json(&reservation).to_string();
+        let changed_fields_json =
+            serde_json::to_string(&created_changed_fields(&reservation)).map_err(infra)?;
+
         let change_event = OperationChangeEvent {
             id: Uuid::new_v4(),
             operation_id: context.operation_id,
@@ -141,13 +146,27 @@ pub async fn execute(
             actor_id: context.actor_id.clone(),
             source: context.source,
             before_json: None,
-            after_json: reservation_json(&reservation).to_string(),
-            changed_fields_json: serde_json::to_string(&created_changed_fields(&reservation))
-                .map_err(infra)?,
+            after_json: after_json.clone(),
+            changed_fields_json: changed_fields_json.clone(),
             occurred_at: chrono::Utc::now(),
         };
 
         SqliteOperationChangeEventRepository::save(&mut tx, &change_event).await?;
+
+        record_audit_log(
+            &mut tx,
+            &context,
+            RecordAuditLogInput {
+                aggregate_type: "reservation".to_string(),
+                aggregate_id: reservation.id,
+                action: "reservation.create".to_string(),
+                before_json: None,
+                after_json,
+                changed_fields_json,
+                reason: None,
+            },
+        )
+        .await?;
 
         refresh_projection_chain(
             &mut tx,

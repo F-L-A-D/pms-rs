@@ -16,6 +16,8 @@ pub mod guest_timeline_event_repository;
 pub mod invoice_repository;
 #[path = "operation/operation_change_event_repository.rs"]
 pub mod operation_change_event_repository;
+#[path = "operation/operational_audit_log_repository.rs"]
+pub mod operational_audit_log_repository;
 #[path = "rate_plan/package_definition_repository.rs"]
 pub mod package_definition_repository;
 #[path = "billing/payment_allocation_repository.rs"]

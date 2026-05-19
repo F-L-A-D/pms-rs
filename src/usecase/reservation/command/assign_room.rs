@@ -63,7 +63,7 @@ pub async fn execute(db: &Db, reservation_id: Uuid, room_id: Uuid) -> AppResult<
 
         reservation.room_id = Some(room_id);
 
-        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+        SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
 
         Ok(())
     }

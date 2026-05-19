@@ -28,6 +28,8 @@ pub mod receivable_repository;
 pub mod reservation_daily_revenue_allocation_repository;
 #[path = "reservation/reservation_daily_stay_detail_repository.rs"]
 pub mod reservation_daily_stay_detail_repository;
+#[path = "reservation/reservation_edit_session_repository.rs"]
+pub mod reservation_edit_session_repository;
 #[path = "reservation/reservation_guest_relation_repository.rs"]
 pub mod reservation_guest_relation_repository;
 #[path = "reservation/reservation_package_breakdown_repository.rs"]

@@ -14,12 +14,20 @@ use crate::{
     api::{
         dto::{
             input::reservation::{
-                CreateReservationInput, ModifyReservationInput, ReservationDailyDetailInput,
+                CloseReservationEditSessionInput, CreateReservationInput, ModifyReservationInput,
+                OpenReservationEditSessionInput, ReservationDailyDetailInput,
                 ReservationDailyRevenueAllocationInput, ReservationPackageBreakdownInput,
                 ReservationParticipantInput,
             },
-            request::reservation::{CreateReservationRequest, ModifyReservationRequest},
-            response::reservation::{ReservationParticipantResponse, ReservationResponse},
+            request::reservation::{
+                CloseReservationEditSessionRequest, CreateReservationRequest,
+                ModifyReservationRequest, OpenReservationEditSessionRequest,
+            },
+            response::reservation::{
+                OpenReservationEditSessionResponse, ReservationEditSessionResponse,
+                ReservationEditSessionWarningResponse, ReservationParticipantResponse,
+                ReservationResponse,
+            },
         },
         error::{map_app_error, ApiError},
         state::AppState,
@@ -28,12 +36,13 @@ use crate::{
         entity::reservation::Reservation,
         semantic::{
             operation_context::OperationContext, reservation_booking::ReservationBookingChannel,
+            reservation_edit_session::ReservationEditSession,
         },
     },
     usecase::reservation::{
         command::{
-            cancel_reservation::cancel_reservation, create_reservation, mark_no_show,
-            modify_reservation, reinstate_reservation,
+            cancel_reservation::cancel_reservation, close_edit_session, create_reservation,
+            mark_no_show, modify_reservation, open_edit_session, reinstate_reservation,
         },
         detail::get_reservation::get_reservation,
         search::get_guest_reservations::get_guest_reservations,
@@ -274,6 +283,8 @@ pub async fn modify_reservation_handler(
         .transpose()?;
 
     let input = ModifyReservationInput {
+        expected_version: req.expected_version,
+
         check_in,
         check_out,
 
@@ -294,6 +305,65 @@ pub async fn modify_reservation_handler(
     .map_err(map_app_error)?;
 
     Ok(Json(reservation_to_response(updated)))
+}
+
+pub async fn open_reservation_edit_session_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(req): Json<OpenReservationEditSessionRequest>,
+) -> Result<Json<OpenReservationEditSessionResponse>, ApiError> {
+    let reservation_id =
+        Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let result = open_edit_session::execute(
+        &state.db,
+        OpenReservationEditSessionInput {
+            reservation_id,
+            actor_id: req.actor_id,
+            actor_label: req.actor_label,
+            lease_minutes: req.lease_minutes,
+        },
+    )
+    .await
+    .map_err(map_app_error)?;
+
+    let warning = if result.active_other_sessions.is_empty() {
+        None
+    } else {
+        Some(ReservationEditSessionWarningResponse {
+            active_sessions: result
+                .active_other_sessions
+                .into_iter()
+                .map(reservation_edit_session_to_response)
+                .collect(),
+        })
+    };
+
+    Ok(Json(OpenReservationEditSessionResponse {
+        session: reservation_edit_session_to_response(result.session),
+        warning,
+    }))
+}
+
+pub async fn close_reservation_edit_session_handler(
+    State(state): State<AppState>,
+    Path(session_id): Path<String>,
+    Json(req): Json<CloseReservationEditSessionRequest>,
+) -> Result<StatusCode, ApiError> {
+    let session_id = Uuid::parse_str(&session_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    close_edit_session::execute(
+        &state.db,
+        CloseReservationEditSessionInput {
+            session_id,
+            actor_id: req.actor_id,
+        },
+    )
+    .await
+    .map_err(map_app_error)?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn cancel_reservation_handler(
@@ -374,6 +444,19 @@ pub async fn get_guest_reservations_handler(
     ))
 }
 
+fn reservation_edit_session_to_response(
+    session: ReservationEditSession,
+) -> ReservationEditSessionResponse {
+    ReservationEditSessionResponse {
+        id: session.id,
+        reservation_id: session.reservation_id,
+        actor_id: session.actor_id,
+        actor_label: session.actor_label,
+        opened_at: session.opened_at,
+        expires_at: session.expires_at,
+    }
+}
+
 fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
     ReservationResponse {
         id: reservation.id,
@@ -395,6 +478,8 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
         booking_channel: reservation.booking_channel,
 
         plan_code: reservation.plan_code,
+
+        version: reservation.version,
 
         package_breakdowns: reservation
             .package_breakdowns

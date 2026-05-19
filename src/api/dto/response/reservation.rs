@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 
 use uuid::Uuid;
 
@@ -24,6 +24,7 @@ pub struct ReservationResponse {
     pub room_id: Option<Uuid>,
     pub booking_channel: ReservationBookingChannel,
     pub plan_code: Option<String>,
+    pub version: i64,
     pub package_breakdowns: Vec<ReservationPackageBreakdownResponse>,
     pub daily_details: Vec<ReservationDailyDetailResponse>,
     pub daily_revenue_allocations: Vec<ReservationDailyRevenueAllocationResponse>,
@@ -75,4 +76,25 @@ pub struct ReservationSearchResponse {
     pub booking_channel: ReservationBookingChannel,
     pub reservation_status: ReservationStatus,
     pub stay_status: Option<StayStatus>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationEditSessionResponse {
+    pub id: Uuid,
+    pub reservation_id: Uuid,
+    pub actor_id: String,
+    pub actor_label: Option<String>,
+    pub opened_at: DateTime<Utc>,
+    pub expires_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationEditSessionWarningResponse {
+    pub active_sessions: Vec<ReservationEditSessionResponse>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct OpenReservationEditSessionResponse {
+    pub session: ReservationEditSessionResponse,
+    pub warning: Option<ReservationEditSessionWarningResponse>,
 }

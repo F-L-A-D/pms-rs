@@ -50,7 +50,7 @@ pub async fn cancel_reservation(
 
         let primary_guest_id = reservation.primary_participant().map(|p| p.guest_id);
 
-        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+        SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
 
         let change_event = OperationChangeEvent {
             id: Uuid::new_v4(),

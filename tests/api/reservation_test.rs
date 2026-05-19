@@ -67,6 +67,158 @@ async fn should_roundtrip_reservation() {
 }
 
 #[tokio::test]
+async fn should_reject_stale_reservation_update_and_allow_retry_with_latest_version() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+
+    assert_eq!(created.version, 1);
+
+    let staff_a_view = get(&app.app, &format!("/reservations/{}", created.id)).await;
+    let staff_b_view = get(&app.app, &format!("/reservations/{}", created.id)).await;
+
+    assert_eq!(staff_a_view.status(), StatusCode::OK);
+    assert_eq!(staff_b_view.status(), StatusCode::OK);
+
+    let staff_a_reservation: ReservationResponse =
+        serde_json::from_value(response_json(staff_a_view).await).unwrap();
+    let staff_b_reservation: ReservationResponse =
+        serde_json::from_value(response_json(staff_b_view).await).unwrap();
+
+    assert_eq!(staff_a_reservation.version, staff_b_reservation.version);
+
+    let staff_a_response = patch_json(
+        &app.app,
+        &format!("/reservations/{}", created.id),
+        &serde_json::json!({
+            "expected_version": staff_a_reservation.version,
+            "check_out": (created.check_out + Duration::days(1)).to_string()
+        }),
+    )
+    .await;
+
+    assert_eq!(staff_a_response.status(), StatusCode::OK);
+
+    let staff_a_updated: ReservationResponse =
+        serde_json::from_value(response_json(staff_a_response).await).unwrap();
+
+    assert_eq!(staff_a_updated.version, staff_a_reservation.version + 1);
+
+    let mut tx = app.db.begin_tx().await;
+
+    let event_count_after_staff_a = SqliteOperationChangeEventRepository::list_all(&mut tx)
+        .await
+        .unwrap()
+        .into_iter()
+        .filter(|event| event.aggregate_id == created.id)
+        .count();
+
+    let _ = tx.rollback().await;
+
+    let stale_response = patch_json(
+        &app.app,
+        &format!("/reservations/{}", created.id),
+        &serde_json::json!({
+            "expected_version": staff_b_reservation.version,
+            "room_class": "deluxe"
+        }),
+    )
+    .await;
+
+    assert_eq!(stale_response.status(), StatusCode::CONFLICT);
+
+    let mut tx = app.db.begin_tx().await;
+
+    let event_count_after_stale = SqliteOperationChangeEventRepository::list_all(&mut tx)
+        .await
+        .unwrap()
+        .into_iter()
+        .filter(|event| event.aggregate_id == created.id)
+        .count();
+
+    let _ = tx.rollback().await;
+
+    assert_eq!(event_count_after_stale, event_count_after_staff_a);
+
+    let latest_response = get(&app.app, &format!("/reservations/{}", created.id)).await;
+
+    assert_eq!(latest_response.status(), StatusCode::OK);
+
+    let latest: ReservationResponse =
+        serde_json::from_value(response_json(latest_response).await).unwrap();
+
+    assert_eq!(latest.version, staff_a_updated.version);
+    assert_eq!(latest.check_out, created.check_out + Duration::days(1));
+
+    let retry_response = patch_json(
+        &app.app,
+        &format!("/reservations/{}", created.id),
+        &serde_json::json!({
+            "expected_version": latest.version,
+            "room_class": "deluxe"
+        }),
+    )
+    .await;
+
+    assert_eq!(retry_response.status(), StatusCode::OK);
+
+    let retry_updated: ReservationResponse =
+        serde_json::from_value(response_json(retry_response).await).unwrap();
+
+    assert_eq!(retry_updated.version, latest.version + 1);
+    assert_eq!(retry_updated.check_out, latest.check_out);
+    assert_eq!(retry_updated.room_class, "deluxe");
+}
+
+#[tokio::test]
+async fn should_warn_when_reservation_is_already_open_for_editing_without_read_lock() {
+    let app = spawn_app().await;
+
+    let created = create_reservation(&app.app).await;
+
+    let read_response = get(&app.app, &format!("/reservations/{}", created.id)).await;
+
+    assert_eq!(read_response.status(), StatusCode::OK);
+
+    let staff_a_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/edit-sessions", created.id),
+        &serde_json::json!({
+            "actor_id": "staff-a",
+            "actor_label": "Staff A"
+        }),
+    )
+    .await;
+
+    assert_eq!(staff_a_response.status(), StatusCode::OK);
+
+    let staff_a_body = response_json(staff_a_response).await;
+
+    assert!(staff_a_body["warning"].is_null());
+
+    let staff_b_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/edit-sessions", created.id),
+        &serde_json::json!({
+            "actor_id": "staff-b",
+            "actor_label": "Staff B"
+        }),
+    )
+    .await;
+
+    assert_eq!(staff_b_response.status(), StatusCode::OK);
+
+    let staff_b_body = response_json(staff_b_response).await;
+
+    let active_sessions = staff_b_body["warning"]["active_sessions"]
+        .as_array()
+        .unwrap();
+
+    assert_eq!(active_sessions.len(), 1);
+    assert_eq!(active_sessions[0]["actor_id"], "staff-a");
+}
+
+#[tokio::test]
 async fn should_reject_invalid_stay_range() {
     let app = spawn_app().await;
 

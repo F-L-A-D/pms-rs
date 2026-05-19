@@ -63,7 +63,7 @@ pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<
         reservation.reservation_status = ReservationStatus::NoShow;
         reservation.stay_status = Some(StayStatus::NoShow);
 
-        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+        SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
 
         let change_event = OperationChangeEvent {
             id: Uuid::new_v4(),

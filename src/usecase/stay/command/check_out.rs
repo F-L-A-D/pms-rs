@@ -123,7 +123,7 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
 
         reservation.stay_status = Some(StayStatus::CheckedOut);
 
-        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+        SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
 
         if let Some(guest_id) = reservation.primary_participant().map(|p| p.guest_id) {
             record_event(

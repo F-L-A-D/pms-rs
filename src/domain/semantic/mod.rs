@@ -6,6 +6,7 @@ pub mod operation_change_event;
 pub mod operation_context;
 pub mod receivable_state;
 pub mod reservation_booking;
+pub mod reservation_edit_session;
 pub mod reservation_guest_relation;
 pub mod reservation_semantics;
 pub mod reservation_transition;

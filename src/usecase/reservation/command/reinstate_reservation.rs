@@ -58,7 +58,7 @@ pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<
         reservation.reservation_status = ReservationStatus::Confirmed;
         reservation.stay_status = Some(StayStatus::Confirmed);
 
-        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+        SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
 
         let change_event = OperationChangeEvent {
             id: Uuid::new_v4(),

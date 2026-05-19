@@ -137,7 +137,7 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
 
         reservation.stay_status = Some(StayStatus::CheckedIn);
 
-        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+        SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
 
         let existing_folios =
             SqliteFolioRepository::list_by_reservation_id(&mut tx, reservation.id).await?;

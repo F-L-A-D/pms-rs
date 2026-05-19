@@ -124,7 +124,7 @@ pub async fn execute(
 
         reservation.room_id = Some(new_room_id);
 
-        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+        SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
 
         SqliteReservationTransitionRepository::save(
             &mut tx,

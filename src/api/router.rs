@@ -43,8 +43,9 @@ use crate::api::handlers::package::{
 };
 
 use crate::api::handlers::reservation::{
-    cancel_reservation_handler, create_reservation_handler, get_guest_reservations_handler,
-    get_reservation_handler, mark_no_show_handler, modify_reservation_handler,
+    cancel_reservation_handler, close_reservation_edit_session_handler, create_reservation_handler,
+    get_guest_reservations_handler, get_reservation_handler, mark_no_show_handler,
+    modify_reservation_handler, open_reservation_edit_session_handler,
     reinstate_reservation_handler,
 };
 
@@ -86,6 +87,14 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/reservations/:id/reinstate",
             post(reinstate_reservation_handler),
+        )
+        .route(
+            "/reservations/:id/edit-sessions",
+            post(open_reservation_edit_session_handler),
+        )
+        .route(
+            "/reservation-edit-sessions/:id",
+            delete(close_reservation_edit_session_handler),
         )
         .route(
             "/reservations/:id/folios",

@@ -62,7 +62,20 @@ pub struct ReservationParticipantRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct OpenReservationEditSessionRequest {
+    pub actor_id: String,
+    pub actor_label: Option<String>,
+    pub lease_minutes: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CloseReservationEditSessionRequest {
+    pub actor_id: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ModifyReservationRequest {
+    pub expected_version: Option<i64>,
     pub check_in: Option<String>,
     pub check_out: Option<String>,
     pub room_class: Option<String>,

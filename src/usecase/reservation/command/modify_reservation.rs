@@ -28,7 +28,7 @@ use crate::{
             detect_reservation_timeline_events, detect_reservation_transition_changes,
         },
     },
-    error::app_error::{infra, not_found, validation, AppResult},
+    error::app_error::{conflict, infra, not_found, validation, AppResult},
     projection::{
         invalidation::{
             projection_invalidation::{ProjectionInvalidation, ProjectionRefreshTarget},
@@ -67,6 +67,16 @@ pub async fn execute(
             .ok_or(not_found("reservation not found"))?;
 
         let before = reservation.clone();
+
+        if let Some(expected_version) = input.expected_version {
+            if expected_version != before.version {
+                return Err(conflict(format!(
+                    "reservation version conflict: expected {expected_version}, current {}",
+                    before.version
+                )));
+            }
+        }
+
         let stay_shape_changed =
             input.check_in.is_some() || input.check_out.is_some() || input.room_class.is_some();
         let package_breakdowns_changed = input.package_breakdowns.is_some();
@@ -120,7 +130,20 @@ pub async fn execute(
                 build_participants(&mut tx, reservation.id, participant_inputs).await?;
         }
 
-        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+        match input.expected_version {
+            Some(expected_version) => {
+                SqliteReservationRepository::modify_with_expected_version(
+                    &mut tx,
+                    &mut reservation,
+                    expected_version,
+                )
+                .await?;
+            }
+
+            None => {
+                SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
+            }
+        }
 
         SqliteReservationPackageBreakdownRepository::delete_by_reservation_id(
             &mut tx,
@@ -601,6 +624,7 @@ fn reservation_json(reservation: &Reservation) -> serde_json::Value {
         "room_id": reservation.room_id,
         "booking_channel": reservation.booking_channel,
         "plan_code": reservation.plan_code,
+        "version": reservation.version,
     })
 }
 

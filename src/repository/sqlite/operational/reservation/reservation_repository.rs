@@ -7,7 +7,7 @@ use crate::{
         entity::reservation::{Reservation, ReservationStatus, StayStatus},
         semantic::reservation_booking::ReservationBookingChannel,
     },
-    error::app_error::{infra, AppResult},
+    error::app_error::{conflict, infra, AppResult},
     repository::sqlite::operational::{
         reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
         reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
@@ -36,6 +36,7 @@ impl SqliteReservationRepository {
                 room_id,
                 booking_channel,
                 plan_code,
+                version,
                 created_at
             )
             VALUES (
@@ -49,7 +50,8 @@ impl SqliteReservationRepository {
                 ?8,
                 ?9,
                 ?10,
-                ?11
+                ?11,
+                ?12
             )
             "#,
         )
@@ -63,6 +65,7 @@ impl SqliteReservationRepository {
         .bind(reservation.room_id.map(|id| id.to_string()))
         .bind(reservation.booking_channel.to_snake())
         .bind(&reservation.plan_code)
+        .bind(reservation.version)
         .bind(reservation.created_at.to_rfc3339())
         .execute(&mut **tx)
         .await
@@ -73,9 +76,19 @@ impl SqliteReservationRepository {
 
     pub async fn modify(
         tx: &mut Transaction<'_, Sqlite>,
-        reservation: &Reservation,
+        reservation: &mut Reservation,
     ) -> AppResult<()> {
-        sqlx::query(
+        Self::modify_with_expected_version(tx, reservation, reservation.version).await
+    }
+
+    pub async fn modify_with_expected_version(
+        tx: &mut Transaction<'_, Sqlite>,
+        reservation: &mut Reservation,
+        expected_version: i64,
+    ) -> AppResult<()> {
+        let next_version = expected_version + 1;
+
+        let result = sqlx::query(
             r#"
             UPDATE reservations
             SET
@@ -87,8 +100,10 @@ impl SqliteReservationRepository {
                 room_class = ?6,
                 room_id = ?7,
                 booking_channel = ?8,
-                plan_code = ?9
-            WHERE id = ?10
+                plan_code = ?9,
+                version = ?10
+            WHERE id = ?11
+              AND version = ?12
             "#,
         )
         .bind(&reservation.external_id)
@@ -100,10 +115,20 @@ impl SqliteReservationRepository {
         .bind(reservation.room_id.map(|id| id.to_string()))
         .bind(reservation.booking_channel.to_snake())
         .bind(&reservation.plan_code)
+        .bind(next_version)
         .bind(reservation.id.to_string())
+        .bind(expected_version)
         .execute(&mut **tx)
         .await
         .map_err(infra)?;
+
+        if result.rows_affected() == 0 {
+            return Err(conflict(format!(
+                "reservation version conflict: expected {expected_version}"
+            )));
+        }
+
+        reservation.version = next_version;
 
         Ok(())
     }
@@ -125,6 +150,7 @@ impl SqliteReservationRepository {
                     room_id,
                     booking_channel,
                     plan_code,
+                    version,
                     created_at
                 FROM reservations
                 WHERE id = ?1
@@ -159,6 +185,7 @@ impl SqliteReservationRepository {
                     r.room_id,
                     r.booking_channel,
                     r.plan_code,
+                    r.version,
                     r.created_at
                 FROM reservations r
                 INNER JOIN reservation_guest_relations rel
@@ -183,7 +210,19 @@ impl SqliteReservationRepository {
     pub async fn find_all(tx: &mut Transaction<'_, Sqlite>) -> AppResult<Vec<Reservation>> {
         let rows = sqlx::query(
             r#"
-                SELECT id
+                SELECT
+                    id,
+                    external_id,
+                    check_in,
+                    check_out,
+                    reservation_status,
+                    stay_status,
+                    room_class,
+                    room_id,
+                    booking_channel,
+                    plan_code,
+                    version,
+                    created_at
                 FROM reservations
                 ORDER BY check_in DESC
                 "#,
@@ -268,6 +307,8 @@ impl SqliteReservationRepository {
             .ok_or_else(|| infra("invalid booking channel"))?,
 
             plan_code: row.get("plan_code"),
+
+            version: row.get("version"),
 
             package_breakdowns,
 

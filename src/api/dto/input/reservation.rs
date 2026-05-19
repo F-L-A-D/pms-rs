@@ -50,7 +50,20 @@ pub struct ReservationParticipantInput {
     pub relation_type: ReservationGuestRelationType,
 }
 
+pub struct OpenReservationEditSessionInput {
+    pub reservation_id: Uuid,
+    pub actor_id: String,
+    pub actor_label: Option<String>,
+    pub lease_minutes: Option<i64>,
+}
+
+pub struct CloseReservationEditSessionInput {
+    pub session_id: Uuid,
+    pub actor_id: String,
+}
+
 pub struct ModifyReservationInput {
+    pub expected_version: Option<i64>,
     pub check_in: Option<NaiveDate>,
     pub check_out: Option<NaiveDate>,
     pub room_class: Option<String>,

@@ -7,8 +7,9 @@ use crate::{
         semantic::{
             operation_change_event::OperationChangeEvent,
             operational_audit_log::OperationalAuditLog,
+            reservation_edit_session::ReservationEditSession,
             reservation_guest_relation::ReservationGuestRelationType,
-            reservation_note::ReservationNote,
+            reservation_note::ReservationNote, reservation_transition::ReservationTransition,
         },
     },
     error::app_error::AppResult,
@@ -20,10 +21,12 @@ use crate::{
         },
         model::operation_semantic_signal::OperationSemanticSignal,
     },
+    repository::sqlite::behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
     repository::sqlite::operational::{
         guest_repository::SqliteGuestRepository,
         operation_change_event_repository::SqliteOperationChangeEventRepository,
         operational_audit_log_repository::SqliteOperationalAuditLogRepository,
+        reservation_edit_session_repository::SqliteReservationEditSessionRepository,
         reservation_note_repository::SqliteReservationNoteRepository,
         reservation_repository::SqliteReservationRepository, room_repository::SqliteRoomRepository,
     },
@@ -37,6 +40,8 @@ pub struct ReservationDetail {
     pub notes: Vec<ReservationNote>,
     pub audit_logs: Vec<OperationalAuditLog>,
     pub operation_events: Vec<ReservationDetailOperationEvent>,
+    pub active_edit_sessions: Vec<ReservationEditSession>,
+    pub room_history: Vec<ReservationTransition>,
 }
 
 #[derive(Debug)]
@@ -107,6 +112,21 @@ pub async fn get_reservation_detail(
     let notes =
         SqliteReservationNoteRepository::list_by_reservation_id(&mut tx, reservation_id).await?;
 
+    let active_edit_sessions =
+        SqliteReservationEditSessionRepository::list_active_by_reservation_id(
+            &mut tx,
+            reservation_id,
+            chrono::Utc::now(),
+        )
+        .await?;
+
+    let room_history =
+        SqliteReservationTransitionRepository::find_by_reservation_id(&mut tx, reservation_id)
+            .await?
+            .into_iter()
+            .filter(|transition| transition.field_name == "room_id")
+            .collect();
+
     let audit_logs = SqliteOperationalAuditLogRepository::list_by_aggregate(
         &mut tx,
         "reservation",
@@ -144,5 +164,7 @@ pub async fn get_reservation_detail(
         notes,
         audit_logs,
         operation_events,
+        active_edit_sessions,
+        room_history,
     }))
 }

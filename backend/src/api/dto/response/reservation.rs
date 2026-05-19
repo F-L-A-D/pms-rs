@@ -17,8 +17,10 @@ use crate::{
             operation_context::{OperationActor, OperationSource},
             operational_audit_log::OperationalAuditLog,
             reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
+            reservation_edit_session::ReservationEditSession,
             reservation_guest_relation::ReservationGuestRelationType,
             reservation_note::{ReservationNote, ReservationNoteKind},
+            reservation_transition::{ReservationTransition, ReservationTransitionType},
         },
     },
     usecase::reservation::detail::get_reservation::ReservationDetail,
@@ -48,6 +50,8 @@ pub struct ReservationResponse {
     pub notes: Vec<ReservationNoteResponse>,
     pub audit_logs: Vec<ReservationAuditLogResponse>,
     pub operation_events: Vec<ReservationOperationEventResponse>,
+    pub active_edit_sessions: Vec<ReservationEditSessionResponse>,
+    pub room_history: Vec<ReservationRoomHistoryResponse>,
     pub operational_visibility: ReservationOperationalVisibilityResponse,
 }
 
@@ -264,6 +268,35 @@ impl ReservationOperationEventResponse {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationRoomHistoryResponse {
+    pub id: Uuid,
+    pub transition_type: ReservationTransitionType,
+    pub before_room_id: Option<Uuid>,
+    pub after_room_id: Option<Uuid>,
+    pub occurred_at: DateTime<Utc>,
+}
+
+impl From<ReservationTransition> for ReservationRoomHistoryResponse {
+    fn from(transition: ReservationTransition) -> Self {
+        Self {
+            id: transition.id,
+            transition_type: transition.transition_type,
+            before_room_id: parse_optional_uuid(&transition.before_value),
+            after_room_id: parse_optional_uuid(&transition.after_value),
+            occurred_at: transition.occurred_at,
+        }
+    }
+}
+
+fn parse_optional_uuid(value: &str) -> Option<Uuid> {
+    if value.trim().is_empty() {
+        return None;
+    }
+
+    Uuid::parse_str(value).ok()
+}
+
 impl From<ReservationDetail> for ReservationResponse {
     fn from(detail: ReservationDetail) -> Self {
         let reservation = detail.reservation;
@@ -394,6 +427,18 @@ impl From<ReservationDetail> for ReservationResponse {
                 })
                 .collect(),
 
+            active_edit_sessions: detail
+                .active_edit_sessions
+                .into_iter()
+                .map(reservation_edit_session_to_response)
+                .collect(),
+
+            room_history: detail
+                .room_history
+                .into_iter()
+                .map(ReservationRoomHistoryResponse::from)
+                .collect(),
+
             operational_visibility: ReservationOperationalVisibilityResponse {
                 internal_note: None,
                 audit_trail_available: true,
@@ -438,4 +483,17 @@ pub struct ReservationEditSessionWarningResponse {
 pub struct OpenReservationEditSessionResponse {
     pub session: ReservationEditSessionResponse,
     pub warning: Option<ReservationEditSessionWarningResponse>,
+}
+
+fn reservation_edit_session_to_response(
+    session: ReservationEditSession,
+) -> ReservationEditSessionResponse {
+    ReservationEditSessionResponse {
+        id: session.id,
+        reservation_id: session.reservation_id,
+        actor_id: session.actor_id,
+        actor_label: session.actor_label,
+        opened_at: session.opened_at,
+        expires_at: session.expires_at,
+    }
 }

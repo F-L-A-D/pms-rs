@@ -617,6 +617,10 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
 
         operation_events: vec![],
 
+        active_edit_sessions: vec![],
+
+        room_history: vec![],
+
         operational_visibility:
             crate::api::dto::response::reservation::ReservationOperationalVisibilityResponse {
                 internal_note: None,

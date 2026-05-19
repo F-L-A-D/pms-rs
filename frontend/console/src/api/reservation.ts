@@ -139,6 +139,23 @@ export type ReservationOperationEvent = {
   semantic_signal: OperationSemanticSignal;
 };
 
+export type ReservationEditSession = {
+  id: string;
+  reservation_id: string;
+  actor_id: string;
+  actor_label: string | null;
+  opened_at: string;
+  expires_at: string;
+};
+
+export type ReservationRoomHistory = {
+  id: string;
+  transition_type: string;
+  before_room_id: string | null;
+  after_room_id: string | null;
+  occurred_at: string;
+};
+
 export type OperationSemanticSignal = {
   event_id: string;
   change_pattern: ChangePattern | null;
@@ -193,6 +210,8 @@ export type ReservationDetail = {
   notes: ReservationNote[];
   audit_logs: ReservationAuditLog[];
   operation_events: ReservationOperationEvent[];
+  active_edit_sessions: ReservationEditSession[];
+  room_history: ReservationRoomHistory[];
   operational_visibility: ReservationOperationalVisibility;
 };
 

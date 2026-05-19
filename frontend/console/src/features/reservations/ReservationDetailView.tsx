@@ -283,6 +283,94 @@ export function ReservationDetailView({
 
       <section className="border border-slate-300 bg-white">
         <h3 className="border-b border-slate-300 px-4 py-2 text-sm font-semibold text-slate-950">
+          Conflict / Room History
+        </h3>
+
+        <div className="grid gap-5 p-4 lg:grid-cols-2">
+          <div className="overflow-x-auto">
+            <h4 className="mb-2 text-xs font-semibold uppercase text-slate-600">
+              Active edit sessions
+            </h4>
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-slate-100 text-xs uppercase text-slate-600">
+                <tr>
+                  <th className="border-b border-slate-300 px-3 py-2">Actor</th>
+                  <th className="border-b border-slate-300 px-3 py-2">Opened</th>
+                  <th className="border-b border-slate-300 px-3 py-2">Expires</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reservation.active_edit_sessions.length === 0 ? (
+                  <tr>
+                    <td className="px-3 py-3 text-slate-500" colSpan={3}>
+                      No active edit sessions
+                    </td>
+                  </tr>
+                ) : (
+                  reservation.active_edit_sessions.map((session) => (
+                    <tr key={session.id}>
+                      <td className="border-b border-slate-200 px-3 py-2">
+                        {session.actor_label ?? session.actor_id}
+                      </td>
+                      <td className="border-b border-slate-200 px-3 py-2 text-xs">
+                        {session.opened_at}
+                      </td>
+                      <td className="border-b border-slate-200 px-3 py-2 text-xs">
+                        {session.expires_at}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="overflow-x-auto">
+            <h4 className="mb-2 text-xs font-semibold uppercase text-slate-600">
+              Room history
+            </h4>
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-slate-100 text-xs uppercase text-slate-600">
+                <tr>
+                  <th className="border-b border-slate-300 px-3 py-2">Type</th>
+                  <th className="border-b border-slate-300 px-3 py-2">From</th>
+                  <th className="border-b border-slate-300 px-3 py-2">To</th>
+                  <th className="border-b border-slate-300 px-3 py-2">At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reservation.room_history.length === 0 ? (
+                  <tr>
+                    <td className="px-3 py-3 text-slate-500" colSpan={4}>
+                      No room history
+                    </td>
+                  </tr>
+                ) : (
+                  reservation.room_history.map((history) => (
+                    <tr key={history.id}>
+                      <td className="border-b border-slate-200 px-3 py-2">
+                        {history.transition_type}
+                      </td>
+                      <td className="border-b border-slate-200 px-3 py-2 font-mono text-xs">
+                        {valueOrDash(history.before_room_id)}
+                      </td>
+                      <td className="border-b border-slate-200 px-3 py-2 font-mono text-xs">
+                        {valueOrDash(history.after_room_id)}
+                      </td>
+                      <td className="border-b border-slate-200 px-3 py-2 text-xs">
+                        {history.occurred_at}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="border border-slate-300 bg-white">
+        <h3 className="border-b border-slate-300 px-4 py-2 text-sm font-semibold text-slate-950">
           Memo / Trace
         </h3>
 

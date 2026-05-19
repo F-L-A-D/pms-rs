@@ -78,6 +78,18 @@ async fn should_return_reservation_detail_visibility_fields() {
 
     assign_room(&app.app, reservation.id, room.id).await;
 
+    let edit_session_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/edit-sessions", reservation.id),
+        &serde_json::json!({
+            "actor_id": "front-1",
+            "actor_label": "Front 1"
+        }),
+    )
+    .await;
+
+    assert_eq!(edit_session_response.status(), StatusCode::OK);
+
     let response = get(&app.app, &format!("/reservations/{}", reservation.id)).await;
 
     assert_eq!(response.status(), StatusCode::OK);
@@ -99,6 +111,10 @@ async fn should_return_reservation_detail_visibility_fields() {
     let participant_guest = detail.participant_details[0].guest.as_ref().unwrap();
     assert_eq!(participant_guest.last_name, guest.last_name);
     assert_eq!(participant_guest.first_name, guest.first_name);
+    assert_eq!(detail.active_edit_sessions.len(), 1);
+    assert_eq!(detail.active_edit_sessions[0].actor_id, "front-1");
+    assert_eq!(detail.room_history.len(), 1);
+    assert_eq!(detail.room_history[0].after_room_id, Some(room.id));
 }
 
 #[tokio::test]

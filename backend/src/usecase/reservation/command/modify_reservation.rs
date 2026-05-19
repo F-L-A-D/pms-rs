@@ -19,7 +19,7 @@ use crate::{
         semantic::operation_context::OperationContext,
         semantic::reservation_booking::{
             ReservationDailyRevenueAllocation, ReservationDailyStayDetail,
-            ReservationPackageBreakdown,
+            ReservationPackageBreakdown, ReservationSleepSharingChild,
         },
         semantic::reservation_guest_relation::{
             ReservationGuestRelation, ReservationGuestRelationType,
@@ -530,6 +530,10 @@ fn daily_stay_detail_changed_fields(
                     format!("{base}.child_count"),
                     detail.child_count.to_string(),
                 ),
+                (
+                    format!("{base}.sleep_sharing_child_count"),
+                    detail.sleep_sharing_child_count.to_string(),
+                ),
             ]
         })
         .collect::<BTreeMap<_, _>>();
@@ -552,6 +556,10 @@ fn daily_stay_detail_changed_fields(
                 (
                     format!("{base}.child_count"),
                     detail.child_count.to_string(),
+                ),
+                (
+                    format!("{base}.sleep_sharing_child_count"),
+                    detail.sleep_sharing_child_count.to_string(),
                 ),
             ]
         })
@@ -759,8 +767,14 @@ fn build_daily_stay_details(
             )));
         }
 
-        if input.adult_count < 0 || input.child_count < 0 {
+        if input.adult_count < 0 || input.child_count < 0 || input.sleep_sharing_child_count < 0 {
             return Err(validation("daily detail guest counts must be non-negative"));
+        }
+
+        if input.sleep_sharing_children.len() as i64 > input.sleep_sharing_child_count {
+            return Err(validation(
+                "sleep sharing child details cannot exceed sleep sharing child count",
+            ));
         }
 
         details.push(ReservationDailyStayDetail {
@@ -770,6 +784,20 @@ fn build_daily_stay_details(
             plan_code: input.plan_code.clone(),
             adult_count: input.adult_count,
             child_count: input.child_count,
+            sleep_sharing_child_count: input.sleep_sharing_child_count,
+            sleep_sharing_children: input
+                .sleep_sharing_children
+                .iter()
+                .enumerate()
+                .map(|(index, child)| ReservationSleepSharingChild {
+                    reservation_id: reservation.id,
+                    service_date: input.service_date,
+                    display_order: index as i64,
+                    name: child.name.clone().and_then(normalize_optional_string),
+                    age: child.age,
+                    gender: child.gender.clone(),
+                })
+                .collect(),
         });
     }
 
@@ -878,8 +906,20 @@ fn build_legacy_daily_stay_details(reservation: &Reservation) -> Vec<Reservation
             plan_code: reservation.plan_code.clone(),
             adult_count: 1,
             child_count: 0,
+            sleep_sharing_child_count: 0,
+            sleep_sharing_children: vec![],
         })
         .collect()
+}
+
+fn normalize_optional_string(value: String) -> Option<String> {
+    let trimmed = value.trim().to_string();
+
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed)
+    }
 }
 
 fn build_legacy_daily_revenue_allocations(

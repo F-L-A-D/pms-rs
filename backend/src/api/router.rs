@@ -4,6 +4,8 @@ use axum::{
     Router,
 };
 
+use tower_http::cors::{Any, CorsLayer};
+
 use crate::api::handlers::billing::{
     allocate_receivable_payment::allocate_receivable_payment_handler,
     assign_billing_account::assign_billing_account_handler,
@@ -46,8 +48,8 @@ use crate::api::handlers::package::{
 
 use crate::api::handlers::reservation::{
     cancel_reservation_handler, close_reservation_edit_session_handler, create_reservation_handler,
-    get_guest_reservations_handler, get_reservation_handler, mark_no_show_handler,
-    modify_reservation_handler, open_reservation_edit_session_handler,
+    create_reservation_note_handler, get_guest_reservations_handler, get_reservation_handler,
+    mark_no_show_handler, modify_reservation_handler, open_reservation_edit_session_handler,
     reinstate_reservation_handler,
 };
 
@@ -71,6 +73,11 @@ use crate::api::handlers::timeline::get_guest_timelines_handler;
 use crate::api::state::AppState;
 
 pub fn create_router(state: AppState) -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     Router::new()
         .route("/health", get(health))
         // audit
@@ -98,6 +105,10 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/reservations/:id/edit-sessions",
             post(open_reservation_edit_session_handler),
+        )
+        .route(
+            "/reservations/:id/notes",
+            post(create_reservation_note_handler),
         )
         .route(
             "/reservation-edit-sessions/:id",
@@ -230,4 +241,5 @@ pub fn create_router(state: AppState) -> Router {
             get(list_billing_account_invoices_handler),
         )
         .with_state(state)
+        .layer(cors)
 }

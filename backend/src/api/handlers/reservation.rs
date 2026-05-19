@@ -14,19 +14,21 @@ use crate::{
     api::{
         dto::{
             input::reservation::{
-                CloseReservationEditSessionInput, CreateReservationInput, ModifyReservationInput,
+                CloseReservationEditSessionInput, CreateReservationInput,
+                CreateReservationNoteInput, ModifyReservationInput,
                 OpenReservationEditSessionInput, ReservationDailyDetailInput,
                 ReservationDailyRevenueAllocationInput, ReservationPackageBreakdownInput,
-                ReservationParticipantInput,
+                ReservationParticipantInput, ReservationSleepSharingChildInput,
             },
             request::reservation::{
-                CloseReservationEditSessionRequest, CreateReservationRequest,
-                ModifyReservationRequest, OpenReservationEditSessionRequest,
+                CloseReservationEditSessionRequest, CreateReservationNoteRequest,
+                CreateReservationRequest, ModifyReservationRequest,
+                OpenReservationEditSessionRequest,
             },
             response::reservation::{
                 OpenReservationEditSessionResponse, ReservationEditSessionResponse,
-                ReservationEditSessionWarningResponse, ReservationParticipantResponse,
-                ReservationResponse,
+                ReservationEditSessionWarningResponse, ReservationNoteResponse,
+                ReservationParticipantResponse, ReservationResponse,
             },
         },
         error::{map_app_error, ApiError},
@@ -42,9 +44,10 @@ use crate::{
     usecase::reservation::{
         command::{
             cancel_reservation::cancel_reservation, close_edit_session, create_reservation,
-            mark_no_show, modify_reservation, open_edit_session, reinstate_reservation,
+            create_reservation_note, mark_no_show, modify_reservation, open_edit_session,
+            reinstate_reservation,
         },
-        detail::get_reservation::get_reservation,
+        detail::get_reservation::get_reservation_detail,
         search::get_guest_reservations::get_guest_reservations,
     },
 };
@@ -121,6 +124,16 @@ pub async fn create_reservation_handler(
                 plan_code: detail.plan_code,
                 adult_count: detail.adult_count,
                 child_count: detail.child_count,
+                sleep_sharing_child_count: detail.sleep_sharing_child_count,
+                sleep_sharing_children: detail
+                    .sleep_sharing_children
+                    .into_iter()
+                    .map(|child| ReservationSleepSharingChildInput {
+                        name: child.name,
+                        age: child.age,
+                        gender: child.gender,
+                    })
+                    .collect(),
                 package_breakdowns,
             })
         })
@@ -230,6 +243,16 @@ pub async fn modify_reservation_handler(
                         plan_code: detail.plan_code,
                         adult_count: detail.adult_count,
                         child_count: detail.child_count,
+                        sleep_sharing_child_count: detail.sleep_sharing_child_count,
+                        sleep_sharing_children: detail
+                            .sleep_sharing_children
+                            .into_iter()
+                            .map(|child| ReservationSleepSharingChildInput {
+                                name: child.name,
+                                age: child.age,
+                                gender: child.gender,
+                            })
+                            .collect(),
                         package_breakdowns,
                     })
                 })
@@ -417,12 +440,12 @@ pub async fn get_reservation_handler(
     let reservation_id =
         Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let reservation = get_reservation(&state.db, reservation_id)
+    let reservation = get_reservation_detail(&state.db, reservation_id)
         .await
         .map_err(map_app_error)?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "reservation not found"))?;
 
-    Ok(Json(reservation_to_response(reservation)))
+    Ok(Json(ReservationResponse::from(reservation)))
 }
 
 pub async fn get_guest_reservations_handler(
@@ -441,6 +464,34 @@ pub async fn get_guest_reservations_handler(
             .into_iter()
             .map(reservation_to_response)
             .collect(),
+    ))
+}
+
+pub async fn create_reservation_note_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(req): Json<CreateReservationNoteRequest>,
+) -> Result<(StatusCode, Json<ReservationNoteResponse>), ApiError> {
+    let reservation_id =
+        Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let note = create_reservation_note::execute(
+        &state.db,
+        CreateReservationNoteInput {
+            reservation_id,
+            kind: req.kind,
+            department_code: req.department_code,
+            body: req.body,
+            actor_id: req.actor_id,
+        },
+        OperationContext::api_system(),
+    )
+    .await
+    .map_err(map_app_error)?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(ReservationNoteResponse::from(note)),
     ))
 }
 
@@ -481,6 +532,20 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
 
         version: reservation.version,
 
+        created_at: reservation.created_at,
+
+        operation_metadata:
+            crate::api::dto::response::reservation::ReservationOperationMetadataResponse {
+                version: reservation.version,
+                updated_at: None,
+            },
+
+        room_assignment:
+            crate::api::dto::response::reservation::ReservationRoomAssignmentResponse {
+                room_id: reservation.room_id,
+                room: None,
+            },
+
         package_breakdowns: reservation
             .package_breakdowns
             .into_iter()
@@ -503,6 +568,18 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
                     plan_code: detail.plan_code,
                     adult_count: detail.adult_count,
                     child_count: detail.child_count,
+                    sleep_sharing_child_count: detail.sleep_sharing_child_count,
+                    sleep_sharing_children: detail
+                        .sleep_sharing_children
+                        .into_iter()
+                        .map(|child| {
+                            crate::api::dto::response::reservation::ReservationSleepSharingChildResponse {
+                                name: child.name,
+                                age: child.age,
+                                gender: child.gender,
+                            }
+                        })
+                        .collect(),
                 },
             )
             .collect(),
@@ -531,5 +608,21 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
                 relation_type: p.relation_type,
             })
             .collect(),
+
+        participant_details: vec![],
+
+        notes: vec![],
+
+        audit_logs: vec![],
+
+        operation_events: vec![],
+
+        operational_visibility:
+            crate::api::dto::response::reservation::ReservationOperationalVisibilityResponse {
+                internal_note: None,
+                audit_trail_available: true,
+                timeline_available: true,
+                semantic_signal_available: false,
+            },
     }
 }

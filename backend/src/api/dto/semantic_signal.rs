@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use serde_json::Value;
 
@@ -11,7 +11,7 @@ use crate::projection::signal::model::{
     operation_semantic_signal::OperationSemanticSignal, semantic_activation::SemanticActivation,
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct OperationSemanticSignalResponse {
     pub event_id: Uuid,
     pub change_pattern: Option<ChangePatternResponse>,
@@ -19,7 +19,7 @@ pub struct OperationSemanticSignalResponse {
     pub semantic_activation: Option<SemanticActivationResponse>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ChangePatternResponse {
     pub pattern_type: String,
     pub operation_type: String,
@@ -28,7 +28,7 @@ pub struct ChangePatternResponse {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ConfidenceProfileResponse {
     pub confidence_score: String,
     pub reasons: Value,
@@ -36,7 +36,7 @@ pub struct ConfidenceProfileResponse {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SemanticActivationResponse {
     pub activation_key: String,
     pub activation_score: String,

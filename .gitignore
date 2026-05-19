@@ -1,14 +1,35 @@
+# rust
 target/
 **/target/
 **/*.rs.bk
 .env
 
+# vscode
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
 
+# db
 **/data/*.db
 **/data/*.db-sim
 **/data/*.db-wal
 
-frontend/**/node_modules/
+# frontend
+frontend/console/node_modules/
+frontend/console/dist/
+frontend/console/.vite/
+
+# env
+frontend/console/.env
+frontend/console/.env.local
+
+# logs
+frontend/console/npm-debug.log*
+frontend/console/yarn-debug.log*
+frontend/console/yarn-error.log*
+frontend/console/pnpm-debug.log*
+
+# editor
+frontend/console/.DS_Store
+
+frontend/console/dist

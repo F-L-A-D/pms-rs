@@ -9,6 +9,7 @@ pub mod receivable_state;
 pub mod reservation_booking;
 pub mod reservation_edit_session;
 pub mod reservation_guest_relation;
+pub mod reservation_note;
 pub mod reservation_semantics;
 pub mod reservation_transition;
 pub mod revenue_summary;

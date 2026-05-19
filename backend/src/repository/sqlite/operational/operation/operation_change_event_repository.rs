@@ -93,6 +93,29 @@ impl SqliteOperationChangeEventRepository {
         rows.iter().map(Self::row_to_event).collect()
     }
 
+    pub async fn list_by_aggregate(
+        tx: &mut Transaction<'_, Sqlite>,
+        aggregate_type: &str,
+        aggregate_id: Uuid,
+    ) -> AppResult<Vec<OperationChangeEvent>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT *
+            FROM operation_change_events
+            WHERE aggregate_type = ?1
+              AND aggregate_id = ?2
+            ORDER BY occurred_at DESC, id DESC
+            "#,
+        )
+        .bind(aggregate_type)
+        .bind(aggregate_id.to_string())
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(infra)?;
+
+        rows.iter().map(Self::row_to_event).collect()
+    }
+
     fn row_to_event(row: &sqlx::sqlite::SqliteRow) -> AppResult<OperationChangeEvent> {
         Ok(OperationChangeEvent {
             id: Uuid::parse_str(row.get::<String, _>("id").as_str()).map_err(infra)?,

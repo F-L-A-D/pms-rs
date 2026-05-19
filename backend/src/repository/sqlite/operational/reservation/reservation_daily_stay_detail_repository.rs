@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::{
     domain::semantic::reservation_booking::ReservationDailyStayDetail,
     error::app_error::{infra, AppResult},
+    repository::sqlite::operational::reservation_sleep_sharing_child_repository::SqliteReservationSleepSharingChildRepository,
 };
 
 pub struct SqliteReservationDailyStayDetailRepository;
@@ -24,9 +25,10 @@ impl SqliteReservationDailyStayDetailRepository {
                 room_class,
                 plan_code,
                 adult_count,
-                child_count
+                child_count,
+                sleep_sharing_child_count
             )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             "#,
         )
         .bind(detail.reservation_id.to_string())
@@ -35,9 +37,14 @@ impl SqliteReservationDailyStayDetailRepository {
         .bind(&detail.plan_code)
         .bind(detail.adult_count)
         .bind(detail.child_count)
+        .bind(detail.sleep_sharing_child_count)
         .execute(&mut **tx)
         .await
         .map_err(infra)?;
+
+        for child in &detail.sleep_sharing_children {
+            SqliteReservationSleepSharingChildRepository::save(tx, child).await?;
+        }
 
         Ok(())
     }
@@ -54,7 +61,8 @@ impl SqliteReservationDailyStayDetailRepository {
                 room_class,
                 plan_code,
                 adult_count,
-                child_count
+                child_count,
+                sleep_sharing_child_count
             FROM reservation_daily_stay_details
             WHERE reservation_id = ?1
             ORDER BY service_date
@@ -65,7 +73,25 @@ impl SqliteReservationDailyStayDetailRepository {
         .await
         .map_err(infra)?;
 
-        rows.iter().map(Self::row_to_detail).collect()
+        let children = SqliteReservationSleepSharingChildRepository::list_by_reservation_id(
+            tx,
+            reservation_id,
+        )
+        .await?;
+
+        rows.iter()
+            .map(|row| {
+                let mut detail = Self::row_to_detail(row)?;
+
+                detail.sleep_sharing_children = children
+                    .iter()
+                    .filter(|child| child.service_date == detail.service_date)
+                    .cloned()
+                    .collect();
+
+                Ok(detail)
+            })
+            .collect()
     }
 
     pub async fn delete_by_reservation_id(
@@ -77,6 +103,9 @@ impl SqliteReservationDailyStayDetailRepository {
             .execute(&mut **tx)
             .await
             .map_err(infra)?;
+
+        SqliteReservationSleepSharingChildRepository::delete_by_reservation_id(tx, reservation_id)
+            .await?;
 
         Ok(())
     }
@@ -93,6 +122,8 @@ impl SqliteReservationDailyStayDetailRepository {
             plan_code: row.get("plan_code"),
             adult_count: row.get("adult_count"),
             child_count: row.get("child_count"),
+            sleep_sharing_child_count: row.get("sleep_sharing_child_count"),
+            sleep_sharing_children: vec![],
         })
     }
 }

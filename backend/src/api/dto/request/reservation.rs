@@ -1,8 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-use crate::domain::semantic::{
-    reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
-    reservation_guest_relation::ReservationGuestRelationType,
+use crate::domain::{
+    entity::guest::Gender,
+    semantic::{
+        reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
+        reservation_guest_relation::ReservationGuestRelationType,
+        reservation_note::ReservationNoteKind,
+    },
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -38,7 +42,18 @@ pub struct ReservationDailyDetailRequest {
     #[serde(default)]
     pub child_count: i64,
     #[serde(default)]
+    pub sleep_sharing_child_count: i64,
+    #[serde(default)]
+    pub sleep_sharing_children: Vec<ReservationSleepSharingChildRequest>,
+    #[serde(default)]
     pub package_breakdowns: Vec<ReservationPackageBreakdownRequest>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReservationSleepSharingChildRequest {
+    pub name: Option<String>,
+    pub age: Option<i64>,
+    pub gender: Option<Gender>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -83,4 +98,12 @@ pub struct ModifyReservationRequest {
     pub daily_details: Option<Vec<ReservationDailyDetailRequest>>,
     pub daily_revenue_allocations: Option<Vec<ReservationDailyRevenueAllocationRequest>>,
     pub participants: Option<Vec<ReservationParticipantRequest>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateReservationNoteRequest {
+    pub kind: ReservationNoteKind,
+    pub department_code: Option<String>,
+    pub body: String,
+    pub actor_id: Option<String>,
 }

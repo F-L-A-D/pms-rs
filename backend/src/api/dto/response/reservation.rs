@@ -4,12 +4,24 @@ use chrono::{DateTime, NaiveDate, Utc};
 
 use uuid::Uuid;
 
-use crate::domain::{
-    entity::reservation::{ReservationStatus, StayStatus},
-    semantic::{
-        reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
-        reservation_guest_relation::ReservationGuestRelationType,
+use crate::{
+    api::dto::semantic_signal::OperationSemanticSignalResponse,
+    domain::{
+        entity::{
+            guest::{Gender, Guest},
+            reservation::{ReservationStatus, StayStatus},
+            room::Room,
+        },
+        semantic::{
+            operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
+            operation_context::{OperationActor, OperationSource},
+            operational_audit_log::OperationalAuditLog,
+            reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
+            reservation_guest_relation::ReservationGuestRelationType,
+            reservation_note::{ReservationNote, ReservationNoteKind},
+        },
     },
+    usecase::reservation::detail::get_reservation::ReservationDetail,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -25,10 +37,18 @@ pub struct ReservationResponse {
     pub booking_channel: ReservationBookingChannel,
     pub plan_code: Option<String>,
     pub version: i64,
+    pub created_at: DateTime<Utc>,
+    pub operation_metadata: ReservationOperationMetadataResponse,
+    pub room_assignment: ReservationRoomAssignmentResponse,
     pub package_breakdowns: Vec<ReservationPackageBreakdownResponse>,
     pub daily_details: Vec<ReservationDailyDetailResponse>,
     pub daily_revenue_allocations: Vec<ReservationDailyRevenueAllocationResponse>,
     pub participants: Vec<ReservationParticipantResponse>,
+    pub participant_details: Vec<ReservationParticipantDetailResponse>,
+    pub notes: Vec<ReservationNoteResponse>,
+    pub audit_logs: Vec<ReservationAuditLogResponse>,
+    pub operation_events: Vec<ReservationOperationEventResponse>,
+    pub operational_visibility: ReservationOperationalVisibilityResponse,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -45,6 +65,15 @@ pub struct ReservationDailyDetailResponse {
     pub plan_code: Option<String>,
     pub adult_count: i64,
     pub child_count: i64,
+    pub sleep_sharing_child_count: i64,
+    pub sleep_sharing_children: Vec<ReservationSleepSharingChildResponse>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationSleepSharingChildResponse {
+    pub name: Option<String>,
+    pub age: Option<i64>,
+    pub gender: Option<Gender>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -61,6 +90,318 @@ pub struct ReservationDailyRevenueAllocationResponse {
 pub struct ReservationParticipantResponse {
     pub guest_id: Uuid,
     pub relation_type: ReservationGuestRelationType,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationParticipantDetailResponse {
+    pub guest_id: Uuid,
+    pub relation_type: ReservationGuestRelationType,
+    pub guest: Option<ReservationGuestSummaryResponse>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationGuestSummaryResponse {
+    pub id: Uuid,
+    pub last_name: String,
+    pub first_name: String,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub nationality: Option<String>,
+    pub gender: Option<Gender>,
+    pub membership_code: Option<String>,
+}
+
+impl From<Guest> for ReservationGuestSummaryResponse {
+    fn from(guest: Guest) -> Self {
+        Self {
+            id: guest.id,
+            last_name: guest.profile.last_name,
+            first_name: guest.profile.first_name,
+            phone: guest.profile.phone,
+            email: guest.profile.email,
+            nationality: guest.profile.nationality,
+            gender: guest.profile.gender,
+            membership_code: guest.profile.membership_code,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationRoomAssignmentResponse {
+    pub room_id: Option<Uuid>,
+    pub room: Option<ReservationRoomSummaryResponse>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationRoomSummaryResponse {
+    pub id: Uuid,
+    pub room_no: String,
+    pub room_class: String,
+    pub is_physical: bool,
+    pub is_active: bool,
+}
+
+impl From<Room> for ReservationRoomSummaryResponse {
+    fn from(room: Room) -> Self {
+        Self {
+            id: room.id,
+            room_no: room.room_no,
+            room_class: room.room_class,
+            is_physical: room.is_physical,
+            is_active: room.is_active,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationOperationMetadataResponse {
+    pub version: i64,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationOperationalVisibilityResponse {
+    pub internal_note: Option<String>,
+    pub audit_trail_available: bool,
+    pub timeline_available: bool,
+    pub semantic_signal_available: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationNoteResponse {
+    pub id: Uuid,
+    pub reservation_id: Uuid,
+    pub kind: ReservationNoteKind,
+    pub department_code: Option<String>,
+    pub body: String,
+    pub actor_id: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<ReservationNote> for ReservationNoteResponse {
+    fn from(note: ReservationNote) -> Self {
+        Self {
+            id: note.id,
+            reservation_id: note.reservation_id,
+            kind: note.kind,
+            department_code: note.department_code,
+            body: note.body,
+            actor_id: note.actor_id,
+            created_at: note.created_at,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationAuditLogResponse {
+    pub id: Uuid,
+    pub operation_id: Uuid,
+    pub action: String,
+    pub actor: OperationActor,
+    pub actor_id: Option<String>,
+    pub source: OperationSource,
+    pub before_json: Option<String>,
+    pub after_json: String,
+    pub changed_fields_json: String,
+    pub reason: Option<String>,
+    pub occurred_at: DateTime<Utc>,
+}
+
+impl From<OperationalAuditLog> for ReservationAuditLogResponse {
+    fn from(log: OperationalAuditLog) -> Self {
+        Self {
+            id: log.id,
+            operation_id: log.operation_id,
+            action: log.action,
+            actor: log.actor,
+            actor_id: log.actor_id,
+            source: log.source,
+            before_json: log.before_json,
+            after_json: log.after_json,
+            changed_fields_json: log.changed_fields_json,
+            reason: log.reason,
+            occurred_at: log.occurred_at,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationOperationEventResponse {
+    pub id: Uuid,
+    pub operation_id: Uuid,
+    pub operation_type: OperationType,
+    pub actor: OperationActor,
+    pub actor_id: Option<String>,
+    pub source: OperationSource,
+    pub before_json: Option<String>,
+    pub after_json: String,
+    pub changed_fields: Vec<ChangedField>,
+    pub occurred_at: DateTime<Utc>,
+    pub semantic_signal: OperationSemanticSignalResponse,
+}
+
+impl ReservationOperationEventResponse {
+    fn from_event(
+        event: OperationChangeEvent,
+        semantic_signal: OperationSemanticSignalResponse,
+    ) -> Self {
+        let changed_fields =
+            serde_json::from_str(&event.changed_fields_json).unwrap_or_else(|_| vec![]);
+
+        Self {
+            id: event.id,
+            operation_id: event.operation_id,
+            operation_type: event.operation_type,
+            actor: event.actor,
+            actor_id: event.actor_id,
+            source: event.source,
+            before_json: event.before_json,
+            after_json: event.after_json,
+            changed_fields,
+            occurred_at: event.occurred_at,
+            semantic_signal,
+        }
+    }
+}
+
+impl From<ReservationDetail> for ReservationResponse {
+    fn from(detail: ReservationDetail) -> Self {
+        let reservation = detail.reservation;
+        let room_id = reservation.room_id;
+        let version = reservation.version;
+
+        Self {
+            id: reservation.id,
+
+            external_id: reservation.external_id,
+
+            check_in: reservation.check_in,
+
+            check_out: reservation.check_out,
+
+            reservation_status: reservation.reservation_status,
+
+            stay_status: reservation.stay_status,
+
+            room_class: reservation.room_class,
+
+            room_id,
+
+            booking_channel: reservation.booking_channel,
+
+            plan_code: reservation.plan_code,
+
+            version,
+
+            created_at: reservation.created_at,
+
+            operation_metadata: ReservationOperationMetadataResponse {
+                version,
+                updated_at: None,
+            },
+
+            room_assignment: ReservationRoomAssignmentResponse {
+                room_id,
+                room: detail
+                    .room_detail
+                    .map(|room_detail| ReservationRoomSummaryResponse::from(room_detail.room)),
+            },
+
+            package_breakdowns: reservation
+                .package_breakdowns
+                .into_iter()
+                .map(|breakdown| ReservationPackageBreakdownResponse {
+                    package_code: breakdown.package_code,
+                    revenue_category: breakdown.revenue_category,
+                    amount: breakdown.amount,
+                })
+                .collect(),
+
+            daily_details: reservation
+                .daily_stay_details
+                .into_iter()
+                .map(|detail| ReservationDailyDetailResponse {
+                    service_date: detail.service_date,
+                    room_class: detail.room_class,
+                    plan_code: detail.plan_code,
+                    adult_count: detail.adult_count,
+                    child_count: detail.child_count,
+                    sleep_sharing_child_count: detail.sleep_sharing_child_count,
+                    sleep_sharing_children: detail
+                        .sleep_sharing_children
+                        .into_iter()
+                        .map(|child| ReservationSleepSharingChildResponse {
+                            name: child.name,
+                            age: child.age,
+                            gender: child.gender,
+                        })
+                        .collect(),
+                })
+                .collect(),
+
+            daily_revenue_allocations: reservation
+                .daily_revenue_allocations
+                .into_iter()
+                .map(|allocation| ReservationDailyRevenueAllocationResponse {
+                    service_date: allocation.service_date,
+                    package_code: allocation.package_code,
+                    revenue_category: allocation.revenue_category,
+                    department_code: allocation.department_code,
+                    account_code: allocation.account_code,
+                    amount: allocation.amount,
+                })
+                .collect(),
+
+            participants: reservation
+                .participants
+                .into_iter()
+                .map(|p| ReservationParticipantResponse {
+                    guest_id: p.guest_id,
+                    relation_type: p.relation_type,
+                })
+                .collect(),
+
+            participant_details: detail
+                .participant_details
+                .into_iter()
+                .map(|participant| ReservationParticipantDetailResponse {
+                    guest_id: participant.guest_id,
+                    relation_type: participant.relation_type,
+                    guest: participant.guest.map(ReservationGuestSummaryResponse::from),
+                })
+                .collect(),
+
+            notes: detail
+                .notes
+                .into_iter()
+                .map(ReservationNoteResponse::from)
+                .collect(),
+
+            audit_logs: detail
+                .audit_logs
+                .into_iter()
+                .map(ReservationAuditLogResponse::from)
+                .collect(),
+
+            operation_events: detail
+                .operation_events
+                .into_iter()
+                .map(|operation_event| {
+                    ReservationOperationEventResponse::from_event(
+                        operation_event.event,
+                        OperationSemanticSignalResponse::from(operation_event.semantic_signal),
+                    )
+                })
+                .collect(),
+
+            operational_visibility: ReservationOperationalVisibilityResponse {
+                internal_note: None,
+                audit_trail_available: true,
+                timeline_available: true,
+                semantic_signal_available: false,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]

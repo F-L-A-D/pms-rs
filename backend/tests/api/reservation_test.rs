@@ -34,7 +34,9 @@ use crate::common::{
     builders::{ReservationBuilder, ReservationParticipantBuilder},
     client::{delete, get, patch_json, post_json, response_json},
     guest::create_guest,
-    reservation::create_reservation,
+    reservation::{create_reservation, create_reservation_with_guest},
+    room::create_room,
+    stay::assign_room,
 };
 
 #[tokio::test]
@@ -64,6 +66,156 @@ async fn should_roundtrip_reservation() {
         retrieved.participants[0].guest_id,
         created.participants[0].guest_id,
     );
+}
+
+#[tokio::test]
+async fn should_return_reservation_detail_visibility_fields() {
+    let app = spawn_app().await;
+
+    let guest = create_guest(&app.app).await;
+    let reservation = create_reservation_with_guest(&app.app, guest.id).await;
+    let room = create_room(&app.app).await;
+
+    assign_room(&app.app, reservation.id, room.id).await;
+
+    let response = get(&app.app, &format!("/reservations/{}", reservation.id)).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let detail: ReservationResponse =
+        serde_json::from_value(response_json(response).await).unwrap();
+
+    assert_eq!(detail.id, reservation.id);
+    assert_eq!(detail.operation_metadata.version, 2);
+    assert_eq!(detail.room_assignment.room_id, Some(room.id));
+
+    let assigned_room = detail.room_assignment.room.unwrap();
+    assert_eq!(assigned_room.room_no, room.room_no);
+    assert_eq!(assigned_room.room_class, room.room_class);
+
+    assert_eq!(detail.participant_details.len(), 1);
+    assert_eq!(detail.participant_details[0].guest_id, guest.id);
+
+    let participant_guest = detail.participant_details[0].guest.as_ref().unwrap();
+    assert_eq!(participant_guest.last_name, guest.last_name);
+    assert_eq!(participant_guest.first_name, guest.first_name);
+}
+
+#[tokio::test]
+async fn should_return_sleep_sharing_children_and_reservation_notes() {
+    let app = spawn_app().await;
+
+    let guest = create_guest(&app.app).await;
+    let today = Utc::now().date_naive();
+
+    let create_response = post_json(
+        &app.app,
+        "/reservations",
+        &serde_json::json!({
+            "check_in": today.to_string(),
+            "check_out": (today + Duration::days(1)).to_string(),
+            "room_class": "standard",
+            "daily_details": [
+                {
+                    "service_date": today.to_string(),
+                    "room_class": "standard",
+                    "adult_count": 2,
+                    "child_count": 1,
+                    "sleep_sharing_child_count": 1,
+                    "sleep_sharing_children": [
+                        {
+                            "name": "Sleep Share Child",
+                            "age": 4,
+                            "gender": "unspecified"
+                        }
+                    ]
+                }
+            ],
+            "participants": [
+                {
+                    "guest_id": guest.id.to_string(),
+                    "relation_type": "primary"
+                }
+            ]
+        }),
+    )
+    .await;
+
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+
+    let created: ReservationResponse =
+        serde_json::from_value(response_json(create_response).await).unwrap();
+
+    let memo_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/notes", created.id),
+        &serde_json::json!({
+            "kind": "global_memo",
+            "body": "Prefers quiet room",
+            "actor_id": "front-1"
+        }),
+    )
+    .await;
+
+    assert_eq!(memo_response.status(), StatusCode::CREATED);
+
+    let trace_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/notes", created.id),
+        &serde_json::json!({
+            "kind": "department_trace",
+            "department_code": "hk",
+            "body": "Prepare extra towels",
+            "actor_id": "front-1"
+        }),
+    )
+    .await;
+
+    assert_eq!(trace_response.status(), StatusCode::CREATED);
+
+    let detail_response = get(&app.app, &format!("/reservations/{}", created.id)).await;
+
+    assert_eq!(detail_response.status(), StatusCode::OK);
+
+    let detail: ReservationResponse =
+        serde_json::from_value(response_json(detail_response).await).unwrap();
+
+    assert_eq!(detail.daily_details[0].adult_count, 2);
+    assert_eq!(detail.daily_details[0].child_count, 1);
+    assert_eq!(detail.daily_details[0].sleep_sharing_child_count, 1);
+    assert_eq!(detail.daily_details[0].sleep_sharing_children.len(), 1);
+    assert_eq!(
+        detail.daily_details[0].sleep_sharing_children[0]
+            .name
+            .as_deref(),
+        Some("Sleep Share Child")
+    );
+    assert_eq!(
+        detail.daily_details[0].sleep_sharing_children[0].age,
+        Some(4)
+    );
+
+    assert_eq!(detail.notes.len(), 2);
+    assert!(detail
+        .notes
+        .iter()
+        .any(|note| note.body == "Prefers quiet room"));
+    assert!(detail.notes.iter().any(|note| {
+        note.department_code.as_deref() == Some("hk") && note.body == "Prepare extra towels"
+    }));
+    assert!(!detail.operation_events.is_empty());
+    assert!(detail
+        .operation_events
+        .iter()
+        .any(|event| event.operation_type == OperationType::Create));
+    assert!(detail
+        .audit_logs
+        .iter()
+        .any(|log| log.action == "reservation.memo.add"));
+    assert!(detail
+        .audit_logs
+        .iter()
+        .any(|log| log.action == "reservation.trace.add"));
 }
 
 #[tokio::test]

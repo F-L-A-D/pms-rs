@@ -29,6 +29,10 @@ impl From<GuestTimelineEvent> for TimelineEventResponse {
 
                 TimelineEventType::ReservationModified => "ReservationModified".into(),
 
+                TimelineEventType::ReservationNoShow => "ReservationNoShow".into(),
+
+                TimelineEventType::ReservationReinstated => "ReservationReinstated".into(),
+
                 TimelineEventType::ReservationDatesChanged => "ReservationDatesChanged".into(),
 
                 TimelineEventType::ReservationExtended => "ReservationExtended".into(),
@@ -42,6 +46,8 @@ impl From<GuestTimelineEvent> for TimelineEventResponse {
                 TimelineEventType::CheckedIn => "CheckedIn".into(),
 
                 TimelineEventType::CheckedOut => "CheckedOut".into(),
+
+                TimelineEventType::RoomMoved => "RoomMoved".into(),
 
                 TimelineEventType::RoomChargePosted => "RoomChargePosted".into(),
 

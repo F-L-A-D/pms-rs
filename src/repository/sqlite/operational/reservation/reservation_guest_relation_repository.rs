@@ -103,4 +103,17 @@ impl SqliteReservationGuestRelationRepository {
 
         Ok(relations)
     }
+
+    pub async fn delete_by_reservation_id(
+        tx: &mut Transaction<'_, Sqlite>,
+        reservation_id: Uuid,
+    ) -> AppResult<()> {
+        sqlx::query("DELETE FROM reservation_guest_relations WHERE reservation_id = ?1")
+            .bind(reservation_id.to_string())
+            .execute(&mut **tx)
+            .await
+            .map_err(infra)?;
+
+        Ok(())
+    }
 }

@@ -1,13 +1,17 @@
 pub mod billing_responsibility;
+pub mod guest_preference;
 pub mod guest_timeline_event;
 pub mod invoice_settlement;
 pub mod operation_change_event;
 pub mod operation_context;
+pub mod operational_audit_log;
 pub mod receivable_state;
 pub mod reservation_booking;
+pub mod reservation_edit_session;
 pub mod reservation_guest_relation;
 pub mod reservation_semantics;
 pub mod reservation_transition;
+pub mod revenue_summary;
 pub mod room_daily_state;
 pub mod semantic_activation;
 pub mod settlement_event;

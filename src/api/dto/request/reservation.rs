@@ -41,6 +41,16 @@ pub struct ReservationDailyDetailRequest {
     pub package_breakdowns: Vec<ReservationPackageBreakdownRequest>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReservationDailyRevenueAllocationRequest {
+    pub service_date: String,
+    pub package_code: String,
+    pub revenue_category: ReservationRevenueCategory,
+    pub department_code: Option<String>,
+    pub account_code: Option<String>,
+    pub amount: String,
+}
+
 fn default_adult_count() -> i64 {
     1
 }
@@ -52,8 +62,25 @@ pub struct ReservationParticipantRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct OpenReservationEditSessionRequest {
+    pub actor_id: String,
+    pub actor_label: Option<String>,
+    pub lease_minutes: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CloseReservationEditSessionRequest {
+    pub actor_id: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ModifyReservationRequest {
+    pub expected_version: Option<i64>,
     pub check_in: Option<String>,
     pub check_out: Option<String>,
     pub room_class: Option<String>,
+    pub package_breakdowns: Option<Vec<ReservationPackageBreakdownRequest>>,
+    pub daily_details: Option<Vec<ReservationDailyDetailRequest>>,
+    pub daily_revenue_allocations: Option<Vec<ReservationDailyRevenueAllocationRequest>>,
+    pub participants: Option<Vec<ReservationParticipantRequest>>,
 }

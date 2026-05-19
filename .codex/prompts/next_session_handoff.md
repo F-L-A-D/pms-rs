@@ -30,6 +30,7 @@ Current branch:
 
 - `feature/hospitality-domain-expansion`
 - PR target: `develop`
+- PR: https://github.com/F-L-A-D/pms-rs/pull/77
 
 Recent work completed:
 
@@ -82,6 +83,19 @@ Current state:
 - `cargo test --test projection` passes.
 - `cargo test` passes.
 - Working tree should be clean after this handoff commit.
+
+Branch state at handoff:
+
+- Keep `feature/hospitality-domain-expansion`.
+  - This is the current work branch.
+  - It is pushed to `origin/feature/hospitality-domain-expansion`.
+  - It has PR #77 open against `develop`.
+- Keep `develop` and `main`.
+- `test/api-runtime-foundation` still exists locally and remotely.
+  - It is not included in `feature/hospitality-domain-expansion`.
+  - Do not delete it blindly.
+  - In the next session, inspect whether any useful API test foundation work should be cherry-picked or reworked against the current architecture.
+  - If no longer useful, delete it after explicit confirmation.
 
 Recommended next scope:
 

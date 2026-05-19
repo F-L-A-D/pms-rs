@@ -12,6 +12,9 @@ pub enum ReservationTransitionType {
     ReservationExtended,
     ReservationShortened,
     RoomClassChanged,
+    NoShowMarked,
+    ReservationReinstated,
+    RoomMoved,
 }
 
 impl ReservationTransitionType {
@@ -22,6 +25,9 @@ impl ReservationTransitionType {
             Self::ReservationExtended => "reservation_extended",
             Self::ReservationShortened => "reservation_shortened",
             Self::RoomClassChanged => "room_class_changed",
+            Self::NoShowMarked => "no_show_marked",
+            Self::ReservationReinstated => "reservation_reinstated",
+            Self::RoomMoved => "room_moved",
         }
     }
 
@@ -32,6 +38,9 @@ impl ReservationTransitionType {
             "reservation_extended" => Some(Self::ReservationExtended),
             "reservation_shortened" => Some(Self::ReservationShortened),
             "room_class_changed" => Some(Self::RoomClassChanged),
+            "no_show_marked" => Some(Self::NoShowMarked),
+            "reservation_reinstated" => Some(Self::ReservationReinstated),
+            "room_moved" => Some(Self::RoomMoved),
             _ => None,
         }
     }

@@ -86,6 +86,17 @@ impl RoomDailyState {
         self.updated_at = Utc::now();
     }
 
+    pub fn mark_out_of_order(&mut self) {
+        self.occupancy_status = RoomDailyOccupancyStatus::OutOfOrder;
+        self.updated_at = Utc::now();
+    }
+
+    pub fn return_to_service(&mut self) {
+        self.occupancy_status = RoomDailyOccupancyStatus::Vacant;
+        self.housekeeping_status = RoomDailyHousekeepingStatus::Dirty;
+        self.updated_at = Utc::now();
+    }
+
     pub fn mark_dirty(&mut self) {
         self.housekeeping_status = RoomDailyHousekeepingStatus::Dirty;
         self.updated_at = Utc::now();

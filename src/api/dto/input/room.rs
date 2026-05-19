@@ -1,6 +1,8 @@
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
+use chrono::NaiveDate;
+
 #[derive(Debug, Clone)]
 pub struct CreateRoomInput {
     pub room_no: String,
@@ -34,4 +36,10 @@ pub struct GetRoomInput {
 #[derive(Debug, Clone)]
 pub struct ListRoomsInput {
     pub include_inactive: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct RoomDailyStateCommandInput {
+    pub room_id: Uuid,
+    pub service_date: NaiveDate,
 }

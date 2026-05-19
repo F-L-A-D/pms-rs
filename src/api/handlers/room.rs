@@ -3,16 +3,21 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use chrono::NaiveDate;
 use uuid::Uuid;
 
 use crate::{
     api::{
         dto::{
             input::room::{
-                CreateRoomInput, GetRoomInput, ListRoomsInput, UpdateRoomActivationInput,
-                UpdateRoomInput,
+                CreateRoomInput, GetRoomInput, ListRoomsInput, RoomDailyStateCommandInput,
+                UpdateRoomActivationInput, UpdateRoomInput,
             },
-            request::room::{CreateRoomRequest, UpdateRoomActivationRequest, UpdateRoomRequest},
+            request::room::{
+                CreateRoomRequest, RoomDailyStateCommandRequest, UpdateRoomActivationRequest,
+                UpdateRoomRequest,
+            },
+            response::housekeeping::RoomDailyStateResponse,
             response::room::{RoomListResponse, RoomResponse},
         },
         error::{map_app_error, ApiError},
@@ -20,7 +25,8 @@ use crate::{
     },
     usecase::room::{
         command::{
-            create_room, update_room::update_room, update_room_activation::update_room_activation,
+            create_room, mark_room_out_of_order, return_room_to_service, update_room::update_room,
+            update_room_activation::update_room_activation,
         },
         detail::get_room::get_room,
         search::list_rooms::list_rooms,
@@ -106,6 +112,34 @@ pub async fn update_room_activation_handler(
     Ok(Json(response))
 }
 
+pub async fn mark_room_out_of_order_handler(
+    State(state): State<AppState>,
+    Path(room_id): Path<String>,
+    Json(req): Json<RoomDailyStateCommandRequest>,
+) -> Result<Json<RoomDailyStateResponse>, ApiError> {
+    let input = room_daily_state_input(room_id, req.service_date)?;
+
+    let state = mark_room_out_of_order::execute(&state.db, input)
+        .await
+        .map_err(map_app_error)?;
+
+    Ok(Json(RoomDailyStateResponse::from(state)))
+}
+
+pub async fn return_room_to_service_handler(
+    State(state): State<AppState>,
+    Path(room_id): Path<String>,
+    Json(req): Json<RoomDailyStateCommandRequest>,
+) -> Result<Json<RoomDailyStateResponse>, ApiError> {
+    let input = room_daily_state_input(room_id, req.service_date)?;
+
+    let state = return_room_to_service::execute(&state.db, input)
+        .await
+        .map_err(map_app_error)?;
+
+    Ok(Json(RoomDailyStateResponse::from(state)))
+}
+
 pub async fn get_room_handler(
     State(state): State<AppState>,
 
@@ -135,4 +169,20 @@ pub async fn list_rooms_handler(
     let response = RoomListResponse::from(rooms);
 
     Ok(Json(response))
+}
+
+fn room_daily_state_input(
+    room_id: String,
+    service_date: String,
+) -> Result<RoomDailyStateCommandInput, ApiError> {
+    let room_id = Uuid::parse_str(&room_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let service_date = NaiveDate::parse_from_str(&service_date, "%Y-%m-%d")
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    Ok(RoomDailyStateCommandInput {
+        room_id,
+        service_date,
+    })
 }

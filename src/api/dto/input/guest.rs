@@ -5,6 +5,7 @@ use chrono::NaiveDate;
 use uuid::Uuid;
 
 use crate::domain::entity::guest::{Gender, GuestSearchField};
+use crate::domain::semantic::guest_preference::GuestPreferenceType;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateGuestInput {
@@ -46,4 +47,12 @@ pub struct UpdateGuestInput {
 pub struct GuestSearchInput {
     pub query: Option<String>,
     pub field: Option<GuestSearchField>,
+}
+
+#[derive(Debug)]
+pub struct AddGuestPreferenceInput {
+    pub guest_id: Uuid,
+    pub preference_type: GuestPreferenceType,
+    pub value: String,
+    pub notes: Option<String>,
 }

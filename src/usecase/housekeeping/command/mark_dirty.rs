@@ -1,7 +1,7 @@
 use crate::{
     api::dto::input::housekeeping::HousekeepingRoomDailyStateInput,
     db::connection::Db,
-    domain::semantic::room_daily_state::RoomDailyState,
+    domain::semantic::{operation_context::OperationContext, room_daily_state::RoomDailyState},
     error::app_error::{infra, not_found, AppResult},
     projection::{
         invalidation::{
@@ -13,6 +13,7 @@ use crate::{
     },
     repository::sqlite::operational::room_daily_state_repository::SqliteRoomDailyStateRepository,
     repository::sqlite::operational::room_repository::SqliteRoomRepository,
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
 pub async fn execute(db: &Db, input: HousekeepingRoomDailyStateInput) -> AppResult<RoomDailyState> {
@@ -47,6 +48,29 @@ pub async fn execute(db: &Db, input: HousekeepingRoomDailyStateInput) -> AppResu
                     date: input.service_date.to_string(),
                 },
             ),
+        )
+        .await?;
+
+        record_audit_log(
+            &mut tx,
+            &OperationContext::api_system(),
+            RecordAuditLogInput {
+                aggregate_type: "room_daily_state".to_string(),
+                aggregate_id: input.room_id,
+                action: "housekeeping.mark_dirty".to_string(),
+                before_json: None,
+                after_json: serde_json::json!({
+                    "room_id": state.room_id,
+                    "service_date": state.service_date,
+                    "housekeeping_status": state.housekeeping_status,
+                })
+                .to_string(),
+                changed_fields_json: serde_json::json!([
+                    {"field_name": "housekeeping_status", "before_value": null, "after_value": state.housekeeping_status.to_snake()}
+                ])
+                .to_string(),
+                reason: None,
+            },
         )
         .await?;
 

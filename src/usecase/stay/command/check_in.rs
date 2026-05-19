@@ -3,9 +3,13 @@ use uuid::Uuid;
 use crate::{
     db::connection::Db,
     domain::{
-        entity::reservation::{ReservationStatus, StayStatus},
+        entity::{
+            folio::{Folio, FolioStatus},
+            reservation::{ReservationStatus, StayStatus},
+        },
         semantic::{
             guest_timeline_event::TimelineEventType,
+            operation_context::OperationContext,
             room_daily_state::{RoomDailyOccupancyStatus, RoomDailyState},
         },
     },
@@ -19,9 +23,11 @@ use crate::{
         topology::projection_node::ProjectionNode,
     },
     repository::sqlite::operational::{
+        folio_repository::SqliteFolioRepository,
         reservation_repository::SqliteReservationRepository,
         room_daily_state_repository::SqliteRoomDailyStateRepository,
     },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
     usecase::timeline::command::record_event::record_event,
 };
 
@@ -133,7 +139,25 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
 
         reservation.stay_status = Some(StayStatus::CheckedIn);
 
-        SqliteReservationRepository::modify(&mut tx, &reservation).await?;
+        SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
+
+        let existing_folios =
+            SqliteFolioRepository::list_by_reservation_id(&mut tx, reservation.id).await?;
+
+        if !existing_folios
+            .iter()
+            .any(|folio| matches!(folio.status, FolioStatus::Open | FolioStatus::Locked))
+        {
+            let folio = Folio {
+                id: Uuid::new_v4(),
+                reservation_id: reservation.id,
+                billing_account_id: None,
+                status: FolioStatus::Open,
+                created_at: chrono::Utc::now(),
+            };
+
+            SqliteFolioRepository::save(&mut tx, &folio).await?;
+        }
 
         if let Some(guest_id) = reservation.primary_participant().map(|p| p.guest_id) {
             record_event(
@@ -144,6 +168,30 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
             )
             .await?;
         }
+
+        record_audit_log(
+            &mut tx,
+            &OperationContext::api_system(),
+            RecordAuditLogInput {
+                aggregate_type: "reservation".to_string(),
+                aggregate_id: reservation.id,
+                action: "stay.check_in".to_string(),
+                before_json: None,
+                after_json: serde_json::json!({
+                    "reservation_id": reservation.id,
+                    "stay_status": reservation.stay_status,
+                    "room_id": reservation.room_id,
+                    "version": reservation.version,
+                })
+                .to_string(),
+                changed_fields_json: serde_json::json!([
+                    {"field_name": "stay_status", "before_value": "confirmed", "after_value": "checked_in"}
+                ])
+                .to_string(),
+                reason: None,
+            },
+        )
+        .await?;
 
         Ok(())
     }

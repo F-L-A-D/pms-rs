@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::common::{
     app::spawn_app,
-    client::{post_json, response_json},
+    client::{get, post_json, response_json},
     room::create_room,
 };
 
@@ -53,6 +53,30 @@ async fn should_run_housekeeping_lifecycle_for_room_daily_state() {
     assert_eq!(response.status(), StatusCode::OK);
     let body_json = response_json(response).await;
     assert_eq!(body_json["housekeeping_status"], "inspected");
+
+    let response = get(
+        &app.app,
+        &format!("/audit-logs/room_daily_state/{}", room.id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body_json = response_json(response).await;
+    let logs = body_json.as_array().unwrap();
+
+    assert!(logs
+        .iter()
+        .any(|log| log["action"] == "housekeeping.mark_dirty"));
+    assert!(logs
+        .iter()
+        .any(|log| log["action"] == "housekeeping.start_cleaning"));
+    assert!(logs
+        .iter()
+        .any(|log| log["action"] == "housekeeping.finish_cleaning"));
+    assert!(logs
+        .iter()
+        .any(|log| log["action"] == "housekeeping.inspect"));
 }
 
 #[tokio::test]

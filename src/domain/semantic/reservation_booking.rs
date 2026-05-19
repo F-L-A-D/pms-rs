@@ -96,5 +96,7 @@ pub struct ReservationDailyRevenueAllocation {
     pub service_date: NaiveDate,
     pub package_code: String,
     pub revenue_category: ReservationRevenueCategory,
+    pub department_code: Option<String>,
+    pub account_code: Option<String>,
     pub amount: Decimal,
 }

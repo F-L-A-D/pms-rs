@@ -89,6 +89,7 @@ async fn should_preserve_pending_and_out_of_order_inventory_inputs() {
         room_id: None,
         booking_channel: ReservationBookingChannel::Direct,
         plan_code: None,
+        version: 1,
         package_breakdowns: vec![],
         daily_stay_details: vec![],
         daily_revenue_allocations: vec![],

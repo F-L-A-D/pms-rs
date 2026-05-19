@@ -1,77 +1,118 @@
 use sqlx::SqlitePool;
 
 pub async fn bootstrap(pool: &SqlitePool) {
-    sqlx::query(include_str!("reservations.sql"))
+    sqlx::query(include_str!("reservation/reservations.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("rooms.sql"))
+    sqlx::query(include_str!("reservation/reservation_edit_sessions.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("room_daily_states.sql"))
+    sqlx::query(include_str!("room/rooms.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("folios.sql"))
+    sqlx::query(include_str!("room/room_daily_states.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("guests.sql"))
+    sqlx::query(include_str!("billing/folios.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("reservation_guest_relations.sql"))
+    sqlx::query(include_str!("guest/guests.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("reservation_package_breakdowns.sql"))
+    sqlx::query(include_str!("guest/guest_preferences.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("reservation_daily_stay_details.sql"))
+    sqlx::query(include_str!("reservation/reservation_guest_relations.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("reservation_daily_revenue_allocations.sql"))
+    sqlx::query(include_str!(
+        "reservation/reservation_package_breakdowns.sql"
+    ))
+    .execute(pool)
+    .await
+    .unwrap();
+
+    sqlx::query(include_str!(
+        "reservation/reservation_daily_stay_details.sql"
+    ))
+    .execute(pool)
+    .await
+    .unwrap();
+
+    sqlx::query(include_str!(
+        "reservation/reservation_daily_revenue_allocations.sql"
+    ))
+    .execute(pool)
+    .await
+    .unwrap();
+
+    sqlx::query(include_str!("rate_plan/package_definitions.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("operation_change_events.sql"))
+    sqlx::query(include_str!("rate_plan/rate_plan_definitions.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("companies.sql"))
+    sqlx::query(include_str!("rate_plan/rate_plan_packages.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("billing_accounts.sql"))
+    sqlx::query(include_str!("operation/operation_change_events.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("invoices.sql"))
+    sqlx::query(include_str!("operation/operational_audit_logs.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("receivables.sql"))
+    sqlx::query(include_str!("billing/companies.sql"))
         .execute(pool)
         .await
         .unwrap();
 
-    sqlx::query(include_str!("payments.sql"))
+    sqlx::query(include_str!("billing/billing_accounts.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query(include_str!("billing/invoices.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query(include_str!("billing/receivables.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query(include_str!("billing/payments.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query(include_str!("billing/payment_allocations.sql"))
         .execute(pool)
         .await
         .unwrap();

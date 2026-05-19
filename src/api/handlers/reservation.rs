@@ -14,11 +14,20 @@ use crate::{
     api::{
         dto::{
             input::reservation::{
-                CreateReservationInput, ModifyReservationInput, ReservationDailyDetailInput,
-                ReservationPackageBreakdownInput, ReservationParticipantInput,
+                CloseReservationEditSessionInput, CreateReservationInput, ModifyReservationInput,
+                OpenReservationEditSessionInput, ReservationDailyDetailInput,
+                ReservationDailyRevenueAllocationInput, ReservationPackageBreakdownInput,
+                ReservationParticipantInput,
             },
-            request::reservation::{CreateReservationRequest, ModifyReservationRequest},
-            response::reservation::{ReservationParticipantResponse, ReservationResponse},
+            request::reservation::{
+                CloseReservationEditSessionRequest, CreateReservationRequest,
+                ModifyReservationRequest, OpenReservationEditSessionRequest,
+            },
+            response::reservation::{
+                OpenReservationEditSessionResponse, ReservationEditSessionResponse,
+                ReservationEditSessionWarningResponse, ReservationParticipantResponse,
+                ReservationResponse,
+            },
         },
         error::{map_app_error, ApiError},
         state::AppState,
@@ -27,10 +36,14 @@ use crate::{
         entity::reservation::Reservation,
         semantic::{
             operation_context::OperationContext, reservation_booking::ReservationBookingChannel,
+            reservation_edit_session::ReservationEditSession,
         },
     },
     usecase::reservation::{
-        command::{cancel_reservation::cancel_reservation, create_reservation, modify_reservation},
+        command::{
+            cancel_reservation::cancel_reservation, close_edit_session, create_reservation,
+            mark_no_show, modify_reservation, open_edit_session, reinstate_reservation,
+        },
         detail::get_reservation::get_reservation,
         search::get_guest_reservations::get_guest_reservations,
     },
@@ -165,11 +178,121 @@ pub async fn modify_reservation_handler(
         .transpose()
         .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
+    let package_breakdowns = req
+        .package_breakdowns
+        .map(|breakdowns| {
+            breakdowns
+                .into_iter()
+                .map(|breakdown| {
+                    let amount = breakdown
+                        .amount
+                        .parse::<Decimal>()
+                        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+                    Ok(ReservationPackageBreakdownInput {
+                        package_code: breakdown.package_code,
+                        revenue_category: breakdown.revenue_category,
+                        amount,
+                    })
+                })
+                .collect::<Result<Vec<_>, ApiError>>()
+        })
+        .transpose()?;
+
+    let daily_details = req
+        .daily_details
+        .map(|details| {
+            details
+                .into_iter()
+                .map(|detail| {
+                    let service_date = NaiveDate::parse_from_str(&detail.service_date, "%Y-%m-%d")
+                        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+                    let package_breakdowns = detail
+                        .package_breakdowns
+                        .into_iter()
+                        .map(|breakdown| {
+                            let amount = breakdown.amount.parse::<Decimal>().map_err(|e| {
+                                ApiError::new(StatusCode::BAD_REQUEST, e.to_string())
+                            })?;
+
+                            Ok(ReservationPackageBreakdownInput {
+                                package_code: breakdown.package_code,
+                                revenue_category: breakdown.revenue_category,
+                                amount,
+                            })
+                        })
+                        .collect::<Result<Vec<_>, ApiError>>()?;
+
+                    Ok(ReservationDailyDetailInput {
+                        service_date,
+                        room_class: detail.room_class,
+                        plan_code: detail.plan_code,
+                        adult_count: detail.adult_count,
+                        child_count: detail.child_count,
+                        package_breakdowns,
+                    })
+                })
+                .collect::<Result<Vec<_>, ApiError>>()
+        })
+        .transpose()?;
+
+    let daily_revenue_allocations = req
+        .daily_revenue_allocations
+        .map(|allocations| {
+            allocations
+                .into_iter()
+                .map(|allocation| {
+                    let service_date =
+                        NaiveDate::parse_from_str(&allocation.service_date, "%Y-%m-%d")
+                            .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+                    let amount = allocation
+                        .amount
+                        .parse::<Decimal>()
+                        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+                    Ok(ReservationDailyRevenueAllocationInput {
+                        service_date,
+                        package_code: allocation.package_code,
+                        revenue_category: allocation.revenue_category,
+                        department_code: allocation.department_code,
+                        account_code: allocation.account_code,
+                        amount,
+                    })
+                })
+                .collect::<Result<Vec<_>, ApiError>>()
+        })
+        .transpose()?;
+
+    let participants = req
+        .participants
+        .map(|participants| {
+            participants
+                .into_iter()
+                .map(|participant| {
+                    let guest_id = Uuid::parse_str(&participant.guest_id)
+                        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+                    Ok(ReservationParticipantInput {
+                        guest_id,
+                        relation_type: participant.relation_type,
+                    })
+                })
+                .collect::<Result<Vec<_>, ApiError>>()
+        })
+        .transpose()?;
+
     let input = ModifyReservationInput {
+        expected_version: req.expected_version,
+
         check_in,
         check_out,
 
         room_class: req.room_class,
+        package_breakdowns,
+        daily_details,
+        daily_revenue_allocations,
+        participants,
     };
 
     let updated = modify_reservation::execute(
@@ -184,6 +307,65 @@ pub async fn modify_reservation_handler(
     Ok(Json(reservation_to_response(updated)))
 }
 
+pub async fn open_reservation_edit_session_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(req): Json<OpenReservationEditSessionRequest>,
+) -> Result<Json<OpenReservationEditSessionResponse>, ApiError> {
+    let reservation_id =
+        Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let result = open_edit_session::execute(
+        &state.db,
+        OpenReservationEditSessionInput {
+            reservation_id,
+            actor_id: req.actor_id,
+            actor_label: req.actor_label,
+            lease_minutes: req.lease_minutes,
+        },
+    )
+    .await
+    .map_err(map_app_error)?;
+
+    let warning = if result.active_other_sessions.is_empty() {
+        None
+    } else {
+        Some(ReservationEditSessionWarningResponse {
+            active_sessions: result
+                .active_other_sessions
+                .into_iter()
+                .map(reservation_edit_session_to_response)
+                .collect(),
+        })
+    };
+
+    Ok(Json(OpenReservationEditSessionResponse {
+        session: reservation_edit_session_to_response(result.session),
+        warning,
+    }))
+}
+
+pub async fn close_reservation_edit_session_handler(
+    State(state): State<AppState>,
+    Path(session_id): Path<String>,
+    Json(req): Json<CloseReservationEditSessionRequest>,
+) -> Result<StatusCode, ApiError> {
+    let session_id = Uuid::parse_str(&session_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    close_edit_session::execute(
+        &state.db,
+        CloseReservationEditSessionInput {
+            session_id,
+            actor_id: req.actor_id,
+        },
+    )
+    .await
+    .map_err(map_app_error)?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub async fn cancel_reservation_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -194,6 +376,36 @@ pub async fn cancel_reservation_handler(
     let reservation = cancel_reservation(&state.db, reservation_id, OperationContext::api_system())
         .await
         .map_err(map_app_error)?;
+
+    Ok(Json(reservation_to_response(reservation)))
+}
+
+pub async fn mark_no_show_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<ReservationResponse>, ApiError> {
+    let reservation_id =
+        Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let reservation =
+        mark_no_show::execute(&state.db, reservation_id, OperationContext::api_system())
+            .await
+            .map_err(map_app_error)?;
+
+    Ok(Json(reservation_to_response(reservation)))
+}
+
+pub async fn reinstate_reservation_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<ReservationResponse>, ApiError> {
+    let reservation_id =
+        Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let reservation =
+        reinstate_reservation::execute(&state.db, reservation_id, OperationContext::api_system())
+            .await
+            .map_err(map_app_error)?;
 
     Ok(Json(reservation_to_response(reservation)))
 }
@@ -232,6 +444,19 @@ pub async fn get_guest_reservations_handler(
     ))
 }
 
+fn reservation_edit_session_to_response(
+    session: ReservationEditSession,
+) -> ReservationEditSessionResponse {
+    ReservationEditSessionResponse {
+        id: session.id,
+        reservation_id: session.reservation_id,
+        actor_id: session.actor_id,
+        actor_label: session.actor_label,
+        opened_at: session.opened_at,
+        expires_at: session.expires_at,
+    }
+}
+
 fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
     ReservationResponse {
         id: reservation.id,
@@ -253,6 +478,8 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
         booking_channel: reservation.booking_channel,
 
         plan_code: reservation.plan_code,
+
+        version: reservation.version,
 
         package_breakdowns: reservation
             .package_breakdowns
@@ -288,6 +515,8 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
                     service_date: allocation.service_date,
                     package_code: allocation.package_code,
                     revenue_category: allocation.revenue_category,
+                    department_code: allocation.department_code,
+                    account_code: allocation.account_code,
                     amount: allocation.amount,
                 }
             })

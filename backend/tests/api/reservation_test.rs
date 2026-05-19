@@ -177,9 +177,8 @@ async fn should_return_sleep_sharing_children_and_reservation_notes() {
 
     let trace_response = post_json(
         &app.app,
-        &format!("/reservations/{}/notes", created.id),
+        &format!("/reservations/{}/traces", created.id),
         &serde_json::json!({
-            "kind": "department_trace",
             "department_code": "hk",
             "body": "Prepare extra towels",
             "actor_id": "front-1"
@@ -211,12 +210,13 @@ async fn should_return_sleep_sharing_children_and_reservation_notes() {
         Some(4)
     );
 
-    assert_eq!(detail.notes.len(), 2);
+    assert_eq!(detail.notes.len(), 1);
+    assert_eq!(detail.traces.len(), 1);
     assert!(detail
         .notes
         .iter()
         .any(|note| note.body == "Prefers quiet room"));
-    assert!(detail.notes.iter().any(|note| {
+    assert!(detail.traces.iter().any(|note| {
         note.department_code.as_deref() == Some("hk") && note.body == "Prepare extra towels"
     }));
     assert!(!detail.operation_events.is_empty());

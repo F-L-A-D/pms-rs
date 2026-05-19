@@ -92,3 +92,22 @@ pub struct CreateReservationNoteInput {
     pub body: String,
     pub actor_id: Option<String>,
 }
+
+pub struct CreateReservationTraceInput {
+    pub reservation_id: Uuid,
+    pub department_code: String,
+    pub body: String,
+    pub actor_id: Option<String>,
+}
+
+pub struct ResolveReservationTraceInput {
+    pub reservation_id: Uuid,
+    pub trace_id: Uuid,
+    pub actor_id: Option<String>,
+}
+
+pub struct DeleteReservationNoteInput {
+    pub reservation_id: Uuid,
+    pub note_id: Uuid,
+    pub actor_id: Option<String>,
+}

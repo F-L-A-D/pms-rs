@@ -9,7 +9,8 @@ use crate::{
             operational_audit_log::OperationalAuditLog,
             reservation_edit_session::ReservationEditSession,
             reservation_guest_relation::ReservationGuestRelationType,
-            reservation_note::ReservationNote, reservation_transition::ReservationTransition,
+            reservation_note::ReservationNote, reservation_trace::ReservationTrace,
+            reservation_transition::ReservationTransition,
         },
     },
     error::app_error::AppResult,
@@ -28,7 +29,9 @@ use crate::{
         operational_audit_log_repository::SqliteOperationalAuditLogRepository,
         reservation_edit_session_repository::SqliteReservationEditSessionRepository,
         reservation_note_repository::SqliteReservationNoteRepository,
-        reservation_repository::SqliteReservationRepository, room_repository::SqliteRoomRepository,
+        reservation_repository::SqliteReservationRepository,
+        reservation_trace_repository::SqliteReservationTraceRepository,
+        room_repository::SqliteRoomRepository,
     },
 };
 
@@ -38,6 +41,7 @@ pub struct ReservationDetail {
     pub participant_details: Vec<ReservationDetailParticipant>,
     pub room_detail: Option<ReservationDetailRoom>,
     pub notes: Vec<ReservationNote>,
+    pub traces: Vec<ReservationTrace>,
     pub audit_logs: Vec<OperationalAuditLog>,
     pub operation_events: Vec<ReservationDetailOperationEvent>,
     pub active_edit_sessions: Vec<ReservationEditSession>,
@@ -112,6 +116,9 @@ pub async fn get_reservation_detail(
     let notes =
         SqliteReservationNoteRepository::list_by_reservation_id(&mut tx, reservation_id).await?;
 
+    let traces =
+        SqliteReservationTraceRepository::list_by_reservation_id(&mut tx, reservation_id).await?;
+
     let active_edit_sessions =
         SqliteReservationEditSessionRepository::list_active_by_reservation_id(
             &mut tx,
@@ -162,6 +169,7 @@ pub async fn get_reservation_detail(
         participant_details,
         room_detail,
         notes,
+        traces,
         audit_logs,
         operation_events,
         active_edit_sessions,

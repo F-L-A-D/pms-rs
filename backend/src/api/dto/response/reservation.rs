@@ -20,6 +20,7 @@ use crate::{
             reservation_edit_session::ReservationEditSession,
             reservation_guest_relation::ReservationGuestRelationType,
             reservation_note::{ReservationNote, ReservationNoteKind},
+            reservation_trace::{ReservationTrace, ReservationTraceKind},
             reservation_transition::{ReservationTransition, ReservationTransitionType},
         },
     },
@@ -48,6 +49,7 @@ pub struct ReservationResponse {
     pub participants: Vec<ReservationParticipantResponse>,
     pub participant_details: Vec<ReservationParticipantDetailResponse>,
     pub notes: Vec<ReservationNoteResponse>,
+    pub traces: Vec<ReservationTraceResponse>,
     pub audit_logs: Vec<ReservationAuditLogResponse>,
     pub operation_events: Vec<ReservationOperationEventResponse>,
     pub active_edit_sessions: Vec<ReservationEditSessionResponse>,
@@ -176,10 +178,11 @@ pub struct ReservationNoteResponse {
     pub id: Uuid,
     pub reservation_id: Uuid,
     pub kind: ReservationNoteKind,
-    pub department_code: Option<String>,
     pub body: String,
     pub actor_id: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub deleted_by: Option<String>,
 }
 
 impl From<ReservationNote> for ReservationNoteResponse {
@@ -188,10 +191,44 @@ impl From<ReservationNote> for ReservationNoteResponse {
             id: note.id,
             reservation_id: note.reservation_id,
             kind: note.kind,
-            department_code: note.department_code,
             body: note.body,
             actor_id: note.actor_id,
             created_at: note.created_at,
+            deleted_at: note.deleted_at,
+            deleted_by: note.deleted_by,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationTraceResponse {
+    pub id: Uuid,
+    pub reservation_id: Uuid,
+    pub kind: ReservationTraceKind,
+    pub department_code: Option<String>,
+    pub body: String,
+    pub actor_id: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub resolved_at: Option<DateTime<Utc>>,
+    pub resolved_by: Option<String>,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub deleted_by: Option<String>,
+}
+
+impl From<ReservationTrace> for ReservationTraceResponse {
+    fn from(trace: ReservationTrace) -> Self {
+        Self {
+            id: trace.id,
+            reservation_id: trace.reservation_id,
+            kind: trace.kind,
+            department_code: trace.department_code,
+            body: trace.body,
+            actor_id: trace.actor_id,
+            created_at: trace.created_at,
+            resolved_at: trace.resolved_at,
+            resolved_by: trace.resolved_by,
+            deleted_at: trace.deleted_at,
+            deleted_by: trace.deleted_by,
         }
     }
 }
@@ -408,6 +445,12 @@ impl From<ReservationDetail> for ReservationResponse {
                 .notes
                 .into_iter()
                 .map(ReservationNoteResponse::from)
+                .collect(),
+
+            traces: detail
+                .traces
+                .into_iter()
+                .map(ReservationTraceResponse::from)
                 .collect(),
 
             audit_logs: detail

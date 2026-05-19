@@ -42,6 +42,8 @@ pub mod reservation_package_breakdown_repository;
 pub mod reservation_repository;
 #[path = "reservation/reservation_sleep_sharing_child_repository.rs"]
 pub mod reservation_sleep_sharing_child_repository;
+#[path = "reservation/reservation_trace_repository.rs"]
+pub mod reservation_trace_repository;
 #[path = "reservation/revenue_summary_repository.rs"]
 pub mod revenue_summary_repository;
 #[path = "room/room_daily_state_repository.rs"]

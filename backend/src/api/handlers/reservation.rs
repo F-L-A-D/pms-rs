@@ -15,20 +15,23 @@ use crate::{
         dto::{
             input::reservation::{
                 CloseReservationEditSessionInput, CreateReservationInput,
-                CreateReservationNoteInput, ModifyReservationInput,
+                CreateReservationNoteInput, CreateReservationTraceInput,
+                DeleteReservationNoteInput, ModifyReservationInput,
                 OpenReservationEditSessionInput, ReservationDailyDetailInput,
                 ReservationDailyRevenueAllocationInput, ReservationPackageBreakdownInput,
                 ReservationParticipantInput, ReservationSleepSharingChildInput,
+                ResolveReservationTraceInput,
             },
             request::reservation::{
                 CloseReservationEditSessionRequest, CreateReservationNoteRequest,
-                CreateReservationRequest, ModifyReservationRequest,
-                OpenReservationEditSessionRequest,
+                CreateReservationRequest, CreateReservationTraceRequest,
+                DeleteReservationNoteRequest, ModifyReservationRequest,
+                OpenReservationEditSessionRequest, ResolveReservationTraceRequest,
             },
             response::reservation::{
                 OpenReservationEditSessionResponse, ReservationEditSessionResponse,
                 ReservationEditSessionWarningResponse, ReservationNoteResponse,
-                ReservationParticipantResponse, ReservationResponse,
+                ReservationParticipantResponse, ReservationResponse, ReservationTraceResponse,
             },
         },
         error::{map_app_error, ApiError},
@@ -43,9 +46,9 @@ use crate::{
     },
     usecase::reservation::{
         command::{
-            cancel_reservation::cancel_reservation, close_edit_session, create_reservation,
-            create_reservation_note, mark_no_show, modify_reservation, open_edit_session,
-            reinstate_reservation,
+            cancel_reservation, close_edit_session, create_reservation, create_reservation_note,
+            create_reservation_trace, delete_reservation_note, mark_no_show, modify_reservation,
+            open_edit_session, reinstate_reservation, resolve_reservation_trace,
         },
         detail::get_reservation::get_reservation_detail,
         search::get_guest_reservations::get_guest_reservations,
@@ -396,9 +399,10 @@ pub async fn cancel_reservation_handler(
     let reservation_id =
         Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let reservation = cancel_reservation(&state.db, reservation_id, OperationContext::api_system())
-        .await
-        .map_err(map_app_error)?;
+    let reservation =
+        cancel_reservation::execute(&state.db, reservation_id, OperationContext::api_system())
+            .await
+            .map_err(map_app_error)?;
 
     Ok(Json(reservation_to_response(reservation)))
 }
@@ -493,6 +497,80 @@ pub async fn create_reservation_note_handler(
         StatusCode::CREATED,
         Json(ReservationNoteResponse::from(note)),
     ))
+}
+
+pub async fn create_reservation_trace_handler(
+    State(state): State<AppState>,
+    Path(reservation_id): Path<String>,
+    Json(req): Json<CreateReservationTraceRequest>,
+) -> Result<(StatusCode, Json<ReservationTraceResponse>), ApiError> {
+    let reservation_id = Uuid::parse_str(&reservation_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let trace = create_reservation_trace::execute(
+        &state.db,
+        CreateReservationTraceInput {
+            reservation_id,
+            department_code: req.department_code,
+            body: req.body,
+            actor_id: req.actor_id,
+        },
+        OperationContext::api_system(),
+    )
+    .await
+    .map_err(map_app_error)?;
+
+    Ok((StatusCode::CREATED, Json(trace.into())))
+}
+
+pub async fn resolve_reservation_trace_handler(
+    State(state): State<AppState>,
+    Path((reservation_id, trace_id)): Path<(String, String)>,
+    Json(req): Json<ResolveReservationTraceRequest>,
+) -> Result<StatusCode, ApiError> {
+    let reservation_id = Uuid::parse_str(&reservation_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+    let trace_id = Uuid::parse_str(&trace_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    resolve_reservation_trace::execute(
+        &state.db,
+        ResolveReservationTraceInput {
+            reservation_id,
+            trace_id,
+            actor_id: req.actor_id,
+        },
+        OperationContext::api_system(),
+    )
+    .await
+    .map_err(map_app_error)?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn delete_reservation_note_handler(
+    State(state): State<AppState>,
+    Path((reservation_id, note_id)): Path<(String, String)>,
+    Json(req): Json<DeleteReservationNoteRequest>,
+) -> Result<StatusCode, ApiError> {
+    let reservation_id = Uuid::parse_str(&reservation_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+    let note_id = Uuid::parse_str(&note_id)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    delete_reservation_note::execute(
+        &state.db,
+        DeleteReservationNoteInput {
+            reservation_id,
+            note_id,
+            actor_id: req.actor_id,
+        },
+        OperationContext::api_system(),
+    )
+    .await
+    .map_err(map_app_error)?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 fn reservation_edit_session_to_response(
@@ -612,6 +690,8 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
         participant_details: vec![],
 
         notes: vec![],
+
+        traces: vec![],
 
         audit_logs: vec![],
 

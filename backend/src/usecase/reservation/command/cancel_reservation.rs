@@ -27,11 +27,7 @@ use crate::{
     usecase::timeline::command::record_event::record_event,
 };
 
-pub async fn cancel_reservation(
-    db: &Db,
-    id: Uuid,
-    context: OperationContext,
-) -> AppResult<Reservation> {
+pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<Reservation> {
     let mut tx = db.begin_tx().await;
 
     let result = async {

@@ -3,25 +3,25 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::{
-    api::dto::input::reservation::CreateReservationNoteInput,
+    api::dto::input::reservation::CreateReservationTraceInput,
     db::connection::Db,
     domain::semantic::{
         operation_context::OperationContext,
-        reservation_note::{ReservationNote, ReservationNoteKind},
+        reservation_trace::{ReservationTrace, ReservationTraceKind},
     },
     error::app_error::{infra, not_found, validation, AppResult},
     repository::sqlite::operational::{
-        reservation_note_repository::SqliteReservationNoteRepository,
         reservation_repository::SqliteReservationRepository,
+        reservation_trace_repository::SqliteReservationTraceRepository,
     },
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
 pub async fn execute(
     db: &Db,
-    input: CreateReservationNoteInput,
+    input: CreateReservationTraceInput,
     context: OperationContext,
-) -> AppResult<ReservationNote> {
+) -> AppResult<ReservationTrace> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
@@ -30,27 +30,33 @@ pub async fn execute(
             .ok_or_else(|| not_found("reservation not found"))?;
 
         let body = normalize_required_string(input.body, "body")?;
+        let department_code = normalize_optional_string(input.department_code)
+            .ok_or_else(|| validation("department_code required"))?;
 
-        let note = ReservationNote {
+        let trace = ReservationTrace {
             id: Uuid::new_v4(),
             reservation_id: reservation.id,
-            kind: ReservationNoteKind::GlobalMemo,
+            kind: ReservationTraceKind::DepartmentTrace,
+            department_code: Some(department_code),
             body,
             actor_id: input.actor_id.and_then(normalize_optional_string),
             created_at: Utc::now(),
+            resolved_at: None,
+            resolved_by: None,
             deleted_at: None,
             deleted_by: None,
         };
 
-        SqliteReservationNoteRepository::save(&mut tx, &note).await?;
+        SqliteReservationTraceRepository::save(&mut tx, &trace).await?;
 
         let after_json = serde_json::json!({
-            "id": note.id,
-            "reservation_id": note.reservation_id,
-            "kind": note.kind,
-            "body": note.body,
-            "actor_id": note.actor_id,
-            "created_at": note.created_at,
+            "id": trace.id,
+            "reservation_id": trace.reservation_id,
+            "kind": trace.kind,
+            "department_code": trace.department_code,
+            "body": trace.body,
+            "actor_id": trace.actor_id,
+            "created_at": trace.created_at,
         })
         .to_string();
 
@@ -60,7 +66,7 @@ pub async fn execute(
             RecordAuditLogInput {
                 aggregate_type: "reservation".to_string(),
                 aggregate_id: reservation.id,
-                action: "reservation.memo.add".to_string(),
+                action: "reservation.trace.add".to_string(),
                 before_json: None,
                 after_json,
                 changed_fields_json: "[]".to_string(),
@@ -69,15 +75,15 @@ pub async fn execute(
         )
         .await?;
 
-        Ok(note)
+        Ok(trace)
     }
     .await;
 
     match result {
-        Ok(note) => {
+        Ok(trace) => {
             tx.commit().await.map_err(infra)?;
 
-            Ok(note)
+            Ok(trace)
         }
 
         Err(e) => {

@@ -107,3 +107,20 @@ pub struct CreateReservationNoteRequest {
     pub body: String,
     pub actor_id: Option<String>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct CreateReservationTraceRequest {
+    pub department_code: String,
+    pub body: String,
+    pub actor_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResolveReservationTraceRequest {
+    pub actor_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteReservationNoteRequest {
+    pub actor_id: Option<String>,
+}

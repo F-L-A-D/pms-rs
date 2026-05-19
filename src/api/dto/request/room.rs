@@ -35,3 +35,8 @@ pub struct UpdateRoomRequest {
 pub struct UpdateRoomActivationRequest {
     pub is_active: bool,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RoomDailyStateCommandRequest {
+    pub service_date: String,
+}

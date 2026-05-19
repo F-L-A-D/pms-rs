@@ -53,8 +53,8 @@ use crate::api::handlers::revenue_summary::{
 };
 
 use crate::api::handlers::room::{
-    create_room_handler, get_room_handler, list_rooms_handler, update_room_activation_handler,
-    update_room_handler,
+    create_room_handler, get_room_handler, list_rooms_handler, mark_room_out_of_order_handler,
+    return_room_to_service_handler, update_room_activation_handler, update_room_handler,
 };
 
 use crate::api::handlers::semantic_signal::get_operation_semantic_signal_handler;
@@ -111,6 +111,14 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/rooms/:id/activation",
             patch(update_room_activation_handler),
+        )
+        .route(
+            "/rooms/:id/out-of-order",
+            post(mark_room_out_of_order_handler),
+        )
+        .route(
+            "/rooms/:id/return-to-service",
+            post(return_room_to_service_handler),
         )
         // housekeeping
         .route("/housekeeping/:id/dirty", post(mark_dirty_handler))

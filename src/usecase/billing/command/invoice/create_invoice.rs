@@ -10,7 +10,10 @@ use crate::{
         invoice::{Invoice, InvoiceStatus},
         receivable::Receivable,
     },
-    domain::semantic::settlement_transition::{SettlementTransition, SettlementTransitionType},
+    domain::semantic::{
+        operation_context::OperationContext,
+        settlement_transition::{SettlementTransition, SettlementTransitionType},
+    },
     error::app_error::{conflict, infra, not_found, validation, AppResult},
     repository::sqlite::{
         behavioral::settlement_transition_repository::SqliteSettlementTransitionRepository,
@@ -20,6 +23,7 @@ use crate::{
             receivable_repository::SqliteReceivableRepository,
         },
     },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
 pub async fn execute(db: &Db, input: CreateInvoiceInput) -> AppResult<Invoice> {
@@ -117,6 +121,35 @@ pub async fn execute(db: &Db, input: CreateInvoiceInput) -> AppResult<Invoice> {
         };
 
         SqliteSettlementTransitionRepository::save(&mut tx, &receivable_opened_transition).await?;
+
+        record_audit_log(
+            &mut tx,
+            &OperationContext::api_system(),
+            RecordAuditLogInput {
+                aggregate_type: "invoice".to_string(),
+                aggregate_id: invoice.id,
+                action: "invoice.issue".to_string(),
+                before_json: None,
+                after_json: serde_json::json!({
+                    "id": invoice.id,
+                    "folio_id": invoice.folio_id,
+                    "billing_account_id": invoice.billing_account_id,
+                    "invoice_number": invoice.invoice_number,
+                    "issued_amount": invoice.issued_amount,
+                    "due_date": invoice.due_date,
+                    "status": invoice.status,
+                    "receivable_id": receivable.id,
+                })
+                .to_string(),
+                changed_fields_json: serde_json::json!([
+                    {"field_name": "status", "before_value": null, "after_value": invoice.status.to_snake()},
+                    {"field_name": "issued_amount", "before_value": null, "after_value": invoice.issued_amount.to_string()}
+                ])
+                .to_string(),
+                reason: None,
+            },
+        )
+        .await?;
 
         Ok(invoice)
     }

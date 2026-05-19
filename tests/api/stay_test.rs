@@ -61,6 +61,22 @@ async fn should_chek_in_reservation() {
 
     assert_eq!(folios.len(), 1);
     assert_eq!(folios[0].status, FolioStatus::Open);
+
+    let response = get(
+        &app.app,
+        &format!("/audit-logs/reservation/{}", reservation.id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let logs = response_json(response).await;
+
+    assert!(logs
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|log| log["action"] == "stay.check_in"));
 }
 
 #[tokio::test]

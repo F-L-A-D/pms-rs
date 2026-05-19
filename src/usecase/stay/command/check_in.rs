@@ -9,6 +9,7 @@ use crate::{
         },
         semantic::{
             guest_timeline_event::TimelineEventType,
+            operation_context::OperationContext,
             room_daily_state::{RoomDailyOccupancyStatus, RoomDailyState},
         },
     },
@@ -26,6 +27,7 @@ use crate::{
         reservation_repository::SqliteReservationRepository,
         room_daily_state_repository::SqliteRoomDailyStateRepository,
     },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
     usecase::timeline::command::record_event::record_event,
 };
 
@@ -166,6 +168,30 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
             )
             .await?;
         }
+
+        record_audit_log(
+            &mut tx,
+            &OperationContext::api_system(),
+            RecordAuditLogInput {
+                aggregate_type: "reservation".to_string(),
+                aggregate_id: reservation.id,
+                action: "stay.check_in".to_string(),
+                before_json: None,
+                after_json: serde_json::json!({
+                    "reservation_id": reservation.id,
+                    "stay_status": reservation.stay_status,
+                    "room_id": reservation.room_id,
+                    "version": reservation.version,
+                })
+                .to_string(),
+                changed_fields_json: serde_json::json!([
+                    {"field_name": "stay_status", "before_value": "confirmed", "after_value": "checked_in"}
+                ])
+                .to_string(),
+                reason: None,
+            },
+        )
+        .await?;
 
         Ok(())
     }

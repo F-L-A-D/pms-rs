@@ -13,7 +13,7 @@ use pms_rs::{
 
 use crate::common::{
     app::spawn_app,
-    client::{post, post_json, response_json},
+    client::{get, post, post_json, response_json},
     reservation::create_reservation,
 };
 
@@ -73,6 +73,24 @@ async fn should_open_reservation_folio_and_record_deposit() {
     assert!(entries.iter().any(|entry| {
         entry.entry_type == FolioEntryType::DepositReceived && entry.amount == Decimal::new(5000, 2)
     }));
+
+    let folio_logs = get(&app.app, &format!("/audit-logs/folio/{}", folio.id)).await;
+    assert_eq!(folio_logs.status(), StatusCode::OK);
+    let folio_logs = response_json(folio_logs).await;
+    assert!(folio_logs
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|log| log["action"] == "folio.open"));
+
+    let payment_logs = get(&app.app, &format!("/audit-logs/payment/{}", payment.id)).await;
+    assert_eq!(payment_logs.status(), StatusCode::OK);
+    let payment_logs = response_json(payment_logs).await;
+    assert!(payment_logs
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|log| log["action"] == "billing.deposit.create"));
 }
 
 #[tokio::test]

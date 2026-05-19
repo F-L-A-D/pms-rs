@@ -11,7 +11,7 @@ use pms_rs::projection::aggregate::access::{
 
 use crate::common::{
     app::spawn_app,
-    client::{post, post_json, response_json},
+    client::{get, post, post_json, response_json},
     reservation::create_reservation,
     room::create_room,
     stay::{assign_room, check_in},
@@ -103,6 +103,22 @@ async fn should_mark_room_out_of_order_and_return_to_service() {
     assert_eq!(housekeeping_row.out_of_order_rooms, 0);
     assert_eq!(housekeeping_row.vacant_rooms, 1);
     assert_eq!(housekeeping_row.dirty_rooms, 1);
+
+    let response = get(
+        &app.app,
+        &format!("/audit-logs/room_daily_state/{}", room.id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let logs = response_json(response).await;
+    let logs = logs.as_array().unwrap();
+
+    assert!(logs.iter().any(|log| log["action"] == "room.out_of_order"));
+    assert!(logs
+        .iter()
+        .any(|log| log["action"] == "room.return_to_service"));
 }
 
 #[tokio::test]

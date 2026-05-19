@@ -9,11 +9,13 @@ use crate::{
         folio::{Folio, FolioStatus},
         reservation::ReservationStatus,
     },
+    domain::semantic::operation_context::OperationContext,
     error::app_error::{conflict, infra, not_found, AppResult},
     repository::sqlite::operational::{
         folio_repository::SqliteFolioRepository,
         reservation_repository::SqliteReservationRepository,
     },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
 pub async fn execute(db: &Db, input: OpenReservationFolioInput) -> AppResult<Folio> {
@@ -50,6 +52,30 @@ pub async fn execute(db: &Db, input: OpenReservationFolioInput) -> AppResult<Fol
         };
 
         SqliteFolioRepository::save(&mut tx, &folio).await?;
+
+        record_audit_log(
+            &mut tx,
+            &OperationContext::api_system(),
+            RecordAuditLogInput {
+                aggregate_type: "folio".to_string(),
+                aggregate_id: folio.id,
+                action: "folio.open".to_string(),
+                before_json: None,
+                after_json: serde_json::json!({
+                    "id": folio.id,
+                    "reservation_id": folio.reservation_id,
+                    "status": folio.status,
+                    "billing_account_id": folio.billing_account_id,
+                })
+                .to_string(),
+                changed_fields_json: serde_json::json!([
+                    {"field_name": "status", "before_value": null, "after_value": folio.status.to_snake()}
+                ])
+                .to_string(),
+                reason: None,
+            },
+        )
+        .await?;
 
         Ok(folio)
     }

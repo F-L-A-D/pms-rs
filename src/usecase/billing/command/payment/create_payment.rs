@@ -10,11 +10,13 @@ use crate::{
         folio_entry::{FolioEntry, FolioEntryType},
         payment::Payment,
     },
+    domain::semantic::operation_context::OperationContext,
     error::app_error::{domain, infra, not_found, AppResult},
     repository::sqlite::operational::{
         folio_entry_repository::SqliteFolioEntryRepository,
         folio_repository::SqliteFolioRepository, payment_repository::SqlitePaymentRepository,
     },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
 pub async fn execute(db: &Db, input: CreatePaymentInput) -> AppResult<Payment> {
@@ -64,6 +66,34 @@ pub async fn execute(db: &Db, input: CreatePaymentInput) -> AppResult<Payment> {
         };
 
         SqliteFolioEntryRepository::save(&mut tx, &entry).await?;
+
+        record_audit_log(
+            &mut tx,
+            &OperationContext::api_system(),
+            RecordAuditLogInput {
+                aggregate_type: "payment".to_string(),
+                aggregate_id: payment.id,
+                action: "billing.payment.create".to_string(),
+                before_json: None,
+                after_json: serde_json::json!({
+                    "id": payment.id,
+                    "folio_id": payment.folio_id,
+                    "amount": payment.amount,
+                    "method": payment.method,
+                    "external_reference": payment.external_reference,
+                    "folio_entry_id": entry.id,
+                    "folio_entry_type": entry.entry_type,
+                })
+                .to_string(),
+                changed_fields_json: serde_json::json!([
+                    {"field_name": "amount", "before_value": null, "after_value": payment.amount.to_string()},
+                    {"field_name": "method", "before_value": null, "after_value": payment.method.to_snake()}
+                ])
+                .to_string(),
+                reason: None,
+            },
+        )
+        .await?;
 
         Ok(payment)
     }

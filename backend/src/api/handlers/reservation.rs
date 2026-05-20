@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
@@ -20,30 +20,30 @@ use crate::{
                 OpenReservationEditSessionInput, ReservationDailyDetailInput,
                 ReservationDailyRevenueAllocationInput, ReservationPackageBreakdownInput,
                 ReservationParticipantInput, ReservationSleepSharingChildInput,
-                ResolveReservationTraceInput,
+                ResolveReservationTraceInput, SearchReservationsInput,
             },
             request::reservation::{
                 CloseReservationEditSessionRequest, CreateReservationNoteRequest,
                 CreateReservationRequest, CreateReservationTraceRequest,
                 DeleteReservationNoteRequest, DeleteReservationTraceRequest,
                 ModifyReservationRequest, OpenReservationEditSessionRequest,
-                ResolveReservationTraceRequest,
+                ResolveReservationTraceRequest, SearchReservationsQueryRequest,
             },
             response::reservation::{
                 OpenReservationEditSessionResponse, ReservationEditSessionResponse,
-                ReservationEditSessionWarningResponse, ReservationLinkedResourcesResponse,
+                ReservationEditSessionWarningResponse,
                 ReservationNoteResponse, ReservationParticipantResponse, ReservationResponse,
-                ReservationTraceResponse,
+                ReservationTraceResponse, ReservationSearchItemResponse,
             },
         },
         error::{map_app_error, ApiError},
         state::AppState,
     },
     domain::{
-        entity::reservation::Reservation,
+        entity::reservation::{Reservation, ReservationStatus, StayStatus},
         semantic::{
             operation_context::OperationContext, reservation_booking::ReservationBookingChannel,
-            reservation_edit_session::ReservationEditSession,
+            reservation_edit_session::ReservationEditSession, reservation_linked_resources::ReservationLinkedResources,
         },
     },
     usecase::reservation::{
@@ -54,7 +54,10 @@ use crate::{
             resolve_reservation_trace,
         },
         detail::get_reservation::get_reservation_detail,
-        search::get_guest_reservations::get_guest_reservations,
+        search::{
+            get_guest_reservations::get_guest_reservations,
+            search_reservations,
+        },
     },
 };
 
@@ -601,6 +604,72 @@ pub async fn delete_reservation_trace_handler(
     Ok(StatusCode::NO_CONTENT)
 }
 
+pub async fn search_reservations_handler(
+    State(state): State<AppState>,
+    Query(req): Query<SearchReservationsQueryRequest>,
+) -> Result<
+    (
+        StatusCode,
+        Json<Vec<ReservationSearchItemResponse>>,
+    ),
+    ApiError,
+> {
+    let input =
+        SearchReservationsInput {
+            external_id: req.external_id
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty()),
+
+            check_in_from: parse_optional_date(req.check_in_from)?,
+            check_in_to: parse_optional_date(req.check_in_to)?,
+            stay_date: parse_optional_date(req.stay_date)?,
+
+            guest_name: req
+                .guest_name
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty()),
+
+            reservation_status: parse_optional_reservation_status(
+                req.reservation_status,
+            )?,
+
+            stay_status: parse_optional_stay_status(
+                req.stay_status,
+            )?,
+
+            room_class: req
+                .room_class
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty()),
+
+            room_id: parse_optional_uuid(
+                req.room_id,
+                "invalid room_id",
+            )?,
+        };
+
+    let items =
+        search_reservations::execute(
+            &state.db,
+            input,
+        )
+        .await
+        .map_err(map_app_error)?;
+
+    let response =
+        items
+            .into_iter()
+            .map(ReservationSearchItemResponse::from)
+            .collect();
+
+    Ok(
+        (
+            StatusCode::OK,
+            Json(response),
+        ),
+    )
+}
+
 fn reservation_edit_session_to_response(
     session: ReservationEditSession,
 ) -> ReservationEditSessionResponse {
@@ -646,7 +715,7 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
                 updated_at: None,
             },
         
-        linked_resources: ReservationLinkedResourcesResponse {
+        linked_resources: ReservationLinkedResources {
             primary_guest_id: None,
             assigned_room_id: reservation.room_id,
             folio_id: None,
@@ -742,5 +811,113 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
                 timeline_available: true,
                 semantic_signal_available: false,
             },
+    }
+}
+
+fn parse_optional_date(
+    value: Option<String>,
+) -> Result<Option<chrono::NaiveDate>, ApiError> {
+    match value {
+        Some(value) => {
+            let value =
+                value.trim();
+
+            if value.is_empty() {
+                return Ok(None);
+            }
+
+            chrono::NaiveDate::parse_from_str(
+                value,
+                "%Y-%m-%d",
+            )
+            .map(Some)
+            .map_err(|_| {
+                ApiError::new(
+                    StatusCode::BAD_REQUEST,
+                    "invalid date",
+                )
+            })
+        }
+
+        None => Ok(None),
+    }
+}
+
+fn parse_optional_uuid(
+    value: Option<String>,
+    message: &'static str,
+) -> Result<Option<Uuid>, ApiError> {
+    match value {
+        Some(value) => {
+            let value =
+                value.trim();
+
+            if value.is_empty() {
+                return Ok(None);
+            }
+
+            Uuid::parse_str(value)
+                .map(Some)
+                .map_err(|_| {
+                    ApiError::new(
+                        StatusCode::BAD_REQUEST,
+                        message,
+                    )
+                })
+        }
+
+        None => Ok(None),
+    }
+}
+
+fn parse_optional_reservation_status(
+    value: Option<String>,
+) -> Result<Option<ReservationStatus>, ApiError> {
+    match value {
+        Some(value) => {
+            let value =
+                value.trim();
+
+            if value.is_empty() {
+                return Ok(None);
+            }
+
+            ReservationStatus::from_snake(value)
+                .map(Some)
+                .ok_or_else(|| {
+                    ApiError::new(
+                        StatusCode::BAD_REQUEST,
+                        "invalid reservation_status",
+                    )
+                })
+        }
+
+        None => Ok(None),
+    }
+}
+
+fn parse_optional_stay_status(
+    value: Option<String>,
+) -> Result<Option<StayStatus>, ApiError> {
+    match value {
+        Some(value) => {
+            let value =
+                value.trim();
+
+            if value.is_empty() {
+                return Ok(None);
+            }
+
+            StayStatus::from_snake(value)
+                .map(Some)
+                .ok_or_else(|| {
+                    ApiError::new(
+                        StatusCode::BAD_REQUEST,
+                        "invalid stay_status",
+                    )
+                })
+        }
+
+        None => Ok(None),
     }
 }

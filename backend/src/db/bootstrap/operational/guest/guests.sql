@@ -12,3 +12,9 @@ CREATE TABLE IF NOT EXISTS guests (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_guests_last_name
+ON guests(last_name);
+
+CREATE INDEX IF NOT EXISTS idx_guests_first_name
+ON guests(first_name);

@@ -130,6 +130,7 @@ pub struct DeleteReservationTraceRequest {
     pub actor_id: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SearchReservationsQueryRequest {
     pub external_id: Option<String>,
     pub check_in_from: Option<String>,

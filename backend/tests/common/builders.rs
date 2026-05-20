@@ -223,6 +223,16 @@ impl ReservationBuilder {
         self
     }
 
+    pub fn with_external_id(
+        mut self,
+        value: impl Into<String>,
+    ) -> Self {
+        self.external_id =
+            Some(value.into());
+
+        self
+    }
+
     pub fn build(self) -> CreateReservationRequest {
         CreateReservationRequest {
             external_id: self.external_id,

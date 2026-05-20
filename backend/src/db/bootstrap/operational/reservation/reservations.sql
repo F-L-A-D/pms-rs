@@ -13,3 +13,24 @@ CREATE TABLE IF NOT EXISTS reservations (
     created_at TEXT NOT NULL,
     channel TEXT
 );
+
+CREATE INDEX IF NOT EXISTS idx_reservations_check_in
+ON reservations(check_in);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_check_out
+ON reservations(check_out);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_status
+ON reservations(reservation_status);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_stay_status
+ON reservations(stay_status);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_room_class
+ON reservations(room_class);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_room_id
+ON reservations(room_id);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_external_id
+ON reservations(external_id);

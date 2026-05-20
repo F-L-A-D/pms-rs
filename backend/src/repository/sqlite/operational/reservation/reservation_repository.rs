@@ -1,11 +1,16 @@
-use sqlx::{Row, Sqlite, Transaction};
+use sqlx::{Row, Sqlite, Transaction, QueryBuilder};
 
 use uuid::Uuid;
 
 use crate::{
+    api::dto::input::reservation::SearchReservationsInput,
     domain::{
         entity::reservation::{Reservation, ReservationStatus, StayStatus},
-        semantic::reservation_booking::ReservationBookingChannel,
+        semantic::{
+            reservation_booking::ReservationBookingChannel,
+            reservation_linked_resources::ReservationLinkedResources,
+            reservation_search_item::ReservationSearchItem,
+        },
     },
     error::app_error::{conflict, infra, AppResult},
     repository::sqlite::operational::{
@@ -15,6 +20,21 @@ use crate::{
         reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
     },
 };
+
+pub struct ReservationSearchRow {
+    pub id: Uuid,
+    pub external_id: Option<String>,
+    pub check_in: chrono::NaiveDate,
+    pub check_out: chrono::NaiveDate,
+    pub reservation_status: ReservationStatus,
+    pub stay_status: Option<StayStatus>,
+    pub room_class: Option<String>,
+    pub room_id: Option<Uuid>,
+    pub primary_guest_id: Option<Uuid>,
+    pub primary_guest_name: Option<String>,
+    pub folio_id: Option<Uuid>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
 
 pub struct SqliteReservationRepository;
 
@@ -240,6 +260,125 @@ impl SqliteReservationRepository {
         Ok(reservations)
     }
 
+    pub async fn find_by_search_input(
+        tx: &mut Transaction<'_, Sqlite>,
+        input: &SearchReservationsInput,
+    ) -> AppResult<Vec<ReservationSearchItem>> {
+        let mut builder = QueryBuilder::<Sqlite>::new(
+            r#"
+            SELECT
+                r.id,
+                r.external_id,
+                r.check_in,
+                r.check_out,
+                r.reservation_status,
+                r.stay_status,
+                r.room_class,
+                r.room_id,
+                r.created_at,
+
+                rgr.guest_id AS primary_guest_id,
+                CASE
+                    WHEN g.id IS NULL THEN NULL
+                    ELSE TRIM(g.last_name || ' ' || g.first_name)
+                END AS primary_guest_name,
+
+                f.folio_id AS folio_id
+            FROM reservations r
+            LEFT JOIN reservation_guest_relations rgr
+                ON rgr.reservation_id = r.id
+            AND rgr.relation_type = 'primary'
+            LEFT JOIN guests g
+                ON g.id = rgr.guest_id
+            LEFT JOIN (
+                SELECT
+                    reservation_id,
+                    MIN(id) AS folio_id
+                FROM folios
+                GROUP BY reservation_id
+            ) f
+                ON f.reservation_id = r.id
+            WHERE 1 = 1
+            "#,
+        );
+
+        if let Some(external_id) = &input.external_id {
+            builder.push(" AND r.external_id = ");
+            builder.push_bind(external_id);
+        }
+
+        if let Some(check_in_from) = input.check_in_from {
+            builder.push(" AND r.check_in >= ");
+            builder.push_bind(check_in_from.to_string());
+        }
+
+        if let Some(check_in_to) = input.check_in_to {
+            builder.push(" AND r.check_in <= ");
+            builder.push_bind(check_in_to.to_string());
+        }
+
+        if let Some(stay_date) = input.stay_date {
+            builder.push(" AND r.check_in <= ");
+            builder.push_bind(stay_date.to_string());
+
+            builder.push(" AND r.check_out > ");
+            builder.push_bind(stay_date.to_string());
+        }
+
+        if let Some(guest_name) = &input.guest_name {
+            let keyword = format!("%{}%", guest_name.trim().to_lowercase());
+
+            builder.push(
+                r#"
+                AND (
+                    LOWER(g.last_name || ' ' || g.first_name) LIKE
+                "#,
+            );
+            builder.push_bind(keyword.clone());
+
+            builder.push(
+                r#"
+                    OR LOWER(g.first_name || ' ' || g.last_name) LIKE
+                "#,
+            );
+            builder.push_bind(keyword);
+
+            builder.push(" ) ");
+        }
+
+        if let Some(reservation_status) = &input.reservation_status {
+            builder.push(" AND r.reservation_status = ");
+            builder.push_bind(reservation_status.to_snake());
+        }
+
+        if let Some(stay_status) = &input.stay_status {
+            builder.push(" AND r.stay_status = ");
+            builder.push_bind(stay_status.to_snake());
+        }
+
+        if let Some(room_class) = &input.room_class {
+            builder.push(" AND r.room_class = ");
+            builder.push_bind(room_class);
+        }
+
+        if let Some(room_id) = input.room_id {
+            builder.push(" AND r.room_id = ");
+            builder.push_bind(room_id.to_string());
+        }
+
+        builder.push(" ORDER BY r.check_in ASC, r.created_at DESC ");
+
+        let rows = builder
+            .build()
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(infra)?;
+
+        rows.iter()
+            .map(Self::row_to_reservation_search_item)
+            .collect()
+    }
+
     async fn row_to_reservation(
         tx: &mut Transaction<'_, Sqlite>,
         row: &sqlx::sqlite::SqliteRow,
@@ -320,5 +459,88 @@ impl SqliteReservationRepository {
 
             created_at: row.get::<String, _>("created_at").parse().map_err(infra)?,
         })
+    }
+    
+    fn row_to_reservation_search_item(
+        row: &sqlx::sqlite::SqliteRow,
+    ) -> AppResult<ReservationSearchItem> {
+        let id =
+            Uuid::parse_str(
+                &row.get::<String, _>("id"),
+            )
+            .map_err(infra)?;
+
+        let room_id =
+            row.get::<Option<String>, _>("room_id")
+                .map(|id| Uuid::parse_str(&id))
+                .transpose()
+                .map_err(infra)?;
+
+        let primary_guest_id =
+            row.get::<Option<String>, _>("primary_guest_id")
+                .map(|id| Uuid::parse_str(&id))
+                .transpose()
+                .map_err(infra)?;
+
+        let folio_id =
+            row.get::<Option<String>, _>("folio_id")
+                .map(|id| Uuid::parse_str(&id))
+                .transpose()
+                .map_err(infra)?;
+
+        let reservation_status =
+            ReservationStatus::from_snake(
+                &row.get::<String, _>("reservation_status"),
+            )
+            .ok_or_else(|| infra("invalid reservation status"))?;
+
+        let stay_status =
+            match row.get::<Option<String>, _>("stay_status") {
+                Some(value) => {
+                    Some(
+                        StayStatus::from_snake(&value)
+                            .ok_or_else(|| infra("invalid stay status"))?,
+                    )
+                }
+
+                None => None,
+            };
+
+        Ok(
+            ReservationSearchItem {
+                id,
+                external_id: row.get("external_id"),
+
+                check_in: row
+                    .get::<String, _>("check_in")
+                    .parse()
+                    .map_err(infra)?,
+
+                check_out: row
+                    .get::<String, _>("check_out")
+                    .parse()
+                    .map_err(infra)?,
+
+                reservation_status,
+                stay_status,
+
+                room_class: Some(row.get::<String, _>("room_class")),
+
+                room_id,
+                
+                primary_guest_name: row.get("primary_guest_name"),
+
+                linked_resources: ReservationLinkedResources {
+                    primary_guest_id,
+                    assigned_room_id: room_id,
+                    folio_id,
+                },
+
+                created_at: row
+                    .get::<String, _>("created_at")
+                    .parse()
+                    .map_err(infra)?,
+            },
+        )
     }
 }

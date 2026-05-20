@@ -32,6 +32,7 @@ use crate::{
                 OpenReservationEditSessionResponse, ReservationEditSessionResponse,
                 ReservationEditSessionWarningResponse, ReservationNoteResponse,
                 ReservationParticipantResponse, ReservationResponse, ReservationTraceResponse,
+                ReservationLinkedResourcesResponse,
             },
         },
         error::{map_app_error, ApiError},
@@ -643,6 +644,12 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
                 version: reservation.version,
                 updated_at: None,
             },
+        
+        linked_resources: ReservationLinkedResourcesResponse {
+            primary_guest_id: None,
+            assigned_room_id: reservation.room_id,
+            folio_id: None,
+        },
 
         room_assignment:
             crate::api::dto::response::reservation::ReservationRoomAssignmentResponse {

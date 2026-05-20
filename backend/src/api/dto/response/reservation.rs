@@ -42,6 +42,7 @@ pub struct ReservationResponse {
     pub version: i64,
     pub created_at: DateTime<Utc>,
     pub operation_metadata: ReservationOperationMetadataResponse,
+    pub linked_resources: ReservationLinkedResourcesResponse,
     pub room_assignment: ReservationRoomAssignmentResponse,
     pub package_breakdowns: Vec<ReservationPackageBreakdownResponse>,
     pub daily_details: Vec<ReservationDailyDetailResponse>,
@@ -369,6 +370,19 @@ impl From<ReservationDetail> for ReservationResponse {
                 version,
                 updated_at: None,
             },
+            
+            linked_resources: ReservationLinkedResourcesResponse {
+                primary_guest_id: detail
+                    .participant_details
+                    .iter()
+                    .find(|participant| {
+                        participant.relation_type
+                            == crate::domain::semantic::reservation_guest_relation::ReservationGuestRelationType::Primary
+                    })
+                    .map(|participant| participant.guest_id),
+                assigned_room_id: room_id,
+                folio_id: None,
+            },
 
             room_assignment: ReservationRoomAssignmentResponse {
                 room_id,
@@ -539,4 +553,11 @@ fn reservation_edit_session_to_response(
         opened_at: session.opened_at,
         expires_at: session.expires_at,
     }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationLinkedResourcesResponse {
+    pub primary_guest_id: Option<Uuid>,
+    pub assigned_room_id: Option<Uuid>,
+    pub folio_id: Option<Uuid>,
 }

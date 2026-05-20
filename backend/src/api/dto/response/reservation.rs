@@ -5,7 +5,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
 
 use crate::{
-    api::dto::semantic_signal::OperationSemanticSignalResponse,
+    api::dto::response::semantic_signal::OperationSemanticSignalResponse,
     domain::{
         entity::{
             guest::{Gender, Guest},
@@ -507,18 +507,19 @@ impl From<ReservationDetail> for ReservationResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ReservationSearchResponse {
-    pub reservation_id: Uuid,
+pub struct ReservationSearchItemResponse {
+    pub id: Uuid,
     pub external_id: Option<String>,
-    pub primary_guest_name: String,
-    pub participant_names: Vec<String>,
     pub check_in: NaiveDate,
     pub check_out: NaiveDate,
-    pub room_class: String,
+    pub reservation_status: String,
+    pub stay_status: Option<String>,
+    pub room_class: Option<String>,
     pub room_id: Option<Uuid>,
-    pub booking_channel: ReservationBookingChannel,
-    pub reservation_status: ReservationStatus,
-    pub stay_status: Option<StayStatus>,
+    pub primary_guest_id: Option<Uuid>,
+    pub primary_guest_name: Option<String>,
+    pub linked_resources: ReservationLinkedResourcesResponse,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

@@ -5,7 +5,7 @@ use chrono::{Duration, Utc};
 use uuid::Uuid;
 
 use pms_rs::{
-    api::dto::reservation::ReservationResponse,
+    api::dto::response::reservation::ReservationResponse,
     domain::{
         entity::reservation::{ReservationStatus, StayStatus},
         reservation_guest_relation::ReservationGuestRelationType,
@@ -32,7 +32,7 @@ use pms_rs::{
 use crate::common::{
     app::spawn_app,
     builders::{ReservationBuilder, ReservationParticipantBuilder},
-    client::{delete, get, patch_json, post_json, response_json, delete_json},
+    client::{delete, delete_json, get, patch_json, post_json, response_json},
     guest::create_guest,
     reservation::{create_reservation, create_reservation_with_guest},
     room::create_room,
@@ -1607,10 +1607,7 @@ async fn should_resolve_reservation_trace() {
 
     let resolve_response = post_json(
         &app.app,
-        &format!(
-            "/reservations/{}/traces/{}/resolve",
-            created.id, trace_id
-        ),
+        &format!("/reservations/{}/traces/{}/resolve", created.id, trace_id),
         &serde_json::json!({
             "actor_id": "hk-1"
         }),

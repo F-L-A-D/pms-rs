@@ -3,7 +3,7 @@ use axum::http::StatusCode;
 use chrono::{Duration, Utc};
 
 use pms_rs::{
-    api::dto::reservation::ReservationResponse,
+    api::dto::response::reservation::ReservationResponse,
     domain::entity::folio::FolioStatus,
     domain::semantic::reservation_transition::ReservationTransitionType,
     domain::semantic::room_daily_state::{

@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 
-use pms_rs::api::dto::guest::GuestResponse;
+use pms_rs::api::dto::response::guest::GuestResponse;
 
 #[allow(unused_imports)]
 use crate::common::{

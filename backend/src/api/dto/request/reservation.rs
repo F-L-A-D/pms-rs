@@ -129,3 +129,15 @@ pub struct DeleteReservationNoteRequest {
 pub struct DeleteReservationTraceRequest {
     pub actor_id: Option<String>,
 }
+
+pub struct SearchReservationsQueryRequest {
+    pub external_id: Option<String>,
+    pub check_in_from: Option<String>,
+    pub check_in_to: Option<String>,
+    pub stay_date: Option<String>,
+    pub guest_name: Option<String>,
+    pub reservation_status: Option<String>,
+    pub stay_status: Option<String>,
+    pub room_class: Option<String>,
+    pub room_id: Option<String>,
+}

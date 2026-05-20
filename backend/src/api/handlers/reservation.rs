@@ -25,14 +25,15 @@ use crate::{
             request::reservation::{
                 CloseReservationEditSessionRequest, CreateReservationNoteRequest,
                 CreateReservationRequest, CreateReservationTraceRequest,
-                DeleteReservationNoteRequest, DeleteReservationTraceRequest, ModifyReservationRequest,
-                OpenReservationEditSessionRequest, ResolveReservationTraceRequest,
+                DeleteReservationNoteRequest, DeleteReservationTraceRequest,
+                ModifyReservationRequest, OpenReservationEditSessionRequest,
+                ResolveReservationTraceRequest,
             },
             response::reservation::{
                 OpenReservationEditSessionResponse, ReservationEditSessionResponse,
-                ReservationEditSessionWarningResponse, ReservationNoteResponse,
-                ReservationParticipantResponse, ReservationResponse, ReservationTraceResponse,
-                ReservationLinkedResourcesResponse,
+                ReservationEditSessionWarningResponse, ReservationLinkedResourcesResponse,
+                ReservationNoteResponse, ReservationParticipantResponse, ReservationResponse,
+                ReservationTraceResponse,
             },
         },
         error::{map_app_error, ApiError},
@@ -48,9 +49,9 @@ use crate::{
     usecase::reservation::{
         command::{
             cancel_reservation, close_edit_session, create_reservation, create_reservation_note,
-            create_reservation_trace, delete_reservation_note, delete_reservation_trace, 
-            mark_no_show, modify_reservation,
-            open_edit_session, reinstate_reservation, resolve_reservation_trace,
+            create_reservation_trace, delete_reservation_note, delete_reservation_trace,
+            mark_no_show, modify_reservation, open_edit_session, reinstate_reservation,
+            resolve_reservation_trace,
         },
         detail::get_reservation::get_reservation_detail,
         search::get_guest_reservations::get_guest_reservations,

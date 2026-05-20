@@ -2,10 +2,7 @@ use axum::Router;
 
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::api::{
-    routes,
-    state::AppState,
-};
+use crate::api::{routes, state::AppState};
 
 pub fn create_router(state: AppState) -> Router {
     let cors = CorsLayer::new()

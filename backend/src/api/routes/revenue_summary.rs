@@ -1,12 +1,8 @@
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 
 use crate::api::{
     handlers::revenue_summary::{
-        get_daily_revenue_summary_handler,
-        get_monthly_revenue_summary_handler,
+        get_daily_revenue_summary_handler, get_monthly_revenue_summary_handler,
     },
     state::AppState,
 };

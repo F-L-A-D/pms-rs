@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     api::{
-        dto::timeline::TimelineEventResponse,
+        dto::response::timeline::TimelineEventResponse,
         error::{map_app_error, ApiError},
         state::AppState,
     },

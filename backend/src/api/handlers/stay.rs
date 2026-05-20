@@ -1,13 +1,16 @@
 use axum::{
     extract::{Path, State},
+    http::StatusCode,
     Json,
 };
+
+use chrono::NaiveDate;
 
 use uuid::Uuid;
 
 use crate::{
     api::{
-        dto::stay::{MoveRoomRequest, StayResponse},
+        dto::{request::stay::MoveRoomRequest, response::stay::StayResponse},
         error::{map_app_error, ApiError},
         state::AppState,
     },
@@ -85,7 +88,10 @@ pub async fn move_room_handler(
     let room_id = Uuid::parse_str(&room_id)
         .map_err(|e| ApiError::new(axum::http::StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    move_room::execute(&state.db, reservation_id, room_id, req.effective_date)
+    let effective_date = NaiveDate::parse_from_str(&req.effective_date, "%Y-%m-%d")
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    move_room::execute(&state.db, reservation_id, room_id, effective_date)
         .await
         .map_err(map_app_error)?;
 

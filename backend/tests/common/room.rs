@@ -1,6 +1,6 @@
 use axum::{http::StatusCode, Router};
 
-use pms_rs::api::dto::room::RoomResponse;
+use pms_rs::api::dto::response::room::RoomResponse;
 
 use super::{
     builders::RoomBuilder,

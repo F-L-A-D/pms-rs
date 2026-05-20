@@ -2,7 +2,7 @@ use axum::{http::StatusCode, Router};
 
 use uuid::Uuid;
 
-use pms_rs::api::dto::reservation::ReservationResponse;
+use pms_rs::api::dto::response::reservation::ReservationResponse;
 
 use super::{
     builders::{ReservationBuilder, ReservationParticipantBuilder},

@@ -6,10 +6,14 @@ use axum::{
 
 use crate::{
     api::{
-        dto::package::{
-            AssignPackageToPlanRequest, CreatePackageDefinitionRequest, CreateRatePlanRequest,
-            PackageDefinitionResponse, RatePlanPackageResponse, RatePlanResponse,
-            UpdateActivationRequest, UpdatePackageDefinitionRequest,
+        dto::{
+            request::package::{
+                AssignPackageToPlanRequest, CreatePackageDefinitionRequest, CreateRatePlanRequest,
+                UpdateActivationRequest, UpdatePackageDefinitionRequest,
+            },
+            response::package::{
+                PackageDefinitionResponse, RatePlanPackageResponse, RatePlanResponse,
+            },
         },
         error::{map_app_error, ApiError},
         state::AppState,

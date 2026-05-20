@@ -2,7 +2,7 @@ use axum::{http::StatusCode, Router};
 
 use uuid::Uuid;
 
-use pms_rs::api::dto::stay::StayResponse;
+use pms_rs::api::dto::response::stay::StayResponse;
 
 #[allow(unused_imports)]
 use super::client::{post, post_json, response_json};

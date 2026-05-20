@@ -2,12 +2,18 @@ use uuid::Uuid;
 
 use crate::{
     db::connection::Db,
-    domain::semantic::room_daily_state::RoomDailyOccupancyStatus,
+    domain::semantic::{
+        reservation_transition::{ReservationTransition, ReservationTransitionType},
+        room_daily_state::RoomDailyOccupancyStatus,
+    },
     error::app_error::{conflict, infra, not_found, AppResult},
-    repository::sqlite::operational::{
-        reservation_repository::SqliteReservationRepository,
-        room_daily_state_repository::SqliteRoomDailyStateRepository,
-        room_repository::SqliteRoomRepository,
+    repository::sqlite::{
+        behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
+        operational::{
+            reservation_repository::SqliteReservationRepository,
+            room_daily_state_repository::SqliteRoomDailyStateRepository,
+            room_repository::SqliteRoomRepository,
+        },
     },
 };
 
@@ -64,6 +70,20 @@ pub async fn execute(db: &Db, reservation_id: Uuid, room_id: Uuid) -> AppResult<
         reservation.room_id = Some(room_id);
 
         SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
+
+        SqliteReservationTransitionRepository::save(
+            &mut tx,
+            &ReservationTransition {
+                id: Uuid::new_v4(),
+                reservation_id: reservation.id,
+                transition_type: ReservationTransitionType::RoomAssigned,
+                field_name: "room_id".to_string(),
+                before_value: String::new(),
+                after_value: room_id.to_string(),
+                occurred_at: chrono::Utc::now(),
+            },
+        )
+        .await?;
 
         Ok(())
     }

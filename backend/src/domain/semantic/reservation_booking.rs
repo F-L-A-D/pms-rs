@@ -6,6 +6,8 @@ use chrono::NaiveDate;
 
 use uuid::Uuid;
 
+use crate::domain::entity::guest::Gender;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ReservationBookingChannel {
@@ -88,6 +90,18 @@ pub struct ReservationDailyStayDetail {
     pub plan_code: Option<String>,
     pub adult_count: i64,
     pub child_count: i64,
+    pub sleep_sharing_child_count: i64,
+    pub sleep_sharing_children: Vec<ReservationSleepSharingChild>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReservationSleepSharingChild {
+    pub reservation_id: Uuid,
+    pub service_date: NaiveDate,
+    pub display_order: i64,
+    pub name: Option<String>,
+    pub age: Option<i64>,
+    pub gender: Option<Gender>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

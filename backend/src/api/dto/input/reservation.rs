@@ -4,9 +4,13 @@ use uuid::Uuid;
 
 use rust_decimal::Decimal;
 
-use crate::domain::semantic::{
-    reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
-    reservation_guest_relation::ReservationGuestRelationType,
+use crate::domain::{
+    entity::guest::Gender,
+    semantic::{
+        reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
+        reservation_guest_relation::ReservationGuestRelationType,
+        reservation_note::ReservationNoteKind,
+    },
 };
 
 pub struct CreateReservationInput {
@@ -33,7 +37,15 @@ pub struct ReservationDailyDetailInput {
     pub plan_code: Option<String>,
     pub adult_count: i64,
     pub child_count: i64,
+    pub sleep_sharing_child_count: i64,
+    pub sleep_sharing_children: Vec<ReservationSleepSharingChildInput>,
     pub package_breakdowns: Vec<ReservationPackageBreakdownInput>,
+}
+
+pub struct ReservationSleepSharingChildInput {
+    pub name: Option<String>,
+    pub age: Option<i64>,
+    pub gender: Option<Gender>,
 }
 
 pub struct ReservationDailyRevenueAllocationInput {
@@ -71,4 +83,37 @@ pub struct ModifyReservationInput {
     pub daily_details: Option<Vec<ReservationDailyDetailInput>>,
     pub daily_revenue_allocations: Option<Vec<ReservationDailyRevenueAllocationInput>>,
     pub participants: Option<Vec<ReservationParticipantInput>>,
+}
+
+pub struct CreateReservationNoteInput {
+    pub reservation_id: Uuid,
+    pub kind: ReservationNoteKind,
+    pub department_code: Option<String>,
+    pub body: String,
+    pub actor_id: Option<String>,
+}
+
+pub struct CreateReservationTraceInput {
+    pub reservation_id: Uuid,
+    pub department_code: String,
+    pub body: String,
+    pub actor_id: Option<String>,
+}
+
+pub struct ResolveReservationTraceInput {
+    pub reservation_id: Uuid,
+    pub trace_id: Uuid,
+    pub actor_id: Option<String>,
+}
+
+pub struct DeleteReservationNoteInput {
+    pub reservation_id: Uuid,
+    pub note_id: Uuid,
+    pub actor_id: Option<String>,
+}
+
+pub struct DeleteReservationTraceInput {
+    pub reservation_id: Uuid,
+    pub trace_id: Uuid,
+    pub actor_id: Option<String>,
 }

@@ -116,6 +116,8 @@ async fn should_preserve_pending_and_out_of_order_inventory_inputs() {
             plan_code: None,
             adult_count: 1,
             child_count: 0,
+            sleep_sharing_child_count: 0,
+            sleep_sharing_children: vec![],
         },
     )
     .await

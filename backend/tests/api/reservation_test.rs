@@ -32,9 +32,11 @@ use pms_rs::{
 use crate::common::{
     app::spawn_app,
     builders::{ReservationBuilder, ReservationParticipantBuilder},
-    client::{delete, get, patch_json, post_json, response_json},
+    client::{delete, get, patch_json, post_json, response_json, delete_json},
     guest::create_guest,
-    reservation::create_reservation,
+    reservation::{create_reservation, create_reservation_with_guest},
+    room::create_room,
+    stay::assign_room,
 };
 
 #[tokio::test]
@@ -64,6 +66,172 @@ async fn should_roundtrip_reservation() {
         retrieved.participants[0].guest_id,
         created.participants[0].guest_id,
     );
+}
+
+#[tokio::test]
+async fn should_return_reservation_detail_visibility_fields() {
+    let app = spawn_app().await;
+
+    let guest = create_guest(&app.app).await;
+    let reservation = create_reservation_with_guest(&app.app, guest.id).await;
+    let room = create_room(&app.app).await;
+
+    assign_room(&app.app, reservation.id, room.id).await;
+
+    let edit_session_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/edit-sessions", reservation.id),
+        &serde_json::json!({
+            "actor_id": "front-1",
+            "actor_label": "Front 1"
+        }),
+    )
+    .await;
+
+    assert_eq!(edit_session_response.status(), StatusCode::OK);
+
+    let response = get(&app.app, &format!("/reservations/{}", reservation.id)).await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let detail: ReservationResponse =
+        serde_json::from_value(response_json(response).await).unwrap();
+
+    assert_eq!(detail.id, reservation.id);
+    assert_eq!(detail.operation_metadata.version, 2);
+    assert_eq!(detail.room_assignment.room_id, Some(room.id));
+
+    let assigned_room = detail.room_assignment.room.unwrap();
+    assert_eq!(assigned_room.room_no, room.room_no);
+    assert_eq!(assigned_room.room_class, room.room_class);
+
+    assert_eq!(detail.participant_details.len(), 1);
+    assert_eq!(detail.participant_details[0].guest_id, guest.id);
+
+    let participant_guest = detail.participant_details[0].guest.as_ref().unwrap();
+    assert_eq!(participant_guest.last_name, guest.last_name);
+    assert_eq!(participant_guest.first_name, guest.first_name);
+    assert_eq!(detail.active_edit_sessions.len(), 1);
+    assert_eq!(detail.active_edit_sessions[0].actor_id, "front-1");
+    assert_eq!(detail.room_history.len(), 1);
+    assert_eq!(detail.room_history[0].after_room_id, Some(room.id));
+}
+
+#[tokio::test]
+async fn should_return_sleep_sharing_children_and_reservation_notes() {
+    let app = spawn_app().await;
+
+    let guest = create_guest(&app.app).await;
+    let today = Utc::now().date_naive();
+
+    let create_response = post_json(
+        &app.app,
+        "/reservations",
+        &serde_json::json!({
+            "check_in": today.to_string(),
+            "check_out": (today + Duration::days(1)).to_string(),
+            "room_class": "standard",
+            "daily_details": [
+                {
+                    "service_date": today.to_string(),
+                    "room_class": "standard",
+                    "adult_count": 2,
+                    "child_count": 1,
+                    "sleep_sharing_child_count": 1,
+                    "sleep_sharing_children": [
+                        {
+                            "name": "Sleep Share Child",
+                            "age": 4,
+                            "gender": "unspecified"
+                        }
+                    ]
+                }
+            ],
+            "participants": [
+                {
+                    "guest_id": guest.id.to_string(),
+                    "relation_type": "primary"
+                }
+            ]
+        }),
+    )
+    .await;
+
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+
+    let created: ReservationResponse =
+        serde_json::from_value(response_json(create_response).await).unwrap();
+
+    let memo_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/notes", created.id),
+        &serde_json::json!({
+            "kind": "global_memo",
+            "body": "Prefers quiet room",
+            "actor_id": "front-1"
+        }),
+    )
+    .await;
+
+    assert_eq!(memo_response.status(), StatusCode::CREATED);
+
+    let trace_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/traces", created.id),
+        &serde_json::json!({
+            "department_code": "hk",
+            "body": "Prepare extra towels",
+            "actor_id": "front-1"
+        }),
+    )
+    .await;
+
+    assert_eq!(trace_response.status(), StatusCode::CREATED);
+
+    let detail_response = get(&app.app, &format!("/reservations/{}", created.id)).await;
+
+    assert_eq!(detail_response.status(), StatusCode::OK);
+
+    let detail: ReservationResponse =
+        serde_json::from_value(response_json(detail_response).await).unwrap();
+
+    assert_eq!(detail.daily_details[0].adult_count, 2);
+    assert_eq!(detail.daily_details[0].child_count, 1);
+    assert_eq!(detail.daily_details[0].sleep_sharing_child_count, 1);
+    assert_eq!(detail.daily_details[0].sleep_sharing_children.len(), 1);
+    assert_eq!(
+        detail.daily_details[0].sleep_sharing_children[0]
+            .name
+            .as_deref(),
+        Some("Sleep Share Child")
+    );
+    assert_eq!(
+        detail.daily_details[0].sleep_sharing_children[0].age,
+        Some(4)
+    );
+
+    assert_eq!(detail.notes.len(), 1);
+    assert_eq!(detail.traces.len(), 1);
+    assert!(detail
+        .notes
+        .iter()
+        .any(|note| note.body == "Prefers quiet room"));
+    assert!(detail.traces.iter().any(|note| {
+        note.department_code.as_deref() == Some("hk") && note.body == "Prepare extra towels"
+    }));
+    assert!(!detail.operation_events.is_empty());
+    assert!(detail
+        .operation_events
+        .iter()
+        .any(|event| event.operation_type == OperationType::Create));
+    assert!(detail
+        .audit_logs
+        .iter()
+        .any(|log| log.action == "reservation.memo.add"));
+    assert!(detail
+        .audit_logs
+        .iter()
+        .any(|log| log.action == "reservation.trace.add"));
 }
 
 #[tokio::test]
@@ -1414,4 +1582,152 @@ async fn should_record_operation_change_events_for_modify_and_cancel() {
         cancel_activation.activation_key,
         SemanticActivationKey::ReservationCancelled
     );
+}
+
+#[tokio::test]
+async fn should_resolve_reservation_trace() {
+    let app = spawn_app().await;
+    let created = create_reservation(&app.app).await;
+
+    let trace_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/traces", created.id),
+        &serde_json::json!({
+            "department_code": "hk",
+            "body": "Prepare extra towels",
+            "actor_id": "front-1"
+        }),
+    )
+    .await;
+
+    assert_eq!(trace_response.status(), StatusCode::CREATED);
+
+    let trace_body = response_json(trace_response).await;
+    let trace_id: Uuid = serde_json::from_value(trace_body["id"].clone()).unwrap();
+
+    let resolve_response = post_json(
+        &app.app,
+        &format!(
+            "/reservations/{}/traces/{}/resolve",
+            created.id, trace_id
+        ),
+        &serde_json::json!({
+            "actor_id": "hk-1"
+        }),
+    )
+    .await;
+
+    assert_eq!(resolve_response.status(), StatusCode::NO_CONTENT);
+
+    let detail_response = get(&app.app, &format!("/reservations/{}", created.id)).await;
+    assert_eq!(detail_response.status(), StatusCode::OK);
+
+    let detail: ReservationResponse =
+        serde_json::from_value(response_json(detail_response).await).unwrap();
+
+    let trace = detail
+        .traces
+        .iter()
+        .find(|trace| trace.id == trace_id)
+        .unwrap();
+
+    assert!(trace.resolved_at.is_some());
+    assert_eq!(trace.resolved_by.as_deref(), Some("hk-1"));
+
+    assert!(detail
+        .audit_logs
+        .iter()
+        .any(|log| log.action == "reservation.trace.resolve"));
+}
+
+#[tokio::test]
+async fn should_delete_reservation_note() {
+    let app = spawn_app().await;
+    let created = create_reservation(&app.app).await;
+
+    let note_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/notes", created.id),
+        &serde_json::json!({
+            "kind": "global_memo",
+            "body": "Prefers quiet room",
+            "actor_id": "front-1"
+        }),
+    )
+    .await;
+
+    assert_eq!(note_response.status(), StatusCode::CREATED);
+
+    let note_body = response_json(note_response).await;
+    let note_id: Uuid = serde_json::from_value(note_body["id"].clone()).unwrap();
+
+    let delete_response = delete_json(
+        &app.app,
+        &format!("/reservations/{}/notes/{}", created.id, note_id),
+        &serde_json::json!({
+            "actor_id": "front-1"
+        }),
+    )
+    .await;
+
+    assert_eq!(delete_response.status(), StatusCode::NO_CONTENT);
+
+    let detail_response = get(&app.app, &format!("/reservations/{}", created.id)).await;
+    assert_eq!(detail_response.status(), StatusCode::OK);
+
+    let detail: ReservationResponse =
+        serde_json::from_value(response_json(detail_response).await).unwrap();
+
+    assert!(detail.notes.iter().all(|note| note.id != note_id));
+
+    assert!(detail
+        .audit_logs
+        .iter()
+        .any(|log| log.action == "reservation.memo.delete"));
+}
+
+#[tokio::test]
+async fn should_delete_reservation_trace() {
+    let app = spawn_app().await;
+    let created = create_reservation(&app.app).await;
+
+    let trace_response = post_json(
+        &app.app,
+        &format!("/reservations/{}/traces", created.id),
+        &serde_json::json!({
+            "department_code": "hk",
+            "body": "Prepare extra towels",
+            "actor_id": "front-1"
+        }),
+    )
+    .await;
+
+    assert_eq!(trace_response.status(), StatusCode::CREATED);
+
+    let trace_body = response_json(trace_response).await;
+    let trace_id: Uuid = serde_json::from_value(trace_body["id"].clone()).unwrap();
+
+    let delete_response = delete_json(
+        &app.app,
+        &format!("/reservations/{}/traces/{}", created.id, trace_id),
+        &serde_json::json!({
+            "actor_id": "front-1"
+        }),
+    )
+    .await;
+
+    assert_eq!(delete_response.status(), StatusCode::NO_CONTENT);
+
+    let detail_response = get(&app.app, &format!("/reservations/{}", created.id)).await;
+    assert_eq!(detail_response.status(), StatusCode::OK);
+
+    let detail: ReservationResponse =
+        serde_json::from_value(response_json(detail_response).await).unwrap();
+
+    assert!(detail.traces.iter().all(|trace| trace.id != trace_id));
+
+    assert!(detail
+        .audit_logs
+        .iter()
+        .any(|log| log.action == "reservation.trace.delete"));
 }

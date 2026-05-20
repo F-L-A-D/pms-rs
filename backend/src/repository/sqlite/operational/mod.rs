@@ -34,10 +34,16 @@ pub mod reservation_daily_stay_detail_repository;
 pub mod reservation_edit_session_repository;
 #[path = "reservation/reservation_guest_relation_repository.rs"]
 pub mod reservation_guest_relation_repository;
+#[path = "reservation/reservation_note_repository.rs"]
+pub mod reservation_note_repository;
 #[path = "reservation/reservation_package_breakdown_repository.rs"]
 pub mod reservation_package_breakdown_repository;
 #[path = "reservation/reservation_repository.rs"]
 pub mod reservation_repository;
+#[path = "reservation/reservation_sleep_sharing_child_repository.rs"]
+pub mod reservation_sleep_sharing_child_repository;
+#[path = "reservation/reservation_trace_repository.rs"]
+pub mod reservation_trace_repository;
 #[path = "reservation/revenue_summary_repository.rs"]
 pub mod revenue_summary_repository;
 #[path = "room/room_daily_state_repository.rs"]

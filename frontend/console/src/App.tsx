@@ -7,55 +7,58 @@ import { getHealth } from "./api/health";
 import { queryKeys } from "./api/queryKeys";
 import {
   createReservationNote,
+  createReservationTrace,
   getReservationDetail,
   type CreateReservationNoteRequest,
+  type CreateReservationTraceRequest,
 } from "./api/reservation";
 import { ReservationDetailView } from "./features/reservations/ReservationDetailView";
 
 export default function App() {
-  const params =
-    new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(window.location.search);
 
-  const initialReservationId =
-    params.get("reservationId") ?? params.get("id") ?? "";
+  const initialReservationId = params.get("reservationId") ?? params.get("id") ?? "";
 
-  const [reservationId, setReservationId] =
-    useState(initialReservationId);
+  const [reservationId, setReservationId] = useState(initialReservationId);
 
   const [draftReservationId, setDraftReservationId] =
     useState(initialReservationId);
 
-  const healthQuery =
-    useQuery({
-      queryKey: queryKeys.health,
-      queryFn: getHealth,
-    });
+  const healthQuery = useQuery({
+    queryKey: queryKeys.health,
+    queryFn: getHealth,
+  });
 
-  const reservationQuery =
-    useQuery({
-      queryKey: queryKeys.reservationDetail(reservationId),
-      queryFn: () => getReservationDetail(reservationId),
-      enabled: reservationId.length > 0,
-    });
+  const reservationQuery = useQuery({
+    queryKey: queryKeys.reservationDetail(reservationId),
+    queryFn: () => getReservationDetail(reservationId),
+    enabled: reservationId.length > 0,
+  });
 
-  const queryClient =
-    useQueryClient();
+  const queryClient = useQueryClient();
 
-  const createNoteMutation =
-    useMutation({
-      mutationFn: (request: CreateReservationNoteRequest) =>
-        createReservationNote(reservationId, request),
-      onSuccess: () =>
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.reservationDetail(reservationId),
-        }),
-    });
+  const createNoteMutation = useMutation({
+    mutationFn: (request: CreateReservationNoteRequest) =>
+      createReservationNote(reservationId, request),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.reservationDetail(reservationId),
+      }),
+  });
+
+  const createTraceMutation = useMutation({
+    mutationFn: (request: CreateReservationTraceRequest) =>
+      createReservationTrace(reservationId, request),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.reservationDetail(reservationId),
+      }),
+  });
 
   function loadReservation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const nextReservationId =
-      draftReservationId.trim();
+    const nextReservationId = draftReservationId.trim();
 
     setReservationId(nextReservationId);
 
@@ -76,6 +79,20 @@ export default function App() {
       : reservationQuery.error instanceof Error
         ? reservationQuery.error.message
         : "Unknown error";
+
+  const noteError =
+    createNoteMutation.error instanceof ApiClientError
+      ? `HTTP ${createNoteMutation.error.status}: ${createNoteMutation.error.body}`
+      : createNoteMutation.error instanceof Error
+        ? createNoteMutation.error.message
+        : null;
+
+  const traceError =
+    createTraceMutation.error instanceof ApiClientError
+      ? `HTTP ${createTraceMutation.error.status}: ${createTraceMutation.error.body}`
+      : createTraceMutation.error instanceof Error
+        ? createTraceMutation.error.message
+        : null;
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -146,13 +163,12 @@ export default function App() {
           {reservationQuery.data && (
             <ReservationDetailView
               reservation={reservationQuery.data}
-              noteError={
-                createNoteMutation.error instanceof Error
-                  ? createNoteMutation.error.message
-                  : null
-              }
+              noteError={noteError}
               noteSaving={createNoteMutation.isPending}
               onCreateNote={(request) => createNoteMutation.mutate(request)}
+              traceError={traceError}
+              traceSaving={createTraceMutation.isPending}
+              onCreateTrace={(request) => createTraceMutation.mutate(request)}
             />
           )}
         </section>

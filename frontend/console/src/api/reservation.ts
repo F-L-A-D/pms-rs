@@ -91,18 +91,33 @@ export type ReservationOperationalVisibility = {
   semantic_signal_available: boolean;
 };
 
-export type ReservationNoteKind =
-  | "global_memo"
-  | "department_trace";
+export type ReservationNoteKind = "global_memo";
 
 export type ReservationNote = {
   id: string;
   reservation_id: string;
   kind: ReservationNoteKind;
+  body: string;
+  actor_id: string | null;
+  created_at: string;
+  deleted_at: string | null;
+  deleted_by: string | null;
+};
+
+export type ReservationTraceKind = "department_trace";
+
+export type ReservationTrace = {
+  id: string;
+  reservation_id: string;
+  kind: ReservationTraceKind;
   department_code: string | null;
   body: string;
   actor_id: string | null;
   created_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
 };
 
 export type ReservationAuditLog = {
@@ -201,6 +216,7 @@ export type ReservationDetail = {
   version: number;
   created_at: string;
   operation_metadata: ReservationOperationMetadata;
+  linked_resources: ReservationLinkedResources;
   room_assignment: ReservationRoomAssignment;
   package_breakdowns: ReservationPackageBreakdown[];
   daily_details: ReservationDailyDetail[];
@@ -208,6 +224,7 @@ export type ReservationDetail = {
   participants: ReservationParticipant[];
   participant_details: ReservationParticipantDetail[];
   notes: ReservationNote[];
+  traces: ReservationTrace[];
   audit_logs: ReservationAuditLog[];
   operation_events: ReservationOperationEvent[];
   active_edit_sessions: ReservationEditSession[];
@@ -217,7 +234,12 @@ export type ReservationDetail = {
 
 export type CreateReservationNoteRequest = {
   kind: ReservationNoteKind;
-  department_code: string | null;
+  body: string;
+  actor_id: string | null;
+};
+
+export type CreateReservationTraceRequest = {
+  department_code: string;
   body: string;
   actor_id: string | null;
 };
@@ -239,3 +261,19 @@ export function createReservationNote(
     request,
   );
 }
+
+export function createReservationTrace(
+  reservationId: string,
+  request: CreateReservationTraceRequest,
+): Promise<ReservationTrace> {
+  return apiPost<ReservationTrace, CreateReservationTraceRequest>(
+    `/reservations/${reservationId}/traces`,
+    request,
+  );
+}
+
+export type ReservationLinkedResources = {
+  primary_guest_id: string | null;
+  assigned_room_id: string | null;
+  folio_id: string | null;
+};

@@ -2,15 +2,20 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import type {
   CreateReservationNoteRequest,
+  CreateReservationTraceRequest,
   ReservationDetail,
-  ReservationNoteKind,
 } from "../../api/reservation";
 
 type ReservationDetailViewProps = {
   reservation: ReservationDetail;
+
   noteError: string | null;
   noteSaving: boolean;
   onCreateNote: (request: CreateReservationNoteRequest) => void;
+
+  traceError: string | null;
+  traceSaving: boolean;
+  onCreateTrace: (request: CreateReservationTraceRequest) => void;
 };
 
 function valueOrDash(value: string | number | null | undefined) {
@@ -70,29 +75,39 @@ export function ReservationDetailView({
   noteError,
   noteSaving,
   onCreateNote,
+  traceError,
+  traceSaving,
+  onCreateTrace,
   reservation,
 }: ReservationDetailViewProps) {
   const room = reservation.room_assignment.room;
   const visibility = reservation.operational_visibility;
-  const [noteKind, setNoteKind] =
-    useState<ReservationNoteKind>("global_memo");
-  const [departmentCode, setDepartmentCode] =
-    useState("");
-  const [noteBody, setNoteBody] =
-    useState("");
+  const [noteBody, setNoteBody] = useState("");
+  const [traceDepartmentCode, setTraceDepartmentCode] = useState("");
+  const [traceBody, setTraceBody] = useState("");
 
   function submitNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     onCreateNote({
-      kind: noteKind,
-      department_code:
-        noteKind === "department_trace" ? departmentCode.trim() : null,
+      kind: "global_memo",
       body: noteBody,
       actor_id: "console",
     });
 
     setNoteBody("");
+  }
+
+  function submitTrace(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    onCreateTrace({
+      department_code: traceDepartmentCode,
+      body: traceBody,
+      actor_id: "console",
+    });
+
+    setTraceBody("");
   }
 
   return (
@@ -371,36 +386,11 @@ export function ReservationDetailView({
 
       <section className="border border-slate-300 bg-white">
         <h3 className="border-b border-slate-300 px-4 py-2 text-sm font-semibold text-slate-950">
-          Memo / Trace
+          Memo
         </h3>
 
         <div className="grid gap-4 p-4 lg:grid-cols-[22rem_1fr]">
           <form className="space-y-3" onSubmit={submitNote}>
-            <label className="flex flex-col gap-1 text-sm text-slate-600">
-              Type
-              <select
-                className="border border-slate-400 bg-white px-2 py-2 text-sm text-slate-950"
-                value={noteKind}
-                onChange={(event) =>
-                  setNoteKind(event.target.value as ReservationNoteKind)
-                }
-              >
-                <option value="global_memo">Global memo</option>
-                <option value="department_trace">Department trace</option>
-              </select>
-            </label>
-
-            {noteKind === "department_trace" && (
-              <label className="flex flex-col gap-1 text-sm text-slate-600">
-                Department
-                <input
-                  className="border border-slate-400 bg-white px-2 py-2 text-sm text-slate-950"
-                  value={departmentCode}
-                  onChange={(event) => setDepartmentCode(event.target.value)}
-                />
-              </label>
-            )}
-
             <label className="flex flex-col gap-1 text-sm text-slate-600">
               Body
               <textarea
@@ -415,45 +405,120 @@ export function ReservationDetailView({
               disabled={noteSaving || noteBody.trim().length === 0}
               type="submit"
             >
-              Add
+              Add memo
             </button>
 
-            {noteError && (
-              <div className="text-xs text-red-700">{noteError}</div>
-            )}
+            {noteError && <div className="text-xs text-red-700">{noteError}</div>}
           </form>
 
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">
               <thead className="bg-slate-100 text-xs uppercase text-slate-600">
                 <tr>
-                  <th className="border-b border-slate-300 px-4 py-2">Type</th>
-                  <th className="border-b border-slate-300 px-4 py-2">Department</th>
                   <th className="border-b border-slate-300 px-4 py-2">Body</th>
+                  <th className="border-b border-slate-300 px-4 py-2">Actor</th>
                   <th className="border-b border-slate-300 px-4 py-2">At</th>
                 </tr>
               </thead>
               <tbody>
                 {reservation.notes.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-3 text-slate-500" colSpan={4}>
-                      No memo or trace
+                    <td className="px-4 py-3 text-slate-500" colSpan={3}>
+                      No memo
                     </td>
                   </tr>
                 ) : (
                   reservation.notes.map((note) => (
                     <tr key={note.id}>
-                      <td className="border-b border-slate-200 px-4 py-2">
-                        {note.kind}
-                      </td>
-                      <td className="border-b border-slate-200 px-4 py-2">
-                        {valueOrDash(note.department_code)}
-                      </td>
                       <td className="border-b border-slate-200 px-4 py-2 text-slate-950">
                         {note.body}
                       </td>
+                      <td className="border-b border-slate-200 px-4 py-2">
+                        {valueOrDash(note.actor_id)}
+                      </td>
                       <td className="border-b border-slate-200 px-4 py-2 text-xs">
                         {note.created_at}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="border border-slate-300 bg-white">
+        <h3 className="border-b border-slate-300 px-4 py-2 text-sm font-semibold text-slate-950">
+          Trace
+        </h3>
+
+        <div className="grid gap-4 p-4 lg:grid-cols-[22rem_1fr]">
+          <form className="space-y-3" onSubmit={submitTrace}>
+            <label className="flex flex-col gap-1 text-sm text-slate-600">
+              Department
+              <input
+                className="border border-slate-400 bg-white px-2 py-2 text-sm text-slate-950"
+                value={traceDepartmentCode}
+                onChange={(event) => setTraceDepartmentCode(event.target.value)}
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm text-slate-600">
+              Body
+              <textarea
+                className="min-h-24 border border-slate-400 bg-white px-2 py-2 text-sm text-slate-950"
+                value={traceBody}
+                onChange={(event) => setTraceBody(event.target.value)}
+              />
+            </label>
+
+            <button
+              className="border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500"
+              disabled={
+                traceSaving ||
+                traceBody.trim().length === 0 ||
+                traceDepartmentCode.trim().length === 0
+              }
+              type="submit"
+            >
+              Add trace
+            </button>
+
+            {traceError && <div className="text-xs text-red-700">{traceError}</div>}
+          </form>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-slate-100 text-xs uppercase text-slate-600">
+                <tr>
+                  <th className="border-b border-slate-300 px-4 py-2">Department</th>
+                  <th className="border-b border-slate-300 px-4 py-2">Body</th>
+                  <th className="border-b border-slate-300 px-4 py-2">Status</th>
+                  <th className="border-b border-slate-300 px-4 py-2">At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reservation.traces.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-3 text-slate-500" colSpan={4}>
+                      No trace
+                    </td>
+                  </tr>
+                ) : (
+                  reservation.traces.map((trace) => (
+                    <tr key={trace.id}>
+                      <td className="border-b border-slate-200 px-4 py-2">
+                        {valueOrDash(trace.department_code)}
+                      </td>
+                      <td className="border-b border-slate-200 px-4 py-2 text-slate-950">
+                        {trace.body}
+                      </td>
+                      <td className="border-b border-slate-200 px-4 py-2">
+                        {trace.resolved_at ? "resolved" : "open"}
+                      </td>
+                      <td className="border-b border-slate-200 px-4 py-2 text-xs">
+                        {trace.created_at}
                       </td>
                     </tr>
                   ))

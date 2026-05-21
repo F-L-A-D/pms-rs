@@ -14,7 +14,7 @@ use crate::{
         orchestrator::refresh_projection_chain::refresh_projection_chain,
         topology::projection_node::ProjectionNode,
     },
-    repository::sqlite::operational::{
+    repository::sqlite::operational::room::{
         room_daily_state_repository::SqliteRoomDailyStateRepository,
         room_repository::SqliteRoomRepository,
     },

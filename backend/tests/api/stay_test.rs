@@ -12,8 +12,8 @@ use pms_rs::{
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
         operational::{
-            folio_repository::SqliteFolioRepository,
-            room_daily_state_repository::SqliteRoomDailyStateRepository,
+            billing::folio_repository::SqliteFolioRepository,
+            room::room_daily_state_repository::SqliteRoomDailyStateRepository,
         },
     },
 };

@@ -1,7 +1,7 @@
 use crate::{
     api::dto::input::guest::GuestSearchInput, db::connection::Db, domain::entity::guest::Guest,
     error::app_error::AppResult,
-    repository::sqlite::operational::guest_repository::SqliteGuestRepository,
+    repository::sqlite::operational::guest::guest_repository::SqliteGuestRepository,
 };
 
 pub async fn get_guests(db: &Db, input: GuestSearchInput) -> AppResult<Vec<Guest>> {

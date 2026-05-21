@@ -17,7 +17,7 @@ use crate::{
         state::AppState,
     },
     error::app_error::validation,
-    usecase::billing::command::create_invoice,
+    usecase::billing::command::invoice::create_invoice,
 };
 
 pub async fn create_invoice_handler(

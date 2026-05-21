@@ -2,7 +2,7 @@ use crate::{
     api::dto::input::reservation::CloseReservationEditSessionInput,
     db::connection::Db,
     error::app_error::{infra, not_found, validation, AppResult},
-    repository::sqlite::operational::reservation_edit_session_repository::SqliteReservationEditSessionRepository,
+    repository::sqlite::operational::reservation::reservation_edit_session_repository::SqliteReservationEditSessionRepository,
 };
 
 pub async fn execute(db: &Db, input: CloseReservationEditSessionInput) -> AppResult<()> {

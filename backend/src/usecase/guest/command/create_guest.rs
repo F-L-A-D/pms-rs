@@ -5,7 +5,7 @@ use crate::{
     db::connection::Db,
     domain::entity::guest::{Guest, GuestProfile},
     error::app_error::{infra, validation, AppResult},
-    repository::sqlite::operational::guest_repository::SqliteGuestRepository,
+    repository::sqlite::operational::guest::guest_repository::SqliteGuestRepository,
 };
 
 pub async fn create_guest(db: &Db, input: CreateGuestInput) -> AppResult<Guest> {

@@ -13,7 +13,7 @@ use crate::{
         orchestrator::refresh_projection_chain::refresh_projection_chain,
         topology::projection_node::ProjectionNode,
     },
-    repository::sqlite::operational::room_repository::SqliteRoomRepository,
+    repository::sqlite::operational::room::room_repository::SqliteRoomRepository,
 };
 
 pub async fn execute(db: &Db, input: CreateRoomInput) -> AppResult<Room> {

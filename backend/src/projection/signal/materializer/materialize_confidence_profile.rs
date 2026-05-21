@@ -13,7 +13,7 @@ use crate::{
     },
     error::app_error::{not_found, AppResult},
     projection::signal::model::confidence_profile::ConfidenceProfile,
-    repository::sqlite::operational::operation_change_event_repository::SqliteOperationChangeEventRepository,
+    repository::sqlite::operational::operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
 };
 
 pub async fn materialize_confidence_profile(

@@ -26,9 +26,11 @@ use pms_rs::{
         topology::projection_node::ProjectionNode,
     },
     repository::sqlite::operational::{
-        reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
-        reservation_repository::SqliteReservationRepository,
-        room_daily_state_repository::SqliteRoomDailyStateRepository,
+        reservation::{
+            reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
+            reservation_repository::SqliteReservationRepository,
+        },
+        room::room_daily_state_repository::SqliteRoomDailyStateRepository,
     },
 };
 

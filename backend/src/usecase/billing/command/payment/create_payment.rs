@@ -12,7 +12,7 @@ use crate::{
     },
     domain::semantic::operation_context::OperationContext,
     error::app_error::{domain, infra, not_found, AppResult},
-    repository::sqlite::operational::{
+    repository::sqlite::operational::billing::{
         folio_entry_repository::SqliteFolioEntryRepository,
         folio_repository::SqliteFolioRepository, payment_repository::SqlitePaymentRepository,
     },

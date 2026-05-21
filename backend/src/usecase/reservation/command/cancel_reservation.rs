@@ -20,8 +20,8 @@ use crate::{
         topology::projection_node::ProjectionNode,
     },
     repository::sqlite::operational::{
-        operation_change_event_repository::SqliteOperationChangeEventRepository,
-        reservation_repository::SqliteReservationRepository,
+        operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
+        reservation::reservation_repository::SqliteReservationRepository,
     },
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
     usecase::timeline::command::record_event::record_event,

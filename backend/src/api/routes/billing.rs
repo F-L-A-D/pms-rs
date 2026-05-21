@@ -5,23 +5,31 @@ use axum::{
 
 use crate::api::{
     handlers::billing::{
-        allocate_receivable_payment::allocate_receivable_payment_handler,
-        assign_billing_account::assign_billing_account_handler,
-        create_deposit::create_deposit_handler,
-        create_folio_entry::create_folio_entry_handler,
-        create_invoice::create_invoice_handler,
-        create_payment::create_payment_handler,
-        folio_query::get_folio_handler,
-        invoice_query::{get_invoice_handler, list_billing_account_invoices_handler},
-        open_reservation_folio::open_reservation_folio_handler,
-        receivable_detail::get_receivable_handler,
-        receivable_query::get_receivable_aging_handler,
-        reverse_payment_allocation::reverse_payment_allocation_handler,
-        update_receivable_status::{
-            dispute_receivable_handler, resolve_receivable_dispute_handler,
-            write_off_receivable_handler,
+        folio::{
+            create_folio_entry::create_folio_entry_handler,
+            folio_query::get_folio_handler,
+            assign_billing_account::assign_billing_account_handler,
+            open_reservation_folio::open_reservation_folio_handler,
         },
-        void_invoice::void_invoice_handler,
+        invoice::{
+            create_invoice::create_invoice_handler,
+            invoice_query::{get_invoice_handler, list_billing_account_invoices_handler},
+            void_invoice::void_invoice_handler,
+        },
+        payment::{
+            create_deposit::create_deposit_handler,
+            create_payment::create_payment_handler,
+            reverse_payment_allocation::reverse_payment_allocation_handler,
+        },
+        receivable::{
+            allocate_receivable_payment::allocate_receivable_payment_handler,
+            receivable_detail::get_receivable_handler,
+            receivable_query::get_receivable_aging_handler,
+            update_receivable_status::{
+                dispute_receivable_handler, resolve_receivable_dispute_handler,
+                write_off_receivable_handler,
+            },
+        },
     },
     state::AppState,
 };

@@ -6,7 +6,7 @@ use crate::{
         semantic::operation_context::OperationContext,
     },
     error::app_error::{conflict, infra, not_found, AppResult},
-    repository::sqlite::operational::{
+    repository::sqlite::operational::billing::{
         billing_account_repository::SqliteBillingAccountRepository,
         folio_repository::SqliteFolioRepository,
     },

@@ -24,7 +24,7 @@ use pms_rs::{
     error::app_error::AppError,
     repository::sqlite::{
         behavioral::settlement_transition_repository::SqliteSettlementTransitionRepository,
-        operational::{
+        operational::billing::{
             billing_account_repository::SqliteBillingAccountRepository,
             folio_repository::SqliteFolioRepository, invoice_repository::SqliteInvoiceRepository,
             payment_allocation_repository::SqlitePaymentAllocationRepository,
@@ -32,9 +32,19 @@ use pms_rs::{
         },
     },
     usecase::billing::command::{
-        allocate_receivable_payment, assign_billing_account, close_folio, create_folio_entry,
-        create_invoice, create_payment, dispute_receivable, resolve_receivable_dispute,
-        reverse_payment_allocation, void_invoice, write_off_receivable,
+        folio::{
+            close_folio, create_folio_entry,
+        },
+        invoice::{
+            create_invoice, void_invoice,
+        },
+        payment::{
+            allocate_receivable_payment, create_payment, reverse_payment_allocation,
+        },
+        receivable::{
+            dispute_receivable, write_off_receivable, resolve_receivable_dispute,
+        },
+        assign_billing_account, 
     },
     usecase::billing::search::list_receivable_aging,
 };

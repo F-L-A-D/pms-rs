@@ -12,7 +12,7 @@ use pms_rs::{
             RoomDailyHousekeepingStatus, RoomDailyOccupancyStatus, RoomDailyState,
         },
     },
-    repository::sqlite::operational::{
+    repository::sqlite::operational::room::{
         room_daily_state_repository::SqliteRoomDailyStateRepository,
         room_repository::SqliteRoomRepository,
     },

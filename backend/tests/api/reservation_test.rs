@@ -21,10 +21,12 @@ use pms_rs::{
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
         operational::{
-            operation_change_event_repository::SqliteOperationChangeEventRepository,
-            reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
-            reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
-            reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
+            operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
+            reservation::{
+                reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
+                reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
+                reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
+            },
         },
     },
 };

@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::{
     domain::semantic::guest_timeline_event::{GuestTimelineEvent, TimelineEventType},
     error::app_error::AppResult,
-    repository::sqlite::operational::guest_timeline_event_repository::SqliteGuestTimelineEventRepository,
+    repository::sqlite::operational::guest::guest_timeline_event_repository::SqliteGuestTimelineEventRepository,
 };
 
 pub async fn record_event(

@@ -11,7 +11,7 @@ use crate::{
     },
     error::app_error::{not_found, AppResult},
     projection::signal::model::change_pattern::ChangePattern,
-    repository::sqlite::operational::operation_change_event_repository::SqliteOperationChangeEventRepository,
+    repository::sqlite::operational::operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
 };
 
 pub async fn materialize_change_pattern(

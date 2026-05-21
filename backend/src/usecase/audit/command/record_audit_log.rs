@@ -7,7 +7,7 @@ use crate::{
         operation_context::OperationContext, operational_audit_log::OperationalAuditLog,
     },
     error::app_error::AppResult,
-    repository::sqlite::operational::operational_audit_log_repository::SqliteOperationalAuditLogRepository,
+    repository::sqlite::operational::operation::operational_audit_log_repository::SqliteOperationalAuditLogRepository,
 };
 
 pub struct RecordAuditLogInput {

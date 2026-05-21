@@ -7,7 +7,7 @@ use crate::{
     db::connection::Db,
     domain::entity::{folio::FolioStatus, folio_entry::FolioEntry},
     error::app_error::{domain, infra, not_found, AppResult},
-    repository::sqlite::operational::{
+    repository::sqlite::operational::billing::{
         folio_entry_repository::SqliteFolioEntryRepository, folio_repository::SqliteFolioRepository,
     },
 };

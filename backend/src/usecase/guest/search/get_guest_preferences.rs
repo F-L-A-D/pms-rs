@@ -4,7 +4,7 @@ use crate::{
     db::connection::Db,
     domain::semantic::guest_preference::GuestPreference,
     error::app_error::{not_found, AppResult},
-    repository::sqlite::operational::{
+    repository::sqlite::operational::guest::{
         guest_preference_repository::SqliteGuestPreferenceRepository,
         guest_repository::SqliteGuestRepository,
     },

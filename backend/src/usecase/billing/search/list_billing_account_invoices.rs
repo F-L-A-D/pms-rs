@@ -4,7 +4,7 @@ use crate::{
     db::connection::Db,
     domain::entity::invoice::Invoice,
     error::app_error::{infra, AppResult},
-    repository::sqlite::operational::invoice_repository::SqliteInvoiceRepository,
+    repository::sqlite::operational::billing::invoice_repository::SqliteInvoiceRepository,
 };
 
 pub async fn execute(db: &Db, billing_account_id: Uuid) -> AppResult<Vec<Invoice>> {

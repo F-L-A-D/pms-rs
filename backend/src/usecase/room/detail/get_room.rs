@@ -3,7 +3,7 @@ use crate::{
     db::connection::Db,
     domain::entity::room::Room,
     error::app_error::{not_found, AppResult},
-    repository::sqlite::operational::room_repository::SqliteRoomRepository,
+    repository::sqlite::operational::room::room_repository::SqliteRoomRepository,
 };
 
 pub async fn get_room(db: &Db, input: GetRoomInput) -> AppResult<Room> {

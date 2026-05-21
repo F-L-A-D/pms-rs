@@ -24,14 +24,18 @@ use crate::{
     },
     repository::sqlite::behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
     repository::sqlite::operational::{
-        guest_repository::SqliteGuestRepository,
-        operation_change_event_repository::SqliteOperationChangeEventRepository,
-        operational_audit_log_repository::SqliteOperationalAuditLogRepository,
-        reservation_edit_session_repository::SqliteReservationEditSessionRepository,
-        reservation_note_repository::SqliteReservationNoteRepository,
-        reservation_repository::SqliteReservationRepository,
-        reservation_trace_repository::SqliteReservationTraceRepository,
-        room_repository::SqliteRoomRepository,
+        guest::guest_repository::SqliteGuestRepository,
+        operation::{
+            operation_change_event_repository::SqliteOperationChangeEventRepository,
+            operational_audit_log_repository::SqliteOperationalAuditLogRepository,
+        },
+        reservation::{
+            reservation_edit_session_repository::SqliteReservationEditSessionRepository,
+            reservation_note_repository::SqliteReservationNoteRepository,
+            reservation_repository::SqliteReservationRepository,
+            reservation_trace_repository::SqliteReservationTraceRepository,
+        },
+        room::room_repository::SqliteRoomRepository,
     },
 };
 

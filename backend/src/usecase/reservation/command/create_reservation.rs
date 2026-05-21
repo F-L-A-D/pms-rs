@@ -30,15 +30,18 @@ use crate::{
         topology::projection_node::ProjectionNode,
     },
     repository::sqlite::operational::{
-        guest_repository::SqliteGuestRepository,
-        operation_change_event_repository::SqliteOperationChangeEventRepository,
-        package_definition_repository::SqlitePackageDefinitionRepository,
-        reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
-        reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
-        reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
-        reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
-        reservation_repository::SqliteReservationRepository,
+        guest::guest_repository::SqliteGuestRepository,
+        operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
+        rate_plan::package_definition_repository::SqlitePackageDefinitionRepository,
+        reservation::{
+            reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
+            reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
+            reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,
+            reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
+            reservation_repository::SqliteReservationRepository,
+        },
     },
+    usecase::billing::command::folio::open_reservation_folio::open_reservation_folio_in_tx,
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
     usecase::timeline::command::record_event::record_event,
 };
@@ -116,6 +119,14 @@ pub async fn execute(
         resolve_package_catalog_revenue_categories(&mut tx, &mut reservation).await?;
 
         SqliteReservationRepository::save(&mut tx, &reservation).await?;
+
+        let _folio =
+            open_reservation_folio_in_tx(
+                &mut tx,
+                reservation.id,
+                &context,
+            )
+            .await?;
 
         for participant in &reservation.participants {
             SqliteReservationGuestRelationRepository::save(&mut tx, participant).await?;

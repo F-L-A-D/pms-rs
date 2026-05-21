@@ -7,7 +7,7 @@ use crate::{
     db::connection::Db,
     domain::entity::receivable::ReceivableStatus,
     error::app_error::{infra, AppResult},
-    repository::sqlite::operational::receivable_repository::SqliteReceivableRepository,
+    repository::sqlite::operational::billing::receivable_repository::SqliteReceivableRepository,
 };
 
 pub async fn execute(db: &Db, as_of_date: NaiveDate) -> AppResult<ReceivableAgingResponse> {

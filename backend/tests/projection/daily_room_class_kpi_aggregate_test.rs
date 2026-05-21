@@ -27,7 +27,7 @@ use pms_rs::{
         },
         topology::projection_node::ProjectionNode,
     },
-    repository::sqlite::operational::room_daily_state_repository::SqliteRoomDailyStateRepository,
+    repository::sqlite::operational::room::room_daily_state_repository::SqliteRoomDailyStateRepository,
 };
 
 use crate::common::{

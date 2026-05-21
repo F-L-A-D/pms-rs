@@ -7,7 +7,7 @@ use crate::{
 
     error::app_error::AppResult,
 
-    repository::sqlite::operational::reservation_repository::
+    repository::sqlite::operational::reservation::reservation_repository::
         SqliteReservationRepository,
 };
 

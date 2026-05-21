@@ -4,7 +4,7 @@ use crate::{
     db::connection::Db,
     domain::entity::folio::Folio,
     error::app_error::{infra, not_found, AppResult},
-    repository::sqlite::operational::folio_repository::SqliteFolioRepository,
+    repository::sqlite::operational::billing::folio_repository::SqliteFolioRepository,
 };
 
 pub async fn execute(db: &Db, folio_id: Uuid) -> AppResult<Folio> {

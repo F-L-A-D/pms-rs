@@ -12,7 +12,7 @@ use crate::{
         state::AppState,
     },
     error::app_error::validation,
-    usecase::billing::command::void_invoice,
+    usecase::billing::command::invoice::void_invoice,
 };
 
 pub async fn void_invoice_handler(

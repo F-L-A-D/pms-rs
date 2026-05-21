@@ -25,8 +25,8 @@ use crate::{
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
         operational::{
-            operation_change_event_repository::SqliteOperationChangeEventRepository,
-            reservation_repository::SqliteReservationRepository,
+            operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
+            reservation::reservation_repository::SqliteReservationRepository,
         },
     },
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},

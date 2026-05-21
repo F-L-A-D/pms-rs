@@ -13,7 +13,7 @@ use crate::{
         },
     },
     error::app_error::{conflict, infra, AppResult},
-    repository::sqlite::operational::{
+    repository::sqlite::operational::reservation::{
         reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
         reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
         reservation_guest_relation_repository::SqliteReservationGuestRelationRepository,

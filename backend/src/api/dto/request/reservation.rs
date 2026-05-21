@@ -17,6 +17,7 @@ pub struct CreateReservationRequest {
     pub check_out: String,
     pub room_class: String,
     pub booking_channel: Option<ReservationBookingChannel>,
+    pub source_channel: Option<String>,
     pub plan_code: Option<String>,
     #[serde(default)]
     pub package_breakdowns: Vec<ReservationPackageBreakdownRequest>,
@@ -128,4 +129,19 @@ pub struct DeleteReservationNoteRequest {
 #[derive(Debug, Deserialize)]
 pub struct DeleteReservationTraceRequest {
     pub actor_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SearchReservationsQueryRequest {
+    pub external_id: Option<String>,
+    pub check_in_from: Option<String>,
+    pub check_in_to: Option<String>,
+    pub stay_date: Option<String>,
+    pub guest_name: Option<String>,
+    pub reservation_status: Option<String>,
+    pub stay_status: Option<String>,
+    pub room_class: Option<String>,
+    pub room_id: Option<String>,
+    pub booking_channel: Option<String>,
+    pub source_channel: Option<String>,
 }

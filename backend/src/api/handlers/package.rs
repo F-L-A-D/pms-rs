@@ -6,17 +6,21 @@ use axum::{
 
 use crate::{
     api::{
-        dto::package::{
-            AssignPackageToPlanRequest, CreatePackageDefinitionRequest, CreateRatePlanRequest,
-            PackageDefinitionResponse, RatePlanPackageResponse, RatePlanResponse,
-            UpdateActivationRequest, UpdatePackageDefinitionRequest,
+        dto::{
+            request::package::{
+                AssignPackageToPlanRequest, CreatePackageDefinitionRequest, CreateRatePlanRequest,
+                UpdateActivationRequest, UpdatePackageDefinitionRequest,
+            },
+            response::package::{
+                PackageDefinitionResponse, RatePlanPackageResponse, RatePlanResponse,
+            },
         },
         error::{map_app_error, ApiError},
         state::AppState,
     },
     domain::entity::package_definition::{PackageDefinition, RatePlanDefinition, RatePlanPackage},
     error::app_error::{infra, not_found},
-    repository::sqlite::operational::package_definition_repository::SqlitePackageDefinitionRepository,
+    repository::sqlite::operational::rate_plan::package_definition_repository::SqlitePackageDefinitionRepository,
     usecase::rate_plan::command::{
         assign_package_to_plan, define_package, define_rate_plan, update_package_activation,
         update_package_definition, update_rate_plan_activation,

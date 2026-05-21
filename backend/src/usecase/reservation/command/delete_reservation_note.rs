@@ -5,7 +5,7 @@ use crate::{
     db::connection::Db,
     domain::semantic::operation_context::OperationContext,
     error::app_error::{conflict, infra, not_found, AppResult},
-    repository::sqlite::operational::{
+    repository::sqlite::operational::reservation::{
         reservation_note_repository::SqliteReservationNoteRepository,
         reservation_repository::SqliteReservationRepository,
     },

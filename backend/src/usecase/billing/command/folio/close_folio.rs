@@ -6,7 +6,7 @@ use crate::{
         semantic::operation_context::OperationContext,
     },
     error::app_error::{conflict, infra, not_found, AppResult},
-    repository::sqlite::operational::folio_repository::SqliteFolioRepository,
+    repository::sqlite::operational::billing::folio_repository::SqliteFolioRepository,
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 

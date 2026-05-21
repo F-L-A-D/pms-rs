@@ -5,3 +5,6 @@ CREATE TABLE IF NOT EXISTS folios (
     status TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_folios_reservation
+ON folios(reservation_id);

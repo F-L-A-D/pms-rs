@@ -6,6 +6,7 @@ mod api {
     pub mod health_test;
     pub mod housekeeping_test;
     pub mod package_plan_test;
+    pub mod reservation_search_test;
     pub mod reservation_test;
     pub mod room_maintenance_test;
     pub mod room_test;

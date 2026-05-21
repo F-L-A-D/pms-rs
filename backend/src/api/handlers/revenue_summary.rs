@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     api::{
-        dto::revenue_summary::RevenueSummaryLineResponse,
+        dto::response::revenue_summary::RevenueSummaryLineResponse,
         error::{map_app_error, ApiError},
         state::AppState,
     },

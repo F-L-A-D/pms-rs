@@ -1,6 +1,9 @@
 use axum::{http::StatusCode, Router};
 
-use pms_rs::api::dto::guest::{CreateGuestRequest, GuestResponse, UpdateGuestRequest};
+use pms_rs::api::dto::{
+    request::guest::{CreateGuestRequest, UpdateGuestRequest},
+    response::guest::GuestResponse,
+};
 
 #[allow(unused_imports)]
 use super::{

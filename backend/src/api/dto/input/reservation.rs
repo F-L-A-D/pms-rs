@@ -5,7 +5,10 @@ use uuid::Uuid;
 use rust_decimal::Decimal;
 
 use crate::domain::{
-    entity::guest::Gender,
+    entity::{
+        guest::Gender,
+        reservation::{ReservationStatus, StayStatus},
+    },
     semantic::{
         reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
         reservation_guest_relation::ReservationGuestRelationType,
@@ -19,6 +22,7 @@ pub struct CreateReservationInput {
     pub check_out: NaiveDate,
     pub room_class: String,
     pub booking_channel: ReservationBookingChannel,
+    pub source_channel: Option<String>,
     pub plan_code: Option<String>,
     pub package_breakdowns: Vec<ReservationPackageBreakdownInput>,
     pub daily_details: Vec<ReservationDailyDetailInput>,
@@ -116,4 +120,18 @@ pub struct DeleteReservationTraceInput {
     pub reservation_id: Uuid,
     pub trace_id: Uuid,
     pub actor_id: Option<String>,
+}
+
+pub struct SearchReservationsInput {
+    pub external_id: Option<String>,
+    pub check_in_from: Option<NaiveDate>,
+    pub check_in_to: Option<NaiveDate>,
+    pub stay_date: Option<NaiveDate>,
+    pub guest_name: Option<String>,
+    pub reservation_status: Option<ReservationStatus>,
+    pub stay_status: Option<StayStatus>,
+    pub room_class: Option<String>,
+    pub room_id: Option<Uuid>,
+    pub booking_channel: Option<String>,
+    pub source_channel: Option<String>,
 }

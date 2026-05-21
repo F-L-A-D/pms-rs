@@ -12,7 +12,7 @@ use crate::{
         state::AppState,
     },
     error::app_error::validation,
-    usecase::billing::command::{
+    usecase::billing::command::receivable::{
         dispute_receivable, resolve_receivable_dispute, write_off_receivable,
     },
 };

@@ -25,8 +25,8 @@ use crate::{
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
         operational::{
-            operation_change_event_repository::SqliteOperationChangeEventRepository,
-            reservation_repository::SqliteReservationRepository,
+            operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
+            reservation::reservation_repository::SqliteReservationRepository,
         },
     },
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
@@ -63,6 +63,7 @@ pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<
 
         reservation.reservation_status = ReservationStatus::NoShow;
         reservation.stay_status = Some(StayStatus::NoShow);
+        reservation.room_id = None;
 
         SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
 
@@ -76,7 +77,7 @@ pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<
             operation_id: context.operation_id,
             aggregate_type: "reservation".to_string(),
             aggregate_id: reservation.id,
-            operation_type: OperationType::Modify,
+            operation_type: OperationType::NoShow,
             actor: context.actor,
             actor_id: context.actor_id.clone(),
             source: context.source,
@@ -173,7 +174,7 @@ pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<
 }
 
 fn status_changed_fields(before: &Reservation, after: &Reservation) -> Vec<ChangedField> {
-    vec![
+    let mut fields = vec![
         ChangedField::new(
             "reservation_status",
             Some(before.reservation_status.to_snake().to_string()),
@@ -190,7 +191,17 @@ fn status_changed_fields(before: &Reservation, after: &Reservation) -> Vec<Chang
                 .as_ref()
                 .map(|status| status.to_snake().to_string()),
         ),
-    ]
+    ];
+
+    if before.room_id != after.room_id {
+        fields.push(ChangedField::new(
+            "room_id",
+            before.room_id.map(|id| id.to_string()),
+            after.room_id.map(|id| id.to_string()),
+        ));
+    }
+
+    fields
 }
 
 fn reservation_json(reservation: &Reservation) -> serde_json::Value {

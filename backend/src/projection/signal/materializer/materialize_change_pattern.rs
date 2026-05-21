@@ -11,7 +11,7 @@ use crate::{
     },
     error::app_error::{not_found, AppResult},
     projection::signal::model::change_pattern::ChangePattern,
-    repository::sqlite::operational::operation_change_event_repository::SqliteOperationChangeEventRepository,
+    repository::sqlite::operational::operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
 };
 
 pub async fn materialize_change_pattern(
@@ -27,6 +27,8 @@ pub async fn materialize_change_pattern(
     let pattern_type = match event.operation_type {
         OperationType::Create => ChangePatternType::ReservationCreated,
         OperationType::Cancel => ChangePatternType::ReservationCancelled,
+        OperationType::NoShow => ChangePatternType::ReservationMarkedNoShow,
+        OperationType::Reinstate => ChangePatternType::ReservationReinstated, 
         OperationType::Modify => {
             if has_changed_field(&changed_fields, &["check_in", "check_out"]) {
                 ChangePatternType::ReservationDateChanged

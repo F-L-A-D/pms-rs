@@ -14,8 +14,10 @@ use crate::{
         orchestrator::refresh_projection_chain::refresh_projection_chain,
         topology::projection_node::ProjectionNode,
     },
-    repository::sqlite::operational::room_daily_state_repository::SqliteRoomDailyStateRepository,
-    repository::sqlite::operational::room_repository::SqliteRoomRepository,
+    repository::sqlite::operational::room::{
+        room_daily_state_repository::SqliteRoomDailyStateRepository,
+        room_repository::SqliteRoomRepository,
+    },
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 

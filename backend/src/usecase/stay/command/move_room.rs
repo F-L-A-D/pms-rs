@@ -24,9 +24,11 @@ use crate::{
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
         operational::{
-            reservation_repository::SqliteReservationRepository,
-            room_daily_state_repository::SqliteRoomDailyStateRepository,
-            room_repository::SqliteRoomRepository,
+            reservation::reservation_repository::SqliteReservationRepository,
+            room::{
+                room_daily_state_repository::SqliteRoomDailyStateRepository,
+                room_repository::SqliteRoomRepository,
+            },
         },
     },
     usecase::timeline::command::record_event::record_event,

@@ -17,7 +17,7 @@ use crate::{
         state::AppState,
     },
     error::app_error::validation,
-    usecase::billing::command::create_folio_entry,
+    usecase::billing::command::folio::create_folio_entry,
 };
 
 pub async fn create_folio_entry_handler(

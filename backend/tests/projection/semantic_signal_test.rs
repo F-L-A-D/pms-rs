@@ -24,7 +24,7 @@ use pms_rs::{
         },
         topology::projection_node::ProjectionNode,
     },
-    repository::sqlite::operational::operation_change_event_repository::SqliteOperationChangeEventRepository,
+    repository::sqlite::operational::operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
 };
 
 use crate::common::app::spawn_app;
@@ -229,9 +229,14 @@ fn operation_event(
         source: OperationSource::Api,
         before_json: match operation_type {
             OperationType::Create => None,
-            OperationType::Modify | OperationType::Cancel => {
-                Some(serde_json::json!({"reservation_status": "confirmed"}).to_string())
-            }
+            OperationType::Modify 
+            | OperationType::Cancel
+            | OperationType::NoShow
+                 => {
+                    Some(serde_json::json!({"reservation_status": "confirmed"}).to_string())
+                }
+            OperationType::Reinstate 
+                => Some(serde_json::json!({"reservation_status": "canceled"}).to_string())
         },
         after_json: serde_json::json!({"reservation_status": "confirmed"}).to_string(),
         changed_fields_json: serde_json::to_string(&changed_fields).unwrap(),

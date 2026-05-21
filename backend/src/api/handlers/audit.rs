@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     api::{
-        dto::audit::OperationalAuditLogResponse,
+        dto::response::audit::OperationalAuditLogResponse,
         error::{map_app_error, ApiError},
         state::AppState,
     },

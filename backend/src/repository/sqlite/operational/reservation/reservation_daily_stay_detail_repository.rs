@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::{
     domain::semantic::reservation_booking::ReservationDailyStayDetail,
     error::app_error::{infra, AppResult},
-    repository::sqlite::operational::reservation_sleep_sharing_child_repository::SqliteReservationSleepSharingChildRepository,
+    repository::sqlite::operational::reservation::reservation_sleep_sharing_child_repository::SqliteReservationSleepSharingChildRepository,
 };
 
 pub struct SqliteReservationDailyStayDetailRepository;

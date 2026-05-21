@@ -3,7 +3,7 @@ use crate::{
     db::connection::Db,
     domain::entity::guest::{Guest, GuestProfile},
     error::app_error::{infra, not_found, validation, AppResult},
-    repository::sqlite::operational::guest_repository::SqliteGuestRepository,
+    repository::sqlite::operational::guest::guest_repository::SqliteGuestRepository,
 };
 
 pub async fn update_guest(db: &Db, input: UpdateGuestInput) -> AppResult<Guest> {

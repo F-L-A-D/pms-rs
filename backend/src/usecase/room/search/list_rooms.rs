@@ -1,7 +1,7 @@
 use crate::{
     api::dto::input::room::ListRoomsInput, db::connection::Db, domain::entity::room::Room,
     error::app_error::AppResult,
-    repository::sqlite::operational::room_repository::SqliteRoomRepository,
+    repository::sqlite::operational::room::room_repository::SqliteRoomRepository,
 };
 
 pub async fn list_rooms(db: &Db, input: ListRoomsInput) -> AppResult<Vec<Room>> {

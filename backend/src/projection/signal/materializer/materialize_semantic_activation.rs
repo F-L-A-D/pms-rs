@@ -13,7 +13,7 @@ use crate::{
     },
     error::app_error::{not_found, AppResult},
     projection::signal::model::semantic_activation::SemanticActivation,
-    repository::sqlite::operational::operation_change_event_repository::SqliteOperationChangeEventRepository,
+    repository::sqlite::operational::operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
 };
 
 pub async fn materialize_semantic_activation(
@@ -36,6 +36,16 @@ pub async fn materialize_semantic_activation(
             SemanticActivationKey::ReservationCancelled,
             Decimal::new(90, 2),
             Decimal::new(95, 2),
+        ),
+        OperationType::NoShow => (
+            SemanticActivationKey::ReservationMarkedNoShow,
+            Decimal::new(80, 2),
+            Decimal::new(95, 2),
+        ),
+        OperationType::Reinstate => (
+            SemanticActivationKey::ReservationReinstated,
+            Decimal::new(90, 2),
+            Decimal::new(90, 2),
         ),
         OperationType::Modify => {
             if has_changed_field(&changed_fields, &["check_in", "check_out", "room_class"]) {

@@ -3,7 +3,7 @@ use crate::{
     db::connection::Db,
     domain::entity::room::Room,
     error::app_error::{infra, not_found, AppResult},
-    repository::sqlite::operational::room_repository::SqliteRoomRepository,
+    repository::sqlite::operational::room::room_repository::SqliteRoomRepository,
 };
 
 pub async fn update_room_activation(db: &Db, input: UpdateRoomActivationInput) -> AppResult<Room> {

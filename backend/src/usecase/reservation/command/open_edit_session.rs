@@ -7,7 +7,7 @@ use crate::{
     db::connection::Db,
     domain::semantic::reservation_edit_session::ReservationEditSession,
     error::app_error::{infra, not_found, validation, AppResult},
-    repository::sqlite::operational::{
+    repository::sqlite::operational::reservation::{
         reservation_edit_session_repository::SqliteReservationEditSessionRepository,
         reservation_repository::SqliteReservationRepository,
     },

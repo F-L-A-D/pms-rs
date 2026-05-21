@@ -1,9 +1,9 @@
 use axum::http::StatusCode;
 
 use pms_rs::{
-    api::dto::{
-        package::{PackageDefinitionResponse, RatePlanPackageResponse, RatePlanResponse},
+    api::dto::response::{
         reservation::ReservationResponse,
+        package::{PackageDefinitionResponse, RatePlanPackageResponse, RatePlanResponse},
         revenue_summary::RevenueSummaryLineResponse,
     },
     domain::semantic::reservation_booking::ReservationRevenueCategory,

@@ -11,7 +11,7 @@ use crate::{
         state::AppState,
     },
     error::app_error::validation,
-    usecase::billing::command::reverse_payment_allocation,
+    usecase::billing::command::payment::reverse_payment_allocation,
 };
 
 pub async fn reverse_payment_allocation_handler(

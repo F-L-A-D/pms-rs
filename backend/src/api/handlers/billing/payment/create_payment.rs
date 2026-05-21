@@ -17,7 +17,7 @@ use crate::{
         state::AppState,
     },
     error::app_error::validation,
-    usecase::billing::command::create_payment,
+    usecase::billing::command::payment::create_payment,
 };
 
 pub async fn create_payment_handler(

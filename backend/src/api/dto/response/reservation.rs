@@ -5,7 +5,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use uuid::Uuid;
 
 use crate::{
-    api::dto::semantic_signal::OperationSemanticSignalResponse,
+    api::dto::response::semantic_signal::OperationSemanticSignalResponse,
     domain::{
         entity::{
             guest::{Gender, Guest},
@@ -19,6 +19,8 @@ use crate::{
             reservation_booking::{ReservationBookingChannel, ReservationRevenueCategory},
             reservation_edit_session::ReservationEditSession,
             reservation_guest_relation::ReservationGuestRelationType,
+            reservation_linked_resources::ReservationLinkedResources,
+            reservation_search_item::ReservationSearchItem,
             reservation_note::{ReservationNote, ReservationNoteKind},
             reservation_trace::{ReservationTrace, ReservationTraceKind},
             reservation_transition::{ReservationTransition, ReservationTransitionType},
@@ -38,11 +40,12 @@ pub struct ReservationResponse {
     pub room_class: String,
     pub room_id: Option<Uuid>,
     pub booking_channel: ReservationBookingChannel,
+    pub source_channel: Option<String>,
     pub plan_code: Option<String>,
     pub version: i64,
     pub created_at: DateTime<Utc>,
     pub operation_metadata: ReservationOperationMetadataResponse,
-    pub linked_resources: ReservationLinkedResourcesResponse,
+    pub linked_resources: ReservationLinkedResources,
     pub room_assignment: ReservationRoomAssignmentResponse,
     pub package_breakdowns: Vec<ReservationPackageBreakdownResponse>,
     pub daily_details: Vec<ReservationDailyDetailResponse>,
@@ -360,6 +363,8 @@ impl From<ReservationDetail> for ReservationResponse {
 
             booking_channel: reservation.booking_channel,
 
+            source_channel: reservation.source_channel,
+
             plan_code: reservation.plan_code,
 
             version,
@@ -371,7 +376,7 @@ impl From<ReservationDetail> for ReservationResponse {
                 updated_at: None,
             },
             
-            linked_resources: ReservationLinkedResourcesResponse {
+            linked_resources: ReservationLinkedResources{
                 primary_guest_id: detail
                     .participant_details
                     .iter()
@@ -381,7 +386,7 @@ impl From<ReservationDetail> for ReservationResponse {
                     })
                     .map(|participant| participant.guest_id),
                 assigned_room_id: room_id,
-                folio_id: None,
+                folio_id: detail.folio_id,
             },
 
             room_assignment: ReservationRoomAssignmentResponse {
@@ -507,18 +512,21 @@ impl From<ReservationDetail> for ReservationResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ReservationSearchResponse {
-    pub reservation_id: Uuid,
+pub struct ReservationSearchItemResponse {
+    pub id: Uuid,
     pub external_id: Option<String>,
-    pub primary_guest_name: String,
-    pub participant_names: Vec<String>,
     pub check_in: NaiveDate,
     pub check_out: NaiveDate,
-    pub room_class: String,
+    pub reservation_status: String,
+    pub stay_status: Option<String>,
+    pub room_class: Option<String>,
     pub room_id: Option<Uuid>,
-    pub booking_channel: ReservationBookingChannel,
-    pub reservation_status: ReservationStatus,
-    pub stay_status: Option<StayStatus>,
+    pub booking_channel: Option<String>,
+    pub source_channel: Option<String>,
+    pub primary_guest_id: Option<Uuid>,
+    pub primary_guest_name: Option<String>,
+    pub linked_resources: ReservationLinkedResources,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -555,9 +563,37 @@ fn reservation_edit_session_to_response(
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ReservationLinkedResourcesResponse {
-    pub primary_guest_id: Option<Uuid>,
-    pub assigned_room_id: Option<Uuid>,
-    pub folio_id: Option<Uuid>,
+impl From<ReservationSearchItem>
+    for ReservationSearchItemResponse
+{
+    fn from(item: ReservationSearchItem) -> Self {
+        Self {
+            id: item.id,
+            external_id: item.external_id,
+            check_in: item.check_in,
+            check_out: item.check_out,
+
+            reservation_status: item
+                .reservation_status
+                .to_snake()
+                .to_string(),
+
+            stay_status: item
+                .stay_status
+                .map(|status| status.to_snake().to_string()),
+
+            room_class: item.room_class,
+            room_id: item.room_id,
+
+            booking_channel: item.booking_channel,
+            source_channel: item.source_channel,
+
+            primary_guest_id: item.linked_resources.primary_guest_id,
+            primary_guest_name: item.primary_guest_name,
+
+            linked_resources: item.linked_resources,
+
+            created_at: item.created_at,
+        }
+    }
 }

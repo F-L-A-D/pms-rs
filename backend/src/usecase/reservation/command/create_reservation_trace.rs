@@ -10,7 +10,7 @@ use crate::{
         reservation_trace::{ReservationTrace, ReservationTraceKind},
     },
     error::app_error::{infra, not_found, validation, AppResult},
-    repository::sqlite::operational::{
+    repository::sqlite::operational::reservation::{
         reservation_repository::SqliteReservationRepository,
         reservation_trace_repository::SqliteReservationTraceRepository,
     },

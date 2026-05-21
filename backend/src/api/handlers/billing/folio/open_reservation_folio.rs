@@ -16,7 +16,7 @@ use crate::{
         state::AppState,
     },
     error::app_error::validation,
-    usecase::billing::command::open_reservation_folio,
+    usecase::billing::command::folio::open_reservation_folio,
 };
 
 pub async fn open_reservation_folio_handler(

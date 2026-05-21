@@ -13,7 +13,7 @@ use crate::{
     error::app_error::{conflict, infra, not_found, AppResult},
     repository::sqlite::{
         behavioral::settlement_transition_repository::SqliteSettlementTransitionRepository,
-        operational::receivable_repository::SqliteReceivableRepository,
+        operational::billing::receivable_repository::SqliteReceivableRepository,
     },
 };
 

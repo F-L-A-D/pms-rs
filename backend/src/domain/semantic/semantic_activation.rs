@@ -12,6 +12,8 @@ pub enum ChangePatternType {
     ReservationStayShapeChanged,
     ReservationCancelled,
     ReservationUpdated,
+    ReservationMarkedNoShow,
+    ReservationReinstated,
 }
 
 impl ChangePatternType {
@@ -26,6 +28,8 @@ impl ChangePatternType {
             Self::ReservationStayShapeChanged => "reservation_stay_shape_changed",
             Self::ReservationCancelled => "reservation_cancelled",
             Self::ReservationUpdated => "reservation_updated",
+            Self::ReservationMarkedNoShow => "reservation_marked_no_show",
+            Self::ReservationReinstated => "reservation_reinstated",
         }
     }
 
@@ -44,6 +48,8 @@ impl ChangePatternType {
             "reservation_stay_shape_changed" => Some(Self::ReservationStayShapeChanged),
             "reservation_cancelled" => Some(Self::ReservationCancelled),
             "reservation_updated" => Some(Self::ReservationUpdated),
+            "reservation_marked_no_show" => Some(Self::ReservationMarkedNoShow),
+            "reservation_reinstated" => Some(Self::ReservationReinstated),
             _ => None,
         }
     }
@@ -61,6 +67,8 @@ pub enum SemanticActivationKey {
     HousekeepingRelevantChange,
     ReservationCancelled,
     ReservationUpdated,
+    ReservationMarkedNoShow,
+    ReservationReinstated,
 }
 
 impl SemanticActivationKey {
@@ -75,6 +83,8 @@ impl SemanticActivationKey {
             Self::HousekeepingRelevantChange => "housekeeping_relevant_change",
             Self::ReservationCancelled => "reservation_cancelled",
             Self::ReservationUpdated => "reservation_updated",
+            Self::ReservationMarkedNoShow => "reservation_marked_no_show",
+            Self::ReservationReinstated => "reservation_reinstated",
         }
     }
 
@@ -89,6 +99,8 @@ impl SemanticActivationKey {
             "housekeeping_relevant_change" => Some(Self::HousekeepingRelevantChange),
             "reservation_cancelled" => Some(Self::ReservationCancelled),
             "reservation_updated" => Some(Self::ReservationUpdated),
+            "reservation_marked_no_show" => Some(Self::ReservationMarkedNoShow),
+            "reservation_reinstated" => Some(Self::ReservationReinstated),
             _ => None,
         }
     }

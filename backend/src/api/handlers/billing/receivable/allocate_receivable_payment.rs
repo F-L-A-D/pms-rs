@@ -21,7 +21,7 @@ use crate::{
         state::AppState,
     },
     error::app_error::validation,
-    usecase::billing::command::allocate_receivable_payment,
+    usecase::billing::command::payment::allocate_receivable_payment,
 };
 
 pub async fn allocate_receivable_payment_handler(

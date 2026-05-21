@@ -11,7 +11,7 @@ use crate::{
         },
         model::operation_semantic_signal::OperationSemanticSignal,
     },
-    repository::sqlite::operational::operation_change_event_repository::SqliteOperationChangeEventRepository,
+    repository::sqlite::operational::operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
 };
 
 pub async fn execute(db: &Db, event_id: Uuid) -> AppResult<OperationSemanticSignal> {

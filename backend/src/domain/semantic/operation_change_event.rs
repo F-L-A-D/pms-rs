@@ -33,6 +33,8 @@ pub enum OperationType {
     Create,
     Modify,
     Cancel,
+    NoShow,
+    Reinstate,
 }
 
 impl OperationType {
@@ -41,6 +43,8 @@ impl OperationType {
             Self::Create => "create",
             Self::Modify => "modify",
             Self::Cancel => "cancel",
+            Self::NoShow => "no_show",
+            Self::Reinstate => "reinstate",
         }
     }
 
@@ -49,6 +53,8 @@ impl OperationType {
             "create" => Some(Self::Create),
             "modify" => Some(Self::Modify),
             "cancel" => Some(Self::Cancel),
+            "no_show" => Some(Self::NoShow),
+            "reinstate" => Some(Self::Reinstate),
             _ => None,
         }
     }

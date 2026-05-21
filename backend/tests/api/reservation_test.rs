@@ -5,7 +5,7 @@ use chrono::{Duration, Utc};
 use uuid::Uuid;
 
 use pms_rs::{
-    api::dto::reservation::ReservationResponse,
+    api::dto::response::reservation::ReservationResponse,
     domain::{
         entity::reservation::{ReservationStatus, StayStatus},
         reservation_guest_relation::ReservationGuestRelationType,
@@ -21,10 +21,12 @@ use pms_rs::{
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
         operational::{
-            operation_change_event_repository::SqliteOperationChangeEventRepository,
-            reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
-            reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
-            reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
+            operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
+            reservation::{
+                reservation_daily_revenue_allocation_repository::SqliteReservationDailyRevenueAllocationRepository,
+                reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
+                reservation_package_breakdown_repository::SqliteReservationPackageBreakdownRepository,
+            },
         },
     },
 };
@@ -32,7 +34,7 @@ use pms_rs::{
 use crate::common::{
     app::spawn_app,
     builders::{ReservationBuilder, ReservationParticipantBuilder},
-    client::{delete, get, patch_json, post_json, response_json, delete_json},
+    client::{delete, delete_json, get, patch_json, post_json, response_json},
     guest::create_guest,
     reservation::{create_reservation, create_reservation_with_guest},
     room::create_room,
@@ -1403,7 +1405,7 @@ async fn should_mark_reservation_no_show_and_reinstate() {
         .iter()
         .find(|event| {
             event.aggregate_id == created.id
-                && event.operation_type == OperationType::Modify
+                && event.operation_type == OperationType::NoShow
                 && event.after_json.contains("no_show")
         })
         .unwrap();
@@ -1607,10 +1609,7 @@ async fn should_resolve_reservation_trace() {
 
     let resolve_response = post_json(
         &app.app,
-        &format!(
-            "/reservations/{}/traces/{}/resolve",
-            created.id, trace_id
-        ),
+        &format!("/reservations/{}/traces/{}/resolve", created.id, trace_id),
         &serde_json::json!({
             "actor_id": "hk-1"
         }),

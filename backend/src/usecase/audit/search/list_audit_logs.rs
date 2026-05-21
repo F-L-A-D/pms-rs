@@ -4,7 +4,7 @@ use crate::{
     db::connection::Db,
     domain::semantic::operational_audit_log::OperationalAuditLog,
     error::app_error::{infra, AppResult},
-    repository::sqlite::operational::operational_audit_log_repository::SqliteOperationalAuditLogRepository,
+    repository::sqlite::operational::operation::operational_audit_log_repository::SqliteOperationalAuditLogRepository,
 };
 
 pub async fn execute(

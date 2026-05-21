@@ -2,7 +2,7 @@ use crate::{
     db::connection::Db,
     domain::semantic::revenue_summary::RevenueSummaryLine,
     error::app_error::{infra, validation, AppResult},
-    repository::sqlite::operational::revenue_summary_repository::SqliteRevenueSummaryRepository,
+    repository::sqlite::operational::reservation::revenue_summary_repository::SqliteRevenueSummaryRepository,
 };
 
 pub async fn execute(db: &Db, year_month: String) -> AppResult<Vec<RevenueSummaryLine>> {

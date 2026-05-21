@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     api::{
-        dto::semantic_signal::OperationSemanticSignalResponse,
+        dto::response::semantic_signal::OperationSemanticSignalResponse,
         error::{map_app_error, ApiError},
         state::AppState,
     },

@@ -26,9 +26,11 @@ use pms_rs::{
         topology::projection_node::ProjectionNode,
     },
     repository::sqlite::operational::{
-        reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
-        reservation_repository::SqliteReservationRepository,
-        room_daily_state_repository::SqliteRoomDailyStateRepository,
+        reservation::{
+            reservation_daily_stay_detail_repository::SqliteReservationDailyStayDetailRepository,
+            reservation_repository::SqliteReservationRepository,
+        },
+        room::room_daily_state_repository::SqliteRoomDailyStateRepository,
     },
 };
 
@@ -88,6 +90,7 @@ async fn should_preserve_pending_and_out_of_order_inventory_inputs() {
         room_class: "standard".to_string(),
         room_id: None,
         booking_channel: ReservationBookingChannel::Direct,
+        source_channel: None,
         plan_code: None,
         version: 1,
         package_breakdowns: vec![],

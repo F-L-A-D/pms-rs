@@ -2,7 +2,7 @@ use crate::{
     db::connection::Db,
     domain::entity::package_definition::PackageDefinition,
     error::app_error::{infra, not_found, validation, AppResult},
-    repository::sqlite::operational::package_definition_repository::SqlitePackageDefinitionRepository,
+    repository::sqlite::operational::rate_plan::package_definition_repository::SqlitePackageDefinitionRepository,
 };
 
 pub async fn execute(db: &Db, package: PackageDefinition) -> AppResult<PackageDefinition> {

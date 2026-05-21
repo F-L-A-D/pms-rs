@@ -17,7 +17,7 @@ use crate::{
     error::app_error::{conflict, infra, not_found, validation, AppResult},
     repository::sqlite::{
         behavioral::settlement_transition_repository::SqliteSettlementTransitionRepository,
-        operational::{
+        operational::billing::{
             billing_account_repository::SqliteBillingAccountRepository,
             folio_repository::SqliteFolioRepository, invoice_repository::SqliteInvoiceRepository,
             receivable_repository::SqliteReceivableRepository,

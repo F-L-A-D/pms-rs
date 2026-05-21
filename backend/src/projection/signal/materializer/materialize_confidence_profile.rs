@@ -13,7 +13,7 @@ use crate::{
     },
     error::app_error::{not_found, AppResult},
     projection::signal::model::confidence_profile::ConfidenceProfile,
-    repository::sqlite::operational::operation_change_event_repository::SqliteOperationChangeEventRepository,
+    repository::sqlite::operational::operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
 };
 
 pub async fn materialize_confidence_profile(
@@ -33,6 +33,8 @@ pub async fn materialize_confidence_profile(
         OperationType::Create => Decimal::new(100, 2),
         OperationType::Modify => Decimal::new(85, 2),
         OperationType::Cancel => Decimal::new(95, 2),
+        OperationType::NoShow => Decimal::new(95, 2),
+        OperationType::Reinstate => Decimal::new(90, 2),
     };
     let source_penalty = match event.source {
         OperationSource::Api => Decimal::ZERO,
@@ -41,7 +43,10 @@ pub async fn materialize_confidence_profile(
     };
     let before_penalty = if matches!(
         event.operation_type,
-        OperationType::Modify | OperationType::Cancel
+        OperationType::Modify 
+        | OperationType::Cancel 
+        | OperationType::NoShow
+        | OperationType::Reinstate
     ) && event.before_json.is_none()
     {
         Decimal::new(20, 2)

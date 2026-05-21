@@ -3,7 +3,12 @@ use uuid::Uuid;
 use crate::{
     db::connection::Db,
     domain::{
-        entity::{guest::Guest, reservation::Reservation, room::Room},
+        entity::{
+            guest::Guest, 
+            reservation::Reservation, 
+            room::Room,
+            folio::FolioStatus,
+        },
         semantic::{
             operation_change_event::OperationChangeEvent,
             operational_audit_log::OperationalAuditLog,
@@ -36,6 +41,7 @@ use crate::{
             reservation_trace_repository::SqliteReservationTraceRepository,
         },
         room::room_repository::SqliteRoomRepository,
+        billing::folio_repository::SqliteFolioRepository,
     },
 };
 
@@ -50,6 +56,7 @@ pub struct ReservationDetail {
     pub operation_events: Vec<ReservationDetailOperationEvent>,
     pub active_edit_sessions: Vec<ReservationEditSession>,
     pub room_history: Vec<ReservationTransition>,
+    pub folio_id: Option<Uuid>,
 }
 
 #[derive(Debug)]
@@ -138,6 +145,24 @@ pub async fn get_reservation_detail(
             .filter(|transition| transition.field_name == "room_id")
             .collect();
 
+    let folios =
+        SqliteFolioRepository::list_by_reservation_id(
+            &mut tx,
+            reservation_id,
+        )
+        .await?;
+
+    let folio_id =
+        folios
+            .iter()
+            .find(|folio| {
+                matches!(
+                    folio.status,
+                    FolioStatus::Open | FolioStatus::Locked,
+                )
+            })
+            .map(|folio| folio.id);
+
     let audit_logs = SqliteOperationalAuditLogRepository::list_by_aggregate(
         &mut tx,
         "reservation",
@@ -178,5 +203,6 @@ pub async fn get_reservation_detail(
         operation_events,
         active_edit_sessions,
         room_history,
+        folio_id,
     }))
 }

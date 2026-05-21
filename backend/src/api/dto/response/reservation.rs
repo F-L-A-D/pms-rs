@@ -386,7 +386,7 @@ impl From<ReservationDetail> for ReservationResponse {
                     })
                     .map(|participant| participant.guest_id),
                 assigned_room_id: room_id,
-                folio_id: None,
+                folio_id: detail.folio_id,
             },
 
             room_assignment: ReservationRoomAssignmentResponse {

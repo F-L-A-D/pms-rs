@@ -696,6 +696,14 @@ fn reservation_edit_session_to_response(
 }
 
 fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
+
+    let primary_guest_id =
+        reservation
+            .primary_participant()
+            .map(|p| p.guest_id);
+
+    let room_id = reservation.room_id;
+    
     ReservationResponse {
         id: reservation.id,
 
@@ -711,7 +719,7 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
 
         room_class: reservation.room_class,
 
-        room_id: reservation.room_id,
+        room_id,
 
         booking_channel: reservation.booking_channel,
 
@@ -730,7 +738,7 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
             },
         
         linked_resources: ReservationLinkedResources {
-            primary_guest_id: None,
+            primary_guest_id,
             assigned_room_id: reservation.room_id,
             folio_id: None,
         },

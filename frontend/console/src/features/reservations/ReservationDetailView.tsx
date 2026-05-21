@@ -144,6 +144,18 @@ export function ReservationDetailView({
           <Field label="Booking channel" value={reservation.booking_channel} />
           <Field label="Source channel" value={reservation.source_channel} />
           <Field label="Plan code" value={reservation.plan_code} />
+          <Field
+            label="Primary guest ID"
+            value={reservation.linked_resources.primary_guest_id}
+          />
+          <Field
+            label="Assigned room ID"
+            value={reservation.linked_resources.assigned_room_id}
+          />
+          <Field
+            label="Folio ID"
+            value={reservation.linked_resources.folio_id}
+          />
           <Field label="Version" value={reservation.operation_metadata.version} />
           <Field
             label="Updated at"

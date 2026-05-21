@@ -229,14 +229,12 @@ fn operation_event(
         source: OperationSource::Api,
         before_json: match operation_type {
             OperationType::Create => None,
-            OperationType::Modify 
-            | OperationType::Cancel
-            | OperationType::NoShow
-                 => {
-                    Some(serde_json::json!({"reservation_status": "confirmed"}).to_string())
-                }
-            OperationType::Reinstate 
-                => Some(serde_json::json!({"reservation_status": "canceled"}).to_string())
+            OperationType::Modify | OperationType::Cancel | OperationType::NoShow => {
+                Some(serde_json::json!({"reservation_status": "confirmed"}).to_string())
+            }
+            OperationType::Reinstate => {
+                Some(serde_json::json!({"reservation_status": "canceled"}).to_string())
+            }
         },
         after_json: serde_json::json!({"reservation_status": "confirmed"}).to_string(),
         changed_fields_json: serde_json::to_string(&changed_fields).unwrap(),

@@ -43,10 +43,10 @@ pub async fn materialize_confidence_profile(
     };
     let before_penalty = if matches!(
         event.operation_type,
-        OperationType::Modify 
-        | OperationType::Cancel 
-        | OperationType::NoShow
-        | OperationType::Reinstate
+        OperationType::Modify
+            | OperationType::Cancel
+            | OperationType::NoShow
+            | OperationType::Reinstate
     ) && event.before_json.is_none()
     {
         Decimal::new(20, 2)

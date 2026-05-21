@@ -6,9 +6,8 @@ use axum::{
 use crate::api::{
     handlers::billing::{
         folio::{
-            create_folio_entry::create_folio_entry_handler,
-            folio_query::get_folio_handler,
             assign_billing_account::assign_billing_account_handler,
+            create_folio_entry::create_folio_entry_handler, folio_query::get_folio_handler,
             open_reservation_folio::open_reservation_folio_handler,
         },
         invoice::{
@@ -17,8 +16,7 @@ use crate::api::{
             void_invoice::void_invoice_handler,
         },
         payment::{
-            create_deposit::create_deposit_handler,
-            create_payment::create_payment_handler,
+            create_deposit::create_deposit_handler, create_payment::create_payment_handler,
             reverse_payment_allocation::reverse_payment_allocation_handler,
         },
         receivable::{

@@ -11,7 +11,7 @@ use crate::{
         payment::Payment,
     },
     domain::semantic::operation_context::OperationContext,
-    error::app_error::{domain, infra, not_found, AppResult},
+    error::app_error::{domain, infra, not_found, validation, AppResult},
     repository::sqlite::operational::billing::{
         folio_entry_repository::SqliteFolioEntryRepository,
         folio_repository::SqliteFolioRepository, payment_repository::SqlitePaymentRepository,
@@ -20,6 +20,10 @@ use crate::{
 };
 
 pub async fn execute(db: &Db, input: CreatePaymentInput) -> AppResult<Payment> {
+    if input.amount <= rust_decimal::Decimal::ZERO {
+        return Err(validation("payment amount must be positive"));
+    }
+
     let mut tx = db.begin_tx().await;
 
     let result = async {

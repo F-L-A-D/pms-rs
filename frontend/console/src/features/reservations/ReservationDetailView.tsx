@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 import type {
   CreateReservationNoteRequest,
   CreateReservationTraceRequest,
@@ -152,10 +153,24 @@ export function ReservationDetailView({
             label="Assigned room ID"
             value={reservation.linked_resources.assigned_room_id}
           />
-          <Field
-            label="Folio ID"
-            value={reservation.linked_resources.folio_id}
-          />
+          <div className="grid grid-cols-[10rem_1fr] py-2 text-sm">
+            <dt className="text-slate-500">
+              Folio ID
+            </dt>
+
+            <dd>
+              {reservation.linked_resources.folio_id ? (
+                <Link
+                  className="font-medium text-blue-700 underline"
+                  to={`/folios/${reservation.linked_resources.folio_id}`}
+                >
+                  {reservation.linked_resources.folio_id}
+                </Link>
+              ) : (
+                "-"
+              )}
+            </dd>
+          </div>
           <Field label="Version" value={reservation.operation_metadata.version} />
           <Field
             label="Updated at"

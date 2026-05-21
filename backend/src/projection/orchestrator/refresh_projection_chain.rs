@@ -19,7 +19,6 @@ pub async fn propagate_invalidation(
     let mut completed = Vec::new();
 
     for step in plan.steps() {
-
         let result =
             ProjectionConvergenceExecutor::execute_refresh(tx, &step.node(), &invalidation.target)
                 .await;

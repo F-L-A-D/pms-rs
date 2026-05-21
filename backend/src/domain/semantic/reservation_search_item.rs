@@ -1,16 +1,9 @@
-use chrono::{
-    DateTime,
-    NaiveDate,
-    Utc,
-};
+use chrono::{DateTime, NaiveDate, Utc};
 
 use uuid::Uuid;
 
 use crate::domain::{
-    entity::reservation::{
-        ReservationStatus,
-        StayStatus,
-    },
+    entity::reservation::{ReservationStatus, StayStatus},
     semantic::reservation_linked_resources::ReservationLinkedResources,
 };
 

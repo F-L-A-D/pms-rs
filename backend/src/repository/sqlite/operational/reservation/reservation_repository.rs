@@ -1,4 +1,4 @@
-use sqlx::{Row, Sqlite, Transaction, QueryBuilder};
+use sqlx::{QueryBuilder, Row, Sqlite, Transaction};
 
 use uuid::Uuid;
 
@@ -388,11 +388,7 @@ impl SqliteReservationRepository {
 
         builder.push(" ORDER BY r.check_in ASC, r.created_at DESC ");
 
-        let rows = builder
-            .build()
-            .fetch_all(&mut **tx)
-            .await
-            .map_err(infra)?;
+        let rows = builder.build().fetch_all(&mut **tx).await.map_err(infra)?;
 
         rows.iter()
             .map(Self::row_to_reservation_search_item)
@@ -482,91 +478,70 @@ impl SqliteReservationRepository {
             created_at: row.get::<String, _>("created_at").parse().map_err(infra)?,
         })
     }
-    
+
     fn row_to_reservation_search_item(
         row: &sqlx::sqlite::SqliteRow,
     ) -> AppResult<ReservationSearchItem> {
-        let id =
-            Uuid::parse_str(
-                &row.get::<String, _>("id"),
-            )
+        let id = Uuid::parse_str(&row.get::<String, _>("id")).map_err(infra)?;
+
+        let room_id = row
+            .get::<Option<String>, _>("room_id")
+            .map(|id| Uuid::parse_str(&id))
+            .transpose()
             .map_err(infra)?;
 
-        let room_id =
-            row.get::<Option<String>, _>("room_id")
-                .map(|id| Uuid::parse_str(&id))
-                .transpose()
-                .map_err(infra)?;
+        let primary_guest_id = row
+            .get::<Option<String>, _>("primary_guest_id")
+            .map(|id| Uuid::parse_str(&id))
+            .transpose()
+            .map_err(infra)?;
 
-        let primary_guest_id =
-            row.get::<Option<String>, _>("primary_guest_id")
-                .map(|id| Uuid::parse_str(&id))
-                .transpose()
-                .map_err(infra)?;
-
-        let folio_id =
-            row.get::<Option<String>, _>("folio_id")
-                .map(|id| Uuid::parse_str(&id))
-                .transpose()
-                .map_err(infra)?;
+        let folio_id = row
+            .get::<Option<String>, _>("folio_id")
+            .map(|id| Uuid::parse_str(&id))
+            .transpose()
+            .map_err(infra)?;
 
         let reservation_status =
-            ReservationStatus::from_snake(
-                &row.get::<String, _>("reservation_status"),
-            )
-            .ok_or_else(|| infra("invalid reservation status"))?;
+            ReservationStatus::from_snake(&row.get::<String, _>("reservation_status"))
+                .ok_or_else(|| infra("invalid reservation status"))?;
 
-        let stay_status =
-            match row.get::<Option<String>, _>("stay_status") {
-                Some(value) => {
-                    Some(
-                        StayStatus::from_snake(&value)
-                            .ok_or_else(|| infra("invalid stay status"))?,
-                    )
-                }
+        let stay_status = match row.get::<Option<String>, _>("stay_status") {
+            Some(value) => {
+                Some(StayStatus::from_snake(&value).ok_or_else(|| infra("invalid stay status"))?)
+            }
 
-                None => None,
-            };
+            None => None,
+        };
 
-        Ok(
-            ReservationSearchItem {
-                id,
-                external_id: row.get("external_id"),
+        Ok(ReservationSearchItem {
+            id,
+            external_id: row.get("external_id"),
 
-                check_in: row
-                    .get::<String, _>("check_in")
-                    .parse()
-                    .map_err(infra)?,
+            check_in: row.get::<String, _>("check_in").parse().map_err(infra)?,
 
-                check_out: row
-                    .get::<String, _>("check_out")
-                    .parse()
-                    .map_err(infra)?,
+            check_out: row.get::<String, _>("check_out").parse().map_err(infra)?,
 
-                reservation_status,
-                stay_status,
+            reservation_status,
+            stay_status,
 
-                room_class: Some(row.get::<String, _>("room_class")),
+            room_class: Some(row.get::<String, _>("room_class")),
 
-                room_id,
+            room_id,
 
-                booking_channel: row.get("booking_channel"),
+            booking_channel: row.get("booking_channel"),
 
-                source_channel: row.get("source_channel"),
-                
-                primary_guest_name: row.get("primary_guest_name"),
+            source_channel: row.get("source_channel"),
 
-                linked_resources: ReservationLinkedResources {
-                    primary_guest_id,
-                    assigned_room_id: room_id,
-                    folio_id,
-                },
+            primary_guest_name: row.get("primary_guest_name"),
 
-                created_at: row
-                    .get::<String, _>("created_at")
-                    .parse()
-                    .map_err(infra)?,
+            linked_resources: ReservationLinkedResources {
+                primary_guest_id,
+                assigned_room_id: room_id,
+                folio_id,
             },
-        )
+
+            created_at: row.get::<String, _>("created_at").parse().map_err(infra)?,
+        })
     }
 }

@@ -1,11 +1,12 @@
-import type { SearchReservationsRequest } from "./reservation";
-
 export const queryKeys = {
   health: ["health"] as const,
 
-  reservationDetail: (reservationId: string) =>
-    ["reservation", "detail", reservationId] as const,
+  reservationSearch: (params: unknown) =>
+    ["reservations", "search", params] as const,
 
-  reservationSearch: (request: SearchReservationsRequest) =>
-    ["reservation", "search", request] as const,
+  reservationDetail: (reservationId: string) =>
+    ["reservations", "detail", reservationId] as const,
+
+  folioDetail: (folioId: string) =>
+    ["folios", "detail", folioId] as const,
 };

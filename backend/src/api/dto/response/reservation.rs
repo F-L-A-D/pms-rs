@@ -20,8 +20,8 @@ use crate::{
             reservation_edit_session::ReservationEditSession,
             reservation_guest_relation::ReservationGuestRelationType,
             reservation_linked_resources::ReservationLinkedResources,
-            reservation_search_item::ReservationSearchItem,
             reservation_note::{ReservationNote, ReservationNoteKind},
+            reservation_search_item::ReservationSearchItem,
             reservation_trace::{ReservationTrace, ReservationTraceKind},
             reservation_transition::{ReservationTransition, ReservationTransitionType},
         },
@@ -563,9 +563,7 @@ fn reservation_edit_session_to_response(
     }
 }
 
-impl From<ReservationSearchItem>
-    for ReservationSearchItemResponse
-{
+impl From<ReservationSearchItem> for ReservationSearchItemResponse {
     fn from(item: ReservationSearchItem) -> Self {
         Self {
             id: item.id,
@@ -573,14 +571,9 @@ impl From<ReservationSearchItem>
             check_in: item.check_in,
             check_out: item.check_out,
 
-            reservation_status: item
-                .reservation_status
-                .to_snake()
-                .to_string(),
+            reservation_status: item.reservation_status.to_snake().to_string(),
 
-            stay_status: item
-                .stay_status
-                .map(|status| status.to_snake().to_string()),
+            stay_status: item.stay_status.map(|status| status.to_snake().to_string()),
 
             room_class: item.room_class,
             room_id: item.room_id,

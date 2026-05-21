@@ -28,7 +28,7 @@ pub async fn materialize_change_pattern(
         OperationType::Create => ChangePatternType::ReservationCreated,
         OperationType::Cancel => ChangePatternType::ReservationCancelled,
         OperationType::NoShow => ChangePatternType::ReservationMarkedNoShow,
-        OperationType::Reinstate => ChangePatternType::ReservationReinstated, 
+        OperationType::Reinstate => ChangePatternType::ReservationReinstated,
         OperationType::Modify => {
             if has_changed_field(&changed_fields, &["check_in", "check_out"]) {
                 ChangePatternType::ReservationDateChanged

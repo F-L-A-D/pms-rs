@@ -10,7 +10,8 @@ use crate::api::{
         create_reservation_trace_handler, delete_reservation_note_handler,
         delete_reservation_trace_handler, get_guest_reservations_handler, get_reservation_handler,
         mark_no_show_handler, modify_reservation_handler, open_reservation_edit_session_handler,
-        reinstate_reservation_handler, resolve_reservation_trace_handler, search_reservations_handler,
+        reinstate_reservation_handler, resolve_reservation_trace_handler,
+        search_reservations_handler,
     },
     state::AppState,
 };
@@ -18,9 +19,8 @@ use crate::api::{
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
-            "/reservations", 
-            get(search_reservations_handler)
-                .post(create_reservation_handler)
+            "/reservations",
+            get(search_reservations_handler).post(create_reservation_handler),
         )
         .route(
             "/reservations/:id",

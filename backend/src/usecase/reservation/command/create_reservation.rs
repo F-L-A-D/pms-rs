@@ -86,6 +86,7 @@ pub async fn execute(
             input.check_out,
             input.room_class,
             input.booking_channel,
+            input.source_channel,
             input.plan_code,
             package_inputs
                 .into_iter()

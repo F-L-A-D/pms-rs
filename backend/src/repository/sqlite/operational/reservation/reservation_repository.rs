@@ -55,6 +55,7 @@ impl SqliteReservationRepository {
                 room_class,
                 room_id,
                 booking_channel,
+                source_channel,
                 plan_code,
                 version,
                 created_at
@@ -71,7 +72,8 @@ impl SqliteReservationRepository {
                 ?9,
                 ?10,
                 ?11,
-                ?12
+                ?12,
+                ?13
             )
             "#,
         )
@@ -84,6 +86,7 @@ impl SqliteReservationRepository {
         .bind(&reservation.room_class)
         .bind(reservation.room_id.map(|id| id.to_string()))
         .bind(reservation.booking_channel.to_snake())
+        .bind(&reservation.source_channel)
         .bind(&reservation.plan_code)
         .bind(reservation.version)
         .bind(reservation.created_at.to_rfc3339())
@@ -120,10 +123,11 @@ impl SqliteReservationRepository {
                 room_class = ?6,
                 room_id = ?7,
                 booking_channel = ?8,
-                plan_code = ?9,
-                version = ?10
-            WHERE id = ?11
-              AND version = ?12
+                source_channel = ?9,
+                plan_code = ?10,
+                version = ?11
+            WHERE id = ?12
+              AND version = ?13
             "#,
         )
         .bind(&reservation.external_id)
@@ -134,6 +138,7 @@ impl SqliteReservationRepository {
         .bind(&reservation.room_class)
         .bind(reservation.room_id.map(|id| id.to_string()))
         .bind(reservation.booking_channel.to_snake())
+        .bind(&reservation.source_channel)
         .bind(&reservation.plan_code)
         .bind(next_version)
         .bind(reservation.id.to_string())
@@ -169,6 +174,7 @@ impl SqliteReservationRepository {
                     room_class,
                     room_id,
                     booking_channel,
+                    source_channel,
                     plan_code,
                     version,
                     created_at
@@ -204,6 +210,7 @@ impl SqliteReservationRepository {
                     r.room_class,
                     r.room_id,
                     r.booking_channel,
+                    r.source_channel,
                     r.plan_code,
                     r.version,
                     r.created_at
@@ -240,6 +247,7 @@ impl SqliteReservationRepository {
                     room_class,
                     room_id,
                     booking_channel,
+                    source_channel,
                     plan_code,
                     version,
                     created_at
@@ -276,6 +284,8 @@ impl SqliteReservationRepository {
                 r.room_class,
                 r.room_id,
                 r.created_at,
+                r.booking_channel,
+                r.source_channel,
 
                 rgr.guest_id AS primary_guest_id,
                 CASE
@@ -366,6 +376,16 @@ impl SqliteReservationRepository {
             builder.push_bind(room_id.to_string());
         }
 
+        if let Some(booking_channel) = &input.booking_channel {
+            builder.push(" AND r.booking_channel = ");
+            builder.push_bind(booking_channel.to_string());
+        }
+
+        if let Some(source_channel) = &input.source_channel {
+            builder.push(" AND r.source_channel = ");
+            builder.push_bind(source_channel.to_string());
+        }
+
         builder.push(" ORDER BY r.check_in ASC, r.created_at DESC ");
 
         let rows = builder
@@ -444,6 +464,8 @@ impl SqliteReservationRepository {
                 row.get::<String, _>("booking_channel").as_str(),
             )
             .ok_or_else(|| infra("invalid booking channel"))?,
+
+            source_channel: row.get("source_channel"),
 
             plan_code: row.get("plan_code"),
 
@@ -527,6 +549,10 @@ impl SqliteReservationRepository {
                 room_class: Some(row.get::<String, _>("room_class")),
 
                 room_id,
+
+                booking_channel: row.get("booking_channel"),
+
+                source_channel: row.get("source_channel"),
                 
                 primary_guest_name: row.get("primary_guest_name"),
 

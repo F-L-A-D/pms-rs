@@ -71,7 +71,7 @@ pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<
             operation_id: context.operation_id,
             aggregate_type: "reservation".to_string(),
             aggregate_id: reservation.id,
-            operation_type: OperationType::Modify,
+            operation_type: OperationType::Reinstate,
             actor: context.actor,
             actor_id: context.actor_id.clone(),
             source: context.source,

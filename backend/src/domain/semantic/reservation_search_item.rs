@@ -28,6 +28,9 @@ pub struct ReservationSearchItem {
     pub room_class: Option<String>,
     pub room_id: Option<Uuid>,
 
+    pub booking_channel: Option<String>,
+    pub source_channel: Option<String>,
+
     pub primary_guest_name: Option<String>,
     pub linked_resources: ReservationLinkedResources,
 

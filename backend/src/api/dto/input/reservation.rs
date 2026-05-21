@@ -22,6 +22,7 @@ pub struct CreateReservationInput {
     pub check_out: NaiveDate,
     pub room_class: String,
     pub booking_channel: ReservationBookingChannel,
+    pub source_channel: Option<String>,
     pub plan_code: Option<String>,
     pub package_breakdowns: Vec<ReservationPackageBreakdownInput>,
     pub daily_details: Vec<ReservationDailyDetailInput>,
@@ -131,4 +132,6 @@ pub struct SearchReservationsInput {
     pub stay_status: Option<StayStatus>,
     pub room_class: Option<String>,
     pub room_id: Option<Uuid>,
+    pub booking_channel: Option<String>,
+    pub source_channel: Option<String>,
 }

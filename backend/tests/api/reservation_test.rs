@@ -1403,7 +1403,7 @@ async fn should_mark_reservation_no_show_and_reinstate() {
         .iter()
         .find(|event| {
             event.aggregate_id == created.id
-                && event.operation_type == OperationType::Modify
+                && event.operation_type == OperationType::NoShow
                 && event.after_json.contains("no_show")
         })
         .unwrap();

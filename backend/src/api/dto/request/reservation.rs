@@ -17,6 +17,7 @@ pub struct CreateReservationRequest {
     pub check_out: String,
     pub room_class: String,
     pub booking_channel: Option<ReservationBookingChannel>,
+    pub source_channel: Option<String>,
     pub plan_code: Option<String>,
     #[serde(default)]
     pub package_breakdowns: Vec<ReservationPackageBreakdownRequest>,
@@ -141,4 +142,6 @@ pub struct SearchReservationsQueryRequest {
     pub stay_status: Option<String>,
     pub room_class: Option<String>,
     pub room_id: Option<String>,
+    pub booking_channel: Option<String>,
+    pub source_channel: Option<String>,
 }

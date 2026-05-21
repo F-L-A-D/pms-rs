@@ -88,6 +88,7 @@ async fn should_preserve_pending_and_out_of_order_inventory_inputs() {
         room_class: "standard".to_string(),
         room_id: None,
         booking_channel: ReservationBookingChannel::Direct,
+        source_channel: None,
         plan_code: None,
         version: 1,
         package_breakdowns: vec![],

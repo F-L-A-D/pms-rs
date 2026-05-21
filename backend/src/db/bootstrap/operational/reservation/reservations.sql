@@ -8,10 +8,10 @@ CREATE TABLE IF NOT EXISTS reservations (
     room_class TEXT NOT NULL,
     room_id TEXT,
     booking_channel TEXT NOT NULL DEFAULT 'direct',
+    source_channel TEXT,
     plan_code TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL,
-    channel TEXT
+    created_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_reservations_check_in
@@ -34,3 +34,9 @@ ON reservations(room_id);
 
 CREATE INDEX IF NOT EXISTS idx_reservations_external_id
 ON reservations(external_id);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_booking_channel
+ON reservations(booking_channel);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_source_channel
+ON reservations(source_channel);

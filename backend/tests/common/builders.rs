@@ -64,6 +64,7 @@ pub struct ReservationBuilder {
     check_out: String,
     room_class: String,
     booking_channel: Option<ReservationBookingChannel>,
+    source_channel: Option<String>,
     plan_code: Option<String>,
     participants: Vec<ReservationParticipantRequest>,
     daily_details: Vec<ReservationDailyDetailRequest>,
@@ -183,6 +184,7 @@ impl ReservationBuilder {
             check_out: (today + Duration::days(1)).to_string(),
             room_class: "standard".to_string(),
             booking_channel: Some(ReservationBookingChannel::Direct),
+            source_channel: None,
             plan_code: None,
             participants: vec![],
             daily_details: vec![
@@ -240,6 +242,7 @@ impl ReservationBuilder {
             check_out: self.check_out,
             room_class: self.room_class,
             booking_channel: self.booking_channel,
+            source_channel: self.source_channel,
             plan_code: self.plan_code,
             participants: self.participants,
             daily_details: self.daily_details,

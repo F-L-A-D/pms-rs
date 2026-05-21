@@ -142,6 +142,7 @@ export function ReservationDetailView({
             }
           />
           <Field label="Booking channel" value={reservation.booking_channel} />
+          <Field label="Source channel" value={reservation.source_channel} />
           <Field label="Plan code" value={reservation.plan_code} />
           <Field label="Version" value={reservation.operation_metadata.version} />
           <Field

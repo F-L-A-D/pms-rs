@@ -37,6 +37,16 @@ pub async fn materialize_semantic_activation(
             Decimal::new(90, 2),
             Decimal::new(95, 2),
         ),
+        OperationType::NoShow => (
+            SemanticActivationKey::ReservationMarkedNoShow,
+            Decimal::new(80, 2),
+            Decimal::new(95, 2),
+        ),
+        OperationType::Reinstate => (
+            SemanticActivationKey::ReservationReinstated,
+            Decimal::new(90, 2),
+            Decimal::new(90, 2),
+        ),
         OperationType::Modify => {
             if has_changed_field(&changed_fields, &["check_in", "check_out", "room_class"]) {
                 (

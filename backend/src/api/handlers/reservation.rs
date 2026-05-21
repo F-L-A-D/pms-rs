@@ -161,6 +161,8 @@ pub async fn create_reservation_handler(
             .booking_channel
             .unwrap_or(ReservationBookingChannel::Direct),
 
+        source_channel: req.source_channel,
+
         plan_code: req.plan_code,
 
         package_breakdowns,
@@ -646,6 +648,16 @@ pub async fn search_reservations_handler(
                 req.room_id,
                 "invalid room_id",
             )?,
+
+            booking_channel: req
+                .booking_channel
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty()),
+
+            source_channel: req
+                .source_channel
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty()),
         };
 
     let items =
@@ -702,6 +714,8 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
         room_id: reservation.room_id,
 
         booking_channel: reservation.booking_channel,
+
+        source_channel: reservation.source_channel,
 
         plan_code: reservation.plan_code,
 

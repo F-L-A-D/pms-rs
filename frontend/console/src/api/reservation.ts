@@ -212,6 +212,7 @@ export type ReservationDetail = {
   room_class: string;
   room_id: string | null;
   booking_channel: string;
+  source_channel: string | null;
   plan_code: string | null;
   version: number;
   created_at: string;
@@ -277,3 +278,58 @@ export type ReservationLinkedResources = {
   assigned_room_id: string | null;
   folio_id: string | null;
 };
+
+export type SearchReservationsRequest = {
+  external_id?: string;
+  check_in_from?: string;
+  check_in_to?: string;
+  stay_date?: string;
+  guest_name?: string;
+  reservation_status?: string;
+  stay_status?: string;
+  room_class?: string;
+  room_id?: string;
+  booking_channel?: string;
+  source_channel?: string;
+};
+
+export type ReservationSearchItem = {
+  id: string;
+  external_id: string | null;
+  check_in: string;
+  check_out: string;
+  reservation_status: ReservationStatus;
+  stay_status: StayStatus | null;
+  room_class: string;
+  room_id: string | null;
+  booking_channel: string | null;
+  source_channel: string | null;
+  primary_guest_name: string | null;
+  linked_resources: ReservationLinkedResources;
+};
+
+function toReservationSearchQuery(
+  request: SearchReservationsRequest,
+): string {
+  const params = new URLSearchParams();
+
+  Object.entries(request).forEach(([key, value]) => {
+    const normalizedValue = value?.trim();
+
+    if (normalizedValue) {
+      params.set(key, normalizedValue);
+    }
+  });
+
+  const query = params.toString();
+
+  return query ? `?${query}` : "";
+}
+
+export function searchReservations(
+  request: SearchReservationsRequest,
+): Promise<ReservationSearchItem[]> {
+  return apiGet<ReservationSearchItem[]>(
+    `/reservations${toReservationSearchQuery(request)}`,
+  );
+}

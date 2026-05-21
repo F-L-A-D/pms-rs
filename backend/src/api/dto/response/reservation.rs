@@ -40,6 +40,7 @@ pub struct ReservationResponse {
     pub room_class: String,
     pub room_id: Option<Uuid>,
     pub booking_channel: ReservationBookingChannel,
+    pub source_channel: Option<String>,
     pub plan_code: Option<String>,
     pub version: i64,
     pub created_at: DateTime<Utc>,
@@ -362,6 +363,8 @@ impl From<ReservationDetail> for ReservationResponse {
 
             booking_channel: reservation.booking_channel,
 
+            source_channel: reservation.source_channel,
+
             plan_code: reservation.plan_code,
 
             version,
@@ -518,6 +521,8 @@ pub struct ReservationSearchItemResponse {
     pub stay_status: Option<String>,
     pub room_class: Option<String>,
     pub room_id: Option<Uuid>,
+    pub booking_channel: Option<String>,
+    pub source_channel: Option<String>,
     pub primary_guest_id: Option<Uuid>,
     pub primary_guest_name: Option<String>,
     pub linked_resources: ReservationLinkedResources,
@@ -579,6 +584,9 @@ impl From<ReservationSearchItem>
 
             room_class: item.room_class,
             room_id: item.room_id,
+
+            booking_channel: item.booking_channel,
+            source_channel: item.source_channel,
 
             primary_guest_id: item.linked_resources.primary_guest_id,
             primary_guest_name: item.primary_guest_name,

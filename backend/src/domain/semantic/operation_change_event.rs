@@ -40,12 +40,23 @@ pub enum OperationType {
     ApplyPayment,
     ReceiveDeposit,
     AdjustCharge,
+    
     AssignBillingAccount,
+    
     IssueInvoice,
     VoidInvoice,
+    
     RefundPayment,
+
     CloseFolio,
     ReopenFolio,
+    
+    WriteOffReceivable,
+    DisputeReceivable,
+    ResolveReceivableDispute,
+
+    AllocateReceivablePayment,
+    ReversePaymentAllocation,
 }
 
 impl OperationType {
@@ -61,12 +72,23 @@ impl OperationType {
             Self::ApplyPayment => "apply_payment",
             Self::ReceiveDeposit => "receive_deposit",
             Self::AdjustCharge => "adjust_charge",
+
             Self::AssignBillingAccount => "assign_billing_account",
+
             Self::IssueInvoice => "issue_invoice",
             Self::VoidInvoice => "void_invoice",
+
             Self::RefundPayment => "refund_payment",
+
             Self::CloseFolio => "close_folio",
             Self::ReopenFolio => "reopen_folio",
+
+            Self::WriteOffReceivable => "write_off_receivable",
+            Self::DisputeReceivable => "dispute_receivable",
+            Self::ResolveReceivableDispute => "resolve_receivable_dispute",
+
+            Self::AllocateReceivablePayment => "allocate_receivable_payment",
+            Self::ReversePaymentAllocation => "reverse_payment_allocation",
         }
     }
 
@@ -82,12 +104,22 @@ impl OperationType {
             "apply_payment" => Some(Self::ApplyPayment),
             "receive_deposit" => Some(Self::ReceiveDeposit),
             "adjust_charge" => Some(Self::AdjustCharge),
+
             "issue_invoice" => Some(Self::IssueInvoice),
-            "assign_billing_account" => Some(Self::AssignBillingAccount),
             "void_invoice" => Some(Self::VoidInvoice),
             "refund_payment" => Some(Self::RefundPayment),
+
+            "assign_billing_account" => Some(Self::AssignBillingAccount),
+            
             "close_folio" => Some(Self::CloseFolio),
             "reopen_folio" => Some(Self::ReopenFolio),
+            
+            "write_off_receivable" => Some(Self::WriteOffReceivable),
+            "dispute_receivable" => Some(Self::DisputeReceivable),
+            "resolve_receivable_dispute" => Some(Self::ResolveReceivableDispute),
+
+            "allocate_receivable_payment" => Some(Self::AllocateReceivablePayment),
+            "reverse_payment_allocation" => Some(Self::ReversePaymentAllocation),
             _ => None,
         }
     }

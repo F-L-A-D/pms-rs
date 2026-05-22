@@ -301,6 +301,7 @@ async fn should_allocate_partial_payment_to_receivable() {
             amount: Decimal::new(4000, 2),
             method: PaymentMethod::BankTransfer,
             external_reference: Some("BANK-001".to_string()),
+            reason: None,
         },
     )
     .await
@@ -368,6 +369,7 @@ async fn should_settle_receivable_when_payment_covers_outstanding_amount() {
             amount: Decimal::new(7500, 2),
             method: PaymentMethod::CreditCard,
             external_reference: None,
+            reason: None,
         },
     )
     .await
@@ -403,12 +405,13 @@ async fn should_reverse_payment_allocation_and_reopen_receivable() {
             amount: Decimal::new(10000, 2),
             method: PaymentMethod::BankTransfer,
             external_reference: Some("BANK-REV".to_string()),
+            reason: None,
         },
     )
     .await
     .unwrap();
 
-    reverse_payment_allocation::execute(&db, result.allocation.id)
+    reverse_payment_allocation::execute(&db, result.allocation.id, None)
         .await
         .unwrap();
 
@@ -441,7 +444,7 @@ async fn should_void_invoice_without_active_payment_allocations() {
     let db = Db::new_test().await;
     let invoice = seed_invoice(&db, "INV-VOID", Decimal::new(6000, 2), 30).await;
 
-    let voided = void_invoice::execute(&db, invoice.id).await.unwrap();
+    let voided = void_invoice::execute(&db, invoice.id, None).await.unwrap();
 
     assert_eq!(voided.status, InvoiceStatus::Voided);
 
@@ -485,12 +488,13 @@ async fn should_reject_invoice_void_with_active_payment_allocation() {
             amount: Decimal::new(1000, 2),
             method: PaymentMethod::Cash,
             external_reference: None,
+            reason: None,
         },
     )
     .await
     .unwrap();
 
-    let result = void_invoice::execute(&db, invoice.id).await;
+    let result = void_invoice::execute(&db, invoice.id, None).await;
 
     assert!(matches!(result, Err(AppError::Conflict(_))));
 }
@@ -553,6 +557,7 @@ async fn should_reject_receivable_overpayment() {
             amount: Decimal::new(5001, 2),
             method: PaymentMethod::Cash,
             external_reference: None,
+            reason: None,
         },
     )
     .await;
@@ -565,13 +570,13 @@ async fn should_dispute_and_resolve_receivable() {
     let db = Db::new_test().await;
     let receivable = seed_invoiced_receivable(&db, "INV-DISPUTE", Decimal::new(10000, 2)).await;
 
-    let disputed = dispute_receivable::execute(&db, receivable.id)
+    let disputed = dispute_receivable::execute(&db, receivable.id, None)
         .await
         .unwrap();
 
     assert_eq!(disputed.status, ReceivableStatus::Disputed);
 
-    let resolved = resolve_receivable_dispute::execute(&db, receivable.id)
+    let resolved = resolve_receivable_dispute::execute(&db, receivable.id, None)
         .await
         .unwrap();
 
@@ -597,7 +602,7 @@ async fn should_write_off_open_receivable() {
     let db = Db::new_test().await;
     let receivable = seed_invoiced_receivable(&db, "INV-WRITE-OFF", Decimal::new(4300, 2)).await;
 
-    let written_off = write_off_receivable::execute(&db, receivable.id)
+    let written_off = write_off_receivable::execute(&db, receivable.id, None)
         .await
         .unwrap();
 

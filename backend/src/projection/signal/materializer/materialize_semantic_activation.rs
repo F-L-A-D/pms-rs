@@ -93,7 +93,12 @@ pub async fn materialize_semantic_activation(
         | OperationType::VoidInvoice
         | OperationType::RefundPayment
         | OperationType::CloseFolio
-        | OperationType::ReopenFolio => (
+        | OperationType::ReopenFolio
+        | OperationType::WriteOffReceivable
+        | OperationType::DisputeReceivable
+        | OperationType::ResolveReceivableDispute
+        | OperationType::AllocateReceivablePayment
+        | OperationType::ReversePaymentAllocation => (
             SemanticActivationKey::BillingRelevantChange,
             Decimal::new(80, 2),
             Decimal::new(90, 2),

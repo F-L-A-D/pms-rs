@@ -10,4 +10,5 @@ pub struct AllocateReceivablePaymentInput {
     pub amount: Decimal,
     pub method: PaymentMethod,
     pub external_reference: Option<String>,
+    pub reason: Option<String>,
 }

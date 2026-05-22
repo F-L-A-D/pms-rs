@@ -1,17 +1,31 @@
 use rust_decimal::Decimal;
 
+use sqlx::{
+    Sqlite,
+    Transaction,
+};
+
 use uuid::Uuid;
 
 use crate::{
     api::dto::billing::response::billing_audit_response::BillingAuditResponse,
     db::connection::Db,
-    domain::entity::payment::PaymentMethod,
+    domain::{
+        entity::payment::PaymentMethod,
+        semantic::operation_change_event::OperationChangeEvent,
+    },
     error::app_error::{
         infra,
         AppResult,
     },
     repository::sqlite::operational::{
-        billing::billing_account_repository::SqliteBillingAccountRepository,
+        billing::{
+            billing_account_repository::SqliteBillingAccountRepository,
+            invoice_repository::SqliteInvoiceRepository,
+            payment_allocation_repository::SqlitePaymentAllocationRepository,
+            payment_repository::SqlitePaymentRepository,
+            receivable_repository::SqliteReceivableRepository,
+        },
         operation::{
             operation_change_event_repository::SqliteOperationChangeEventRepository,
             operational_audit_log_repository::SqliteOperationalAuditLogRepository,
@@ -36,14 +50,21 @@ pub async fn execute(
         Vec::new();
 
     for event in events {
+        let resolved_folio_id =
+            resolve_event_folio_id(
+                &mut tx,
+                &event,
+            )
+            .await?;
+
+        if resolved_folio_id != Some(folio_id) {
+            continue;
+        }
+
         let audit_extract =
             extract_billing_audit(
                 &event.after_json,
             )?;
-
-        if audit_extract.folio_id != Some(folio_id) {
-            continue;
-        }
 
         let audit_logs =
             SqliteOperationalAuditLogRepository::list_by_operation_id(
@@ -72,7 +93,7 @@ pub async fn execute(
             BillingAuditResponse {
                 operation_id: event.operation_id,
 
-                folio_id: audit_extract.folio_id,
+                folio_id: resolved_folio_id,
                 folio_entry_id: audit_extract.folio_entry_id,
                 payment_id: audit_extract.payment_id,
                 invoice_id: audit_extract.invoice_id,
@@ -116,6 +137,98 @@ pub async fn execute(
         .map_err(infra)?;
 
     Ok(responses)
+}
+
+async fn resolve_event_folio_id(
+    tx: &mut Transaction<'_, Sqlite>,
+    event: &OperationChangeEvent,
+) -> AppResult<Option<Uuid>> {
+    match event.aggregate_type.as_str() {
+        "folio" => {
+            Ok(Some(event.aggregate_id))
+        }
+
+        "invoice" => {
+            let invoice =
+                SqliteInvoiceRepository::find_by_id(
+                    tx,
+                    event.aggregate_id,
+                )
+                .await?;
+
+            Ok(invoice.map(|invoice| invoice.folio_id))
+        }
+
+        "receivable" => {
+            let receivable =
+                SqliteReceivableRepository::find_by_id(
+                    tx,
+                    event.aggregate_id,
+                )
+                .await?;
+
+            let Some(receivable) = receivable else {
+                return Ok(None);
+            };
+
+            let invoice =
+                SqliteInvoiceRepository::find_by_id(
+                    tx,
+                    receivable.invoice_id,
+                )
+                .await?;
+
+            Ok(invoice.map(|invoice| invoice.folio_id))
+        }
+
+        "payment_allocation" => {
+            let allocation =
+                SqlitePaymentAllocationRepository::find_by_id(
+                    tx,
+                    event.aggregate_id,
+                )
+                .await?;
+
+            let Some(allocation) = allocation else {
+                return Ok(None);
+            };
+
+            let receivable =
+                SqliteReceivableRepository::find_by_id(
+                    tx,
+                    allocation.receivable_id,
+                )
+                .await?;
+
+            let Some(receivable) = receivable else {
+                return Ok(None);
+            };
+
+            let invoice =
+                SqliteInvoiceRepository::find_by_id(
+                    tx,
+                    receivable.invoice_id,
+                )
+                .await?;
+
+            Ok(invoice.map(|invoice| invoice.folio_id))
+        }
+
+        "payment" => {
+            let payment =
+                SqlitePaymentRepository::find_by_id(
+                    tx,
+                    event.aggregate_id,
+                )
+                .await?;
+
+            Ok(payment.map(|payment| payment.folio_id))
+        }
+
+        _ => {
+            Ok(None)
+        }
+    }
 }
 
 #[derive(Debug, Default)]

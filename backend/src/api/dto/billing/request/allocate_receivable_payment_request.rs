@@ -7,4 +7,5 @@ pub struct AllocateReceivablePaymentRequest {
     pub amount: String,
     pub method: PaymentMethod,
     pub external_reference: Option<String>,
+    pub reason: Option<String>,
 }

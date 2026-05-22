@@ -32,7 +32,7 @@ use pms_rs::{
         },
     },
     usecase::billing::command::{
-        assign_billing_account,
+        account::assign_billing_account,
         folio::{close_folio, create_folio_entry},
         invoice::{create_invoice, void_invoice},
         payment::{allocate_receivable_payment, create_payment, reverse_payment_allocation},

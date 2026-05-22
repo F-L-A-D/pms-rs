@@ -5,10 +5,14 @@ use axum::{
 
 use crate::api::{
     handlers::billing::{
-        folio::{
+        account::{
             assign_billing_account::assign_billing_account_handler,
-            create_folio_entry::create_folio_entry_handler, folio_query::get_folio_handler,
-            open_reservation_folio::open_reservation_folio_handler,
+            create_billing_account::create_billing_account_handler,
+        },
+        folio::{
+            create_folio_entry::create_folio_entry_handler, folio_audit::get_folio_audit_handler,
+            folio_query::get_folio_handler, open_reservation_folio::open_reservation_folio_handler,
+            close_folio::close_folio_handler,
         },
         invoice::{
             create_invoice::create_invoice_handler,
@@ -43,6 +47,14 @@ pub fn routes() -> Router<AppState> {
         .route("/folios/deposits", post(create_deposit_handler))
         .route("/folios/:id", get(get_folio_handler))
         .route(
+            "/folios/:id/close",
+            post(close_folio_handler),
+        )
+        .route(
+            "/billing-accounts",
+            post(create_billing_account_handler),
+        )
+        .route(
             "/folios/:id/billing-account",
             post(assign_billing_account_handler),
         )
@@ -72,4 +84,5 @@ pub fn routes() -> Router<AppState> {
             "/billing-accounts/:id/invoices",
             get(list_billing_account_invoices_handler),
         )
+        .route("/folios/:folio_id/audit", get(get_folio_audit_handler))
 }

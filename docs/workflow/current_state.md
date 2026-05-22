@@ -11,356 +11,119 @@ The current focus has shifted from backend-only semantic expansion to an integra
 - backend health check connectivity
 - Reservation Search as the first operational discovery surface
 - Reservation Detail as the first vertical UI slice
+- Folio Detail as the first Billing workflow slice
 - practical discovery of missing workflow, DTO, projection, audit, and linked-resource requirements through UI usage
 
 The goal is not frontend completeness. The goal is to use a minimal console UI to expose operational gaps that are difficult to find from backend tests alone.
 
-Current reservation console validation has reached a stable checkpoint:
+Current reservation and billing console validation has reached a stable checkpoint:
 
 - Reservation Search MVP is implemented.
 - Reservation Detail workflow validation is implemented.
+- Folio Detail workflow validation is implemented.
 - Reservation ↔ Folio linkage is verified.
 - `linked_resources.folio_id` is visible from both Search and Detail.
-- Next focus is Folio Detail Workflow Validation.
+- Reservation Detail → Folio Detail navigation is implemented and verified.
+- Next focus is Billing Audit Workflow Validation.
 
 ---
 
-## Repository Structure
+## Folio Detail Validation
 
-The repository is organized as a SaaS-oriented workspace:
+Folio Detail workflow validation is implemented.
 
-```text
-pms-rs/
-├── backend/
-│   ├── Cargo.toml
-│   ├── src/
-│   ├── tests/
-│   └── data/
-├── frontend/
-│   └── console/
-├── docs/
-└── Cargo.toml
-```
+Current Folio Detail verifies visibility for:
 
-The root `Cargo.toml` is a workspace manifest:
-
-```toml
-[workspace]
-members = ["backend"]
-resolver = "2"
-```
-
-Backend remains the authoritative runtime and semantic layer. Frontend is an operational console that communicates through backend APIs only.
-
----
-
-## Backend Status
-
-The backend currently includes stable foundations for:
-
-- reservation lifecycle and modification workflows
-- stay/check-in/check-out workflows
-- room assignment and room movement workflows
-- room maintenance and out-of-order handling
-- housekeeping daily state workflows
-- folio, invoice, payment, receivable, and settlement boundaries
-- package/rate-plan related operational support
-- operational audit logs
-- operation change events
-- reservation edit concurrency controls
-- semantic signal and activation flow
-- projection rebuild/refresh parity and deterministic convergence tests
-- reservation search read model
-- reservation detail read model
-- reservation linked resources
-- automatic folio creation during reservation creation
-
-Backend tests are expected to remain all green before frontend work continues.
-
----
-
-## Established Projection Guarantees
-
-Preserve these invariants:
-
-- topology-managed propagation
-- deterministic traversal ordering
-- rebuildable projection chains
-- refresh/rebuild equivalence
-- transaction-scoped propagation consistency
-- projection authority boundary
-- projection remains derived, disposable, and non-authoritative
-- operational truth remains authoritative
-
-Projection runtime redesign is not the default task.
-
----
-
-## Established Operational Rules
-
-Preserve these boundaries:
-
-- handler is the transport normalization boundary
-- usecase is the transaction owner
-- repository is the persistence boundary
-- projection is derived/read-oriented and must not become operational authority
-- append-only operational/audit history should be preferred where appropriate
-- explicit enum snake_case persistence remains the convention
-
----
-
-## Current Branch / PR
-
-Current completed branch:
-
-```text
-feature/console-reservation-search
-```
-
-PR:
-
-```text
-#79 Add console reservation search and detail workflow validation
-```
-
-Base branch:
-
-```text
-develop
-```
-
----
-
-## Current Frontend Direction
-
-Frontend work should continue with a minimal console, not a polished product UI.
-
-Current frontend stack:
-
-- Vite
-- React
-- TypeScript
-- TanStack Query
-- simple API client
-- backend `/health` connectivity
-- Reservation Search
-- Reservation Detail
-
-The console should prioritize:
-
-- operational visibility
-- dense workflow-oriented layout
-- reservation state visibility
-- audit/timeline visibility
-- projection visibility
-- linked-resource visibility
-- conflict/concurrency awareness
-- source/actor/operation context visibility
-
-Avoid early focus on:
-
-- polished design
-- marketing-style dashboard
-- AI-generated-looking UI
-- excessive cards
-- animation
-- mobile optimization
-
----
-
-## Reservation Search MVP
-
-Reservation Search MVP is implemented.
-
-Search filters currently supported:
-
-- `external_id`
-- `guest_name`
-- `check_in_from`
-- `check_in_to`
-- `stay_date`
-- `reservation_status`
-- `stay_status`
-- `room_class`
-- `room_id`
-- `booking_channel`
-- `source_channel`
-
-Search response currently includes:
-
-- `id`
-- `external_id`
-- `primary_guest_id`
-- `primary_guest_name`
-- `check_in`
-- `check_out`
-- `reservation_status`
-- `stay_status`
-- `room_class`
-- `room_id`
-- `booking_channel`
-- `source_channel`
-- `created_at`
-- `linked_resources`
-  - `primary_guest_id`
-  - `assigned_room_id`
-  - `folio_id`
-
-Frontend implemented:
-
-- `ReservationListPage`
-- `ReservationSearchForm`
-- `ReservationSearchTable`
-- `searchReservations` API client
-- Search → Reservation Detail navigation
-
-Validation completed:
-
-- confirmed reservation
-- modified reservation
-- cancelled reservation
-- no_show reservation
-- reinstated reservation
-- room assigned reservation
-- room released reservation
-- range search
-- booking_channel search
-- source_channel search
-
----
-
-## Reservation Detail Validation
-
-Reservation Detail workflow validation is implemented.
-
-Reservation Detail currently verifies visibility for:
-
-- reservation summary
-- stay dates
-- reservation status
-- stay status
-- room assignment
-- participants
-- participant details
-- package breakdowns
-- daily stay details
-- daily revenue allocations
-- notes
-- traces
-- audit logs
-- operation events
-- semantic signal visibility
-- active edit sessions
-- room history
-- booking_channel
-- source_channel
-- linked_resources
-
-`linked_resources` currently contains:
-
-```text
-primary_guest_id
-assigned_room_id
-folio_id
-```
-
-Verified:
-
-- Search API returns `linked_resources.folio_id`
-- Detail API returns `linked_resources.folio_id`
-- Console UI displays `folio_id`
-- Reservation Detail can now serve as an entry point into Billing/Folio workflow validation
-
----
-
-## Folio Integration
-
-Reservation ↔ Folio linkage is implemented and verified.
-
-Current behavior:
-
-```text
-create_reservation
-    ↓
-automatic folio creation
-    ↓
-reservation ↔ folio linkage
-```
+- folio summary
+- reservation linkage
+- folio status
+- billing_account_id
+- folio entries
+- room charges
+- tax charges
+- deposits
+- payments
+- manual adjustments
+- derived charges total
+- derived payments total
+- derived balance
 
 Implemented:
 
-- create reservation automatically creates an open folio
-- active duplicate folio creation is rejected
-- reservation search exposes active `folio_id`
-- reservation detail exposes active `folio_id`
+```text
+Reservation Detail
+    ↓
+Folio Detail
+```
+
+Navigation is verified.
+
+Current Folio Detail response includes:
+
+```text
+folio
+entries
+total_charges
+total_payments
+balance
+```
 
 Validation completed:
 
 ```text
-reservation creation
-    ↓
-folio auto creation
-    ↓
-duplicate folio prevention
-    ↓
-deposit posting
-    ↓
-folio entry creation
-    ↓
-audit logging
+RoomCharge
+TaxCharge
+DepositReceived
+PaymentApplied
+ManualAdjustment
+```
+
+Verified scenarios:
+
+confirmed reservation
+
+```text
+charges 13200
+payments 5000
+balance 8200
+```
+
+range reservation
+
+```text
+charges 20000
+payments 20000
+balance 0
+```
+
+past reservation
+
+```text
+room charge
+manual adjustment
+payment applied
+balance 0
 ```
 
 Verified:
 
-- reservation has active folio
-- search returns `folio_id`
-- detail returns `folio_id`
-- UI displays `folio_id`
-- duplicate folio opening returns conflict
-- deposit posting creates folio entry
-- billing/audit logs are recorded
+- reservation → folio navigation
+- folio detail API
+- folio detail UI
+- folio entries visibility
+- derived balance calculation
+- deposit visibility
+- payment visibility
+- room charge visibility
 
-Important boundary:
+Current gaps identified:
 
-- Folio may be created automatically.
-- Charges must not be automatically posted during reservation creation.
-- Balance must remain derived from folio entries.
-- Reservation must not become the billing authority.
-
----
-
-## Operation Types
-
-Implemented operation types include:
-
-```text
-Create
-Modify
-Cancel
-NoShow
-Reinstate
-```
-
-Confidence profile handling is updated for the added operation types.
-
-Validated scenarios:
-
-- confirmed
-- modified
-- cancelled
-- no_show
-- reinstated
-
-Room assignment lifecycle validation:
-
-```text
-confirmed  → room assigned
-modified   → room assigned
-cancelled  → room released
-no_show    → room released
-reinstated → room assignment not restored
-range      → room assigned
-```
+- payment detail visibility
+- payment method visibility
+- payment reference visibility
+- folio audit visibility
+- folio operation event visibility
+- invoice linkage visibility
 
 ---
 
@@ -378,8 +141,14 @@ Console validation seed scenarios are available for:
 - room unassigned
 - note
 - trace
+- room charge
+- tax charge
+- deposit
+- payment
+- manual adjustment
+- balance validation
 
-These seeds are used to validate Search, Detail, room assignment lifecycle, audit visibility, operation event visibility, and linked-resource visibility.
+These seeds are used to validate Search, Detail, room assignment lifecycle, audit visibility, operation event visibility, linked-resource visibility, billing visibility, and balance calculation.
 
 ---
 
@@ -387,7 +156,11 @@ These seeds are used to validate Search, Detail, room assignment lifecycle, audi
 
 The first meaningful frontend slice was Reservation Search → Reservation Detail.
 
-This slice has now validated that backend/API/projection semantics are sufficient for basic reservation workflow inspection.
+This slice validated that backend/API/projection semantics are sufficient for reservation workflow inspection.
+
+The second meaningful frontend slice is Reservation Detail → Folio Detail.
+
+This slice validated that billing workflows are inspectable through the console and that balance derivation behaves correctly from operational folio entries.
 
 Confirmed visible from the UI:
 
@@ -403,6 +176,12 @@ Confirmed visible from the UI:
 - traces
 - audit logs
 - operation events
+- folio entries
+- room charges
+- tax charges
+- deposits
+- payments
+- balance
 
 The purpose remains discovery of missing backend capability, not final UI design.
 
@@ -412,16 +191,12 @@ The purpose remains discovery of missing backend capability, not final UI design
 
 Good next areas:
 
-- Folio Detail API
-- Folio Detail UI
-- Reservation Detail → Folio Detail navigation
-- Folio entries display
-- deposit display
-- room charge display
-- payment display
-- balance calculation display
-- billing audit log visibility
-- billing workflow validation
+- Billing audit log visibility
+- Billing operation event visibility
+- Payment detail visibility
+- Payment method visibility
+- Payment reference visibility
+- Invoice linkage visibility
 - Guest Detail after Folio Detail
 - Reservation Detail → Guest Detail navigation
 
@@ -441,28 +216,34 @@ Areas that should remain stable:
 Next phase:
 
 ```text
-Folio Detail Workflow Validation
+Billing Audit Workflow Validation
 ```
 
 Primary objective:
 
-Use Folio Detail as the next operational console slice to validate Billing workflow.
+Use Folio Detail as an operational inspection surface to validate billing traceability.
 
-Initial Folio Detail should prioritize:
+Focus areas:
 
-- folio id
-- reservation id
-- folio status
-- billing_account_id
-- entries
-- deposits
-- room charges
-- payments
-- balance
 - audit logs
-- Reservation Detail return navigation
+- operation events
+- payment traceability
+- actor visibility
+- operation source visibility
+- payment method visibility
+- payment reference visibility
+- invoice linkage
 
-The goal is to identify missing:
+The objective is to answer:
+
+```text
+Why did this balance occur?
+Who created the entry?
+When was it created?
+Which workflow created it?
+```
+
+The goal remains discovery of missing:
 
 - workflow
 - business logic
@@ -474,46 +255,3 @@ The goal is to identify missing:
 - operational data
 
 Do not over-polish the UI.
-
----
-
-## Database Direction
-
-Development currently uses SQLite.
-
-Production is expected to use MySQL.
-
-Frontend must not depend on database type. Database differences should remain behind backend repository/bootstrap/migration boundaries.
-
----
-
-## Desktop Direction
-
-Desktop support is a future Tauri wrapper over the SaaS frontend.
-
-Desktop must not own:
-
-- business logic
-- database authority
-- projection authority
-- tenant authority
-- sync authority
-
----
-
-## Non-Goals
-
-Do not prioritize:
-
-- frontend completeness
-- customer-facing UI
-- Tauri implementation
-- full auth/tenant implementation
-- async propagation
-- distributed invalidation
-- traversal optimization
-- partial rebuild optimization
-- incremental projection engine
-- framework extraction
-- AI recommendation UI
-- RMS/forecasting UI

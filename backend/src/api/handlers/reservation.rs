@@ -714,6 +714,8 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
             folio_id: None,
         },
 
+        folios: vec![],
+
         room_assignment:
             crate::api::dto::response::reservation::ReservationRoomAssignmentResponse {
                 room_id: reservation.room_id,

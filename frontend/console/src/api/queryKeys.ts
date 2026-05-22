@@ -9,4 +9,7 @@ export const queryKeys = {
 
   folioDetail: (folioId: string) =>
     ["folios", "detail", folioId] as const,
+
+  folioAudit: (folioId: string) =>
+    ["folios", "audit", folioId] as const,
 };

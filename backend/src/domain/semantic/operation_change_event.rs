@@ -35,6 +35,17 @@ pub enum OperationType {
     Cancel,
     NoShow,
     Reinstate,
+
+    PostCharge,
+    ApplyPayment,
+    ReceiveDeposit,
+    AdjustCharge,
+    AssignBillingAccount,
+    IssueInvoice,
+    VoidInvoice,
+    RefundPayment,
+    CloseFolio,
+    ReopenFolio,
 }
 
 impl OperationType {
@@ -45,6 +56,17 @@ impl OperationType {
             Self::Cancel => "cancel",
             Self::NoShow => "no_show",
             Self::Reinstate => "reinstate",
+
+            Self::PostCharge => "post_charge",
+            Self::ApplyPayment => "apply_payment",
+            Self::ReceiveDeposit => "receive_deposit",
+            Self::AdjustCharge => "adjust_charge",
+            Self::AssignBillingAccount => "assign_billing_account",
+            Self::IssueInvoice => "issue_invoice",
+            Self::VoidInvoice => "void_invoice",
+            Self::RefundPayment => "refund_payment",
+            Self::CloseFolio => "close_folio",
+            Self::ReopenFolio => "reopen_folio",
         }
     }
 
@@ -55,12 +77,23 @@ impl OperationType {
             "cancel" => Some(Self::Cancel),
             "no_show" => Some(Self::NoShow),
             "reinstate" => Some(Self::Reinstate),
+
+            "post_charge" => Some(Self::PostCharge),
+            "apply_payment" => Some(Self::ApplyPayment),
+            "receive_deposit" => Some(Self::ReceiveDeposit),
+            "adjust_charge" => Some(Self::AdjustCharge),
+            "issue_invoice" => Some(Self::IssueInvoice),
+            "assign_billing_account" => Some(Self::AssignBillingAccount),
+            "void_invoice" => Some(Self::VoidInvoice),
+            "refund_payment" => Some(Self::RefundPayment),
+            "close_folio" => Some(Self::CloseFolio),
+            "reopen_folio" => Some(Self::ReopenFolio),
             _ => None,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct OperationChangeEvent {
     pub id: Uuid,
     pub operation_id: Uuid,

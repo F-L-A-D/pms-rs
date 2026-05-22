@@ -1,9 +1,15 @@
 import { Link } from "react-router-dom";
 
-import type { FolioDetail } from "../../api/folio";
+import type {
+  BillingAudit,
+  FolioDetail,
+} from "../../api/folio";
 
 type Props = {
   detail: FolioDetail;
+  audits: BillingAudit[];
+  isAuditLoading: boolean;
+  isAuditError: boolean;
 };
 
 function formatDateTime(value: string): string {
@@ -16,6 +22,9 @@ function formatAmount(value: string): string {
 
 export function FolioDetailView({
   detail,
+  audits,
+  isAuditLoading,
+  isAuditError,
 }: Props) {
   const { folio, entries } = detail;
 
@@ -162,6 +171,165 @@ export function FolioDetailView({
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-4 py-3">
+          <h2 className="text-base font-semibold text-slate-900">
+            Billing Audit
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Operation events and audit logs related to this folio.
+          </p>
+        </div>
+
+        {isAuditLoading && (
+          <div className="p-4 text-sm text-slate-500">
+            Loading billing audit...
+          </div>
+        )}
+
+        {isAuditError && (
+          <div className="p-4 text-sm text-red-700">
+            Failed to load billing audit.
+          </div>
+        )}
+
+        {!isAuditLoading && !isAuditError && audits.length === 0 && (
+          <div className="p-4 text-sm text-slate-500">
+            No billing audit events.
+          </div>
+        )}
+
+        {!isAuditLoading && !isAuditError && audits.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium text-slate-500">
+                    Occurred At
+                  </th>
+
+                  <th className="px-4 py-2 text-left font-medium text-slate-500">
+                    Operation
+                  </th>
+
+                  <th className="px-4 py-2 text-right font-medium text-slate-500">
+                    Amount
+                  </th>
+
+                  <th className="px-4 py-2 text-left font-medium text-slate-500">
+                    Method
+                  </th>
+
+                  <th className="px-4 py-2 text-left font-medium text-slate-500">
+                    Reference
+                  </th>
+
+                  <th className="px-4 py-2 text-left font-medium text-slate-500">
+                    Invoice
+                  </th>
+
+                  <th className="px-4 py-2 text-left font-medium text-slate-500">
+                    Billing Account
+                  </th>
+
+                  <th className="px-4 py-2 text-left font-medium text-slate-500">
+                    Actor
+                  </th>
+
+                  <th className="px-4 py-2 text-left font-medium text-slate-500">
+                    Source
+                  </th>
+
+                  <th className="px-4 py-2 text-left font-medium text-slate-500">
+                    Reason
+                  </th>
+
+                  <th className="px-4 py-2 text-left font-medium text-slate-500">
+                    Trace
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-200 bg-white">
+                {audits.map((audit) => {
+                  const displayAmount =
+                    audit.amount ?? audit.issued_amount;
+
+                  const displayInvoice =
+                    audit.invoice_number ?? audit.invoice_id;
+
+                  const displayBillingAccount =
+                    audit.billing_account_name ??
+                    audit.billing_account_id;
+
+                  return (
+                    <tr key={`${audit.operation_id}-${audit.aggregate_id}`}>
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-700">
+                        {formatDateTime(audit.occurred_at)}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-900">
+                        {audit.operation_type}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-medium text-slate-900">
+                        {displayAmount
+                          ? formatAmount(displayAmount)
+                          : "-"}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-700">
+                        {audit.payment_method ?? "-"}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-700">
+                        {audit.payment_reference ?? "-"}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-700">
+                        {displayInvoice ?? "-"}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-700">
+                        {displayBillingAccount ?? "-"}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-700">
+                        {audit.actor}
+                        {audit.actor_id ? `:${audit.actor_id}` : ""}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-700">
+                        {audit.source}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-700">
+                        {audit.reason ?? "-"}
+                      </td>
+
+                      <td className="px-4 py-2 text-xs text-slate-600">
+                        <div>
+                          folio_entry: {audit.folio_entry_id ?? "-"}
+                        </div>
+
+                        <div>
+                          payment: {audit.payment_id ?? "-"}
+                        </div>
+
+                        <div>
+                          invoice: {audit.invoice_id ?? "-"}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

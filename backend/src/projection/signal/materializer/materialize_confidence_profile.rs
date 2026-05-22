@@ -35,6 +35,16 @@ pub async fn materialize_confidence_profile(
         OperationType::Cancel => Decimal::new(95, 2),
         OperationType::NoShow => Decimal::new(95, 2),
         OperationType::Reinstate => Decimal::new(90, 2),
+        OperationType::PostCharge
+        | OperationType::ApplyPayment
+        | OperationType::ReceiveDeposit
+        | OperationType::AdjustCharge
+        | OperationType::AssignBillingAccount
+        | OperationType::IssueInvoice
+        | OperationType::VoidInvoice
+        | OperationType::RefundPayment
+        | OperationType::CloseFolio
+        | OperationType::ReopenFolio => Decimal::new(90, 2),
     };
     let source_penalty = match event.source {
         OperationSource::Api => Decimal::ZERO,

@@ -52,6 +52,7 @@ pub struct ReservationDetail {
     pub active_edit_sessions: Vec<ReservationEditSession>,
     pub room_history: Vec<ReservationTransition>,
     pub folio_id: Option<Uuid>,
+    pub folio_links: Vec<ReservationDetailFolioLink>,
 }
 
 #[derive(Debug)]
@@ -70,6 +71,12 @@ pub struct ReservationDetailRoom {
 pub struct ReservationDetailOperationEvent {
     pub event: OperationChangeEvent,
     pub semantic_signal: OperationSemanticSignal,
+}
+
+#[derive(Debug)]
+pub struct ReservationDetailFolioLink {
+    pub folio_id: Uuid,
+    pub status: FolioStatus,
 }
 
 pub async fn get_reservation(db: &Db, reservation_id: Uuid) -> AppResult<Option<Reservation>> {
@@ -142,10 +149,20 @@ pub async fn get_reservation_detail(
 
     let folios = SqliteFolioRepository::list_by_reservation_id(&mut tx, reservation_id).await?;
 
-    let folio_id = folios
-        .iter()
-        .find(|folio| matches!(folio.status, FolioStatus::Open | FolioStatus::Locked,))
-        .map(|folio| folio.id);
+    let folio_id = 
+        folios
+            .iter()
+            .find(|folio| matches!(folio.status, FolioStatus::Open | FolioStatus::Locked,))
+            .map(|folio| folio.id);
+
+    let folio_links =
+        folios
+            .iter()
+            .map(|folio| ReservationDetailFolioLink {
+                folio_id: folio.id,
+                status: folio.status,
+            })
+            .collect::<Vec<_>>();
 
     let audit_logs = SqliteOperationalAuditLogRepository::list_by_aggregate(
         &mut tx,
@@ -188,5 +205,6 @@ pub async fn get_reservation_detail(
         active_edit_sessions,
         room_history,
         folio_id,
+        folio_links,
     }))
 }

@@ -11,16 +11,21 @@ use crate::{
         receivable::Receivable,
     },
     domain::semantic::{
+        operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
         operation_context::OperationContext,
         settlement_transition::{SettlementTransition, SettlementTransitionType},
     },
     error::app_error::{conflict, infra, not_found, validation, AppResult},
     repository::sqlite::{
         behavioral::settlement_transition_repository::SqliteSettlementTransitionRepository,
-        operational::billing::{
-            billing_account_repository::SqliteBillingAccountRepository,
-            folio_repository::SqliteFolioRepository, invoice_repository::SqliteInvoiceRepository,
-            receivable_repository::SqliteReceivableRepository,
+        operational::{
+            billing::{
+                billing_account_repository::SqliteBillingAccountRepository,
+                folio_repository::SqliteFolioRepository,
+                invoice_repository::SqliteInvoiceRepository,
+                receivable_repository::SqliteReceivableRepository,
+            },
+            operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
         },
     },
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
@@ -122,30 +127,58 @@ pub async fn execute(db: &Db, input: CreateInvoiceInput) -> AppResult<Invoice> {
 
         SqliteSettlementTransitionRepository::save(&mut tx, &receivable_opened_transition).await?;
 
+        let context = OperationContext::api_system();
+
+        let after_json = serde_json::json!({
+            "id": invoice.id,
+            "invoice_id": invoice.id,
+            "folio_id": invoice.folio_id,
+            "billing_account_id": invoice.billing_account_id,
+            "invoice_number": invoice.invoice_number,
+            "issued_amount": invoice.issued_amount,
+            "due_date": invoice.due_date,
+            "status": invoice.status,
+            "receivable_id": receivable.id,
+        })
+        .to_string();
+
+        let changed_fields_json = serde_json::to_string(&vec![
+            ChangedField::new("status", None, Some(invoice.status.to_snake().to_string())),
+            ChangedField::new(
+                "issued_amount",
+                None,
+                Some(invoice.issued_amount.to_string()),
+            ),
+        ])
+        .map_err(infra)?;
+
+        let operation_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "invoice".to_string(),
+            aggregate_id: invoice.id,
+            operation_type: OperationType::IssueInvoice,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: None,
+            after_json: after_json.clone(),
+            changed_fields_json: changed_fields_json.clone(),
+            occurred_at: Utc::now(),
+        };
+
+        SqliteOperationChangeEventRepository::save(&mut tx, &operation_event).await?;
+
         record_audit_log(
             &mut tx,
-            &OperationContext::api_system(),
+            &context,
             RecordAuditLogInput {
                 aggregate_type: "invoice".to_string(),
                 aggregate_id: invoice.id,
                 action: "invoice.issue".to_string(),
                 before_json: None,
-                after_json: serde_json::json!({
-                    "id": invoice.id,
-                    "folio_id": invoice.folio_id,
-                    "billing_account_id": invoice.billing_account_id,
-                    "invoice_number": invoice.invoice_number,
-                    "issued_amount": invoice.issued_amount,
-                    "due_date": invoice.due_date,
-                    "status": invoice.status,
-                    "receivable_id": receivable.id,
-                })
-                .to_string(),
-                changed_fields_json: serde_json::json!([
-                    {"field_name": "status", "before_value": null, "after_value": invoice.status.to_snake()},
-                    {"field_name": "issued_amount", "before_value": null, "after_value": invoice.issued_amount.to_string()}
-                ])
-                .to_string(),
+                after_json,
+                changed_fields_json,
                 reason: None,
             },
         )

@@ -83,6 +83,21 @@ pub async fn materialize_semantic_activation(
                 )
             }
         }
+
+        OperationType::PostCharge
+        | OperationType::ApplyPayment
+        | OperationType::ReceiveDeposit
+        | OperationType::AdjustCharge
+        | OperationType::AssignBillingAccount
+        | OperationType::IssueInvoice
+        | OperationType::VoidInvoice
+        | OperationType::RefundPayment
+        | OperationType::CloseFolio
+        | OperationType::ReopenFolio => (
+            SemanticActivationKey::BillingRelevantChange,
+            Decimal::new(80, 2),
+            Decimal::new(90, 2),
+        ),
     };
 
     Ok(SemanticActivation {

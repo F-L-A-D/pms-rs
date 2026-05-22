@@ -49,6 +49,16 @@ pub async fn materialize_change_pattern(
                 ChangePatternType::ReservationUpdated
             }
         }
+        OperationType::PostCharge
+        | OperationType::ApplyPayment
+        | OperationType::ReceiveDeposit
+        | OperationType::AdjustCharge
+        | OperationType::AssignBillingAccount
+        | OperationType::IssueInvoice
+        | OperationType::VoidInvoice
+        | OperationType::RefundPayment
+        | OperationType::CloseFolio
+        | OperationType::ReopenFolio => ChangePatternType::ReservationUpdated,
     };
 
     Ok(ChangePattern {

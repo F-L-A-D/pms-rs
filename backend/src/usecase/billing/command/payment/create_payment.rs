@@ -10,11 +10,17 @@ use crate::{
         folio_entry::{FolioEntry, FolioEntryType},
         payment::Payment,
     },
-    domain::semantic::operation_context::OperationContext,
+    domain::semantic::{
+        operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
+        operation_context::OperationContext,
+    },
     error::app_error::{domain, infra, not_found, validation, AppResult},
-    repository::sqlite::operational::billing::{
-        folio_entry_repository::SqliteFolioEntryRepository,
-        folio_repository::SqliteFolioRepository, payment_repository::SqlitePaymentRepository,
+    repository::sqlite::operational::{
+        billing::{
+            folio_entry_repository::SqliteFolioEntryRepository,
+            folio_repository::SqliteFolioRepository, payment_repository::SqlitePaymentRepository,
+        },
+        operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
     },
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
@@ -71,29 +77,52 @@ pub async fn execute(db: &Db, input: CreatePaymentInput) -> AppResult<Payment> {
 
         SqliteFolioEntryRepository::save(&mut tx, &entry).await?;
 
+        let context = OperationContext::api_system();
+
+        let changed_fields = serde_json::to_string(&vec![
+            ChangedField::new("amount", None, Some(payment.amount.to_string())),
+            ChangedField::new("method", None, Some(payment.method.to_snake().to_string())),
+        ])
+        .map_err(|e| infra(e.to_string()))?;
+
+        let after_json = serde_json::json!({
+            "payment_id": payment.id,
+            "folio_id": payment.folio_id,
+            "amount": payment.amount,
+            "method": payment.method,
+            "external_reference": payment.external_reference,
+            "folio_entry_id": entry.id,
+            "folio_entry_type": entry.entry_type,
+        })
+        .to_string();
+
+        let operation_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "payment".to_string(),
+            aggregate_id: payment.id,
+            operation_type: OperationType::ApplyPayment,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: None,
+            after_json: after_json.clone(),
+            changed_fields_json: changed_fields.clone(),
+            occurred_at: Utc::now(),
+        };
+
+        SqliteOperationChangeEventRepository::save(&mut tx, &operation_event).await?;
+
         record_audit_log(
             &mut tx,
-            &OperationContext::api_system(),
+            &context,
             RecordAuditLogInput {
                 aggregate_type: "payment".to_string(),
                 aggregate_id: payment.id,
-                action: "billing.payment.create".to_string(),
+                action: "billing.payment.apply".to_string(),
                 before_json: None,
-                after_json: serde_json::json!({
-                    "id": payment.id,
-                    "folio_id": payment.folio_id,
-                    "amount": payment.amount,
-                    "method": payment.method,
-                    "external_reference": payment.external_reference,
-                    "folio_entry_id": entry.id,
-                    "folio_entry_type": entry.entry_type,
-                })
-                .to_string(),
-                changed_fields_json: serde_json::json!([
-                    {"field_name": "amount", "before_value": null, "after_value": payment.amount.to_string()},
-                    {"field_name": "method", "before_value": null, "after_value": payment.method.to_snake()}
-                ])
-                .to_string(),
+                after_json,
+                changed_fields_json: changed_fields,
                 reason: None,
             },
         )

@@ -97,6 +97,41 @@ impl SqliteOperationalAuditLogRepository {
             .collect::<AppResult<Vec<_>>>()
     }
 
+    pub async fn list_by_operation_id(
+        tx: &mut Transaction<'_, Sqlite>,
+        operation_id: Uuid,
+    ) -> AppResult<Vec<OperationalAuditLog>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                id,
+                operation_id,
+                aggregate_type,
+                aggregate_id,
+                action,
+                actor,
+                actor_id,
+                source,
+                before_json,
+                after_json,
+                changed_fields_json,
+                reason,
+                occurred_at
+            FROM operational_audit_logs
+            WHERE operation_id = ?1
+            ORDER BY occurred_at, id
+            "#,
+        )
+        .bind(operation_id.to_string())
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(infra)?;
+
+        rows.iter()
+            .map(Self::row_to_log)
+            .collect::<AppResult<Vec<_>>>()
+    }
+
     fn row_to_log(row: &sqlx::sqlite::SqliteRow) -> AppResult<OperationalAuditLog> {
         let actor = OperationActor::from_snake(row.get::<String, _>("actor").as_str())
             .ok_or_else(|| infra("invalid audit actor"))?;

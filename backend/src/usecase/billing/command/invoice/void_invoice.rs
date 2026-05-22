@@ -9,17 +9,25 @@ use crate::{
             invoice::{Invoice, InvoiceStatus},
             receivable::ReceivableStatus,
         },
-        semantic::settlement_transition::{SettlementTransition, SettlementTransitionType},
+        semantic::{
+            operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
+            operation_context::OperationContext,
+            settlement_transition::{SettlementTransition, SettlementTransitionType},
+        },
     },
     error::app_error::{conflict, infra, not_found, AppResult},
     repository::sqlite::{
         behavioral::settlement_transition_repository::SqliteSettlementTransitionRepository,
-        operational::billing::{
-            invoice_repository::SqliteInvoiceRepository,
-            payment_allocation_repository::SqlitePaymentAllocationRepository,
-            receivable_repository::SqliteReceivableRepository,
+        operational::{
+            billing::{
+                invoice_repository::SqliteInvoiceRepository,
+                payment_allocation_repository::SqlitePaymentAllocationRepository,
+                receivable_repository::SqliteReceivableRepository,
+            },
+            operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
         },
     },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
 pub async fn execute(db: &Db, invoice_id: Uuid) -> AppResult<Invoice> {
@@ -58,6 +66,20 @@ pub async fn execute(db: &Db, invoice_id: Uuid) -> AppResult<Invoice> {
             ));
         }
 
+        let before_json = serde_json::json!({
+            "id": invoice.id,
+            "invoice_id": invoice.id,
+            "folio_id": invoice.folio_id,
+            "billing_account_id": invoice.billing_account_id,
+            "invoice_number": invoice.invoice_number,
+            "issued_amount": invoice.issued_amount,
+            "due_date": invoice.due_date,
+            "status": invoice.status,
+            "receivable_id": receivable.id,
+            "receivable_status": receivable.status,
+        })
+        .to_string();
+
         invoice.void();
         receivable.void();
 
@@ -84,6 +106,68 @@ pub async fn execute(db: &Db, invoice_id: Uuid) -> AppResult<Invoice> {
                 transition_type: SettlementTransitionType::ReceivableVoided,
                 amount: invoice.issued_amount,
                 occurred_at: Utc::now(),
+            },
+        )
+        .await?;
+
+        let context = OperationContext::api_system();
+
+        let after_json = serde_json::json!({
+            "id": invoice.id,
+            "invoice_id": invoice.id,
+            "folio_id": invoice.folio_id,
+            "billing_account_id": invoice.billing_account_id,
+            "invoice_number": invoice.invoice_number,
+            "issued_amount": invoice.issued_amount,
+            "due_date": invoice.due_date,
+            "status": invoice.status,
+            "receivable_id": receivable.id,
+            "receivable_status": receivable.status,
+        })
+        .to_string();
+
+        let changed_fields_json = serde_json::to_string(&vec![
+            ChangedField::new(
+                "status",
+                Some(InvoiceStatus::Issued.to_snake().to_string()),
+                Some(invoice.status.to_snake().to_string()),
+            ),
+            ChangedField::new(
+                "receivable_status",
+                None,
+                Some(receivable.status.to_snake().to_string()),
+            ),
+        ])
+        .map_err(infra)?;
+
+        let operation_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "invoice".to_string(),
+            aggregate_id: invoice.id,
+            operation_type: OperationType::VoidInvoice,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: Some(before_json.clone()),
+            after_json: after_json.clone(),
+            changed_fields_json: changed_fields_json.clone(),
+            occurred_at: Utc::now(),
+        };
+
+        SqliteOperationChangeEventRepository::save(&mut tx, &operation_event).await?;
+
+        record_audit_log(
+            &mut tx,
+            &context,
+            RecordAuditLogInput {
+                aggregate_type: "invoice".to_string(),
+                aggregate_id: invoice.id,
+                action: "invoice.void".to_string(),
+                before_json: Some(before_json),
+                after_json,
+                changed_fields_json,
+                reason: None,
             },
         )
         .await?;

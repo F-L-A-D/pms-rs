@@ -1,7 +1,10 @@
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
-import { getFolioDetail } from "../../api/folio";
+import {
+  getFolioAudit,
+  getFolioDetail,
+} from "../../api/folio";
 import { queryKeys } from "../../api/queryKeys";
 import { FolioDetailView } from "./FolioDetailView";
 
@@ -15,6 +18,13 @@ export function FolioDetailPage() {
       queryFn: () => getFolioDetail(folioId ?? ""),
       enabled: Boolean(folioId),
     });
+
+  const folioAuditQuery =
+    useQuery({
+      queryKey: queryKeys.folioAudit(folioId ?? ""),
+      queryFn: () => getFolioAudit(folioId ?? ""),
+      enabled: Boolean(folioId),
+  });
 
   if (!folioId) {
     return (
@@ -50,7 +60,12 @@ export function FolioDetailPage() {
       )}
 
       {folioQuery.data && (
-        <FolioDetailView detail={folioQuery.data} />
+        <FolioDetailView
+          detail={folioQuery.data}
+          audits={folioAuditQuery.data ?? []}
+          isAuditLoading={folioAuditQuery.isLoading}
+          isAuditError={folioAuditQuery.isError}
+        />
       )}
     </main>
   );

@@ -299,6 +299,66 @@ create_payment() {
     }"
 }
 
+create_billing_account() {
+  local name="$1"
+
+  curl -sS \
+    -X POST "${API_BASE_URL}/billing-accounts" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"company_id\": null,
+      \"name\": \"${name}\"
+    }"
+}
+
+assign_billing_account() {
+  local folio_id="$1"
+  local billing_account_id="$2"
+
+  curl -sS \
+    -X POST "${API_BASE_URL}/folios/${folio_id}/billing-account" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"billing_account_id\": \"${billing_account_id}\"
+    }"
+}
+
+close_folio() {
+  local folio_id="$1"
+
+  curl -sS \
+    -X POST "${API_BASE_URL}/folios/${folio_id}/close" \
+    -H "Accept: application/json"
+}
+
+create_invoice() {
+  local folio_id="$1"
+  local invoice_number="$2"
+  local issued_amount="$3"
+  local due_date="$4"
+
+  curl -sS \
+    -X POST "${API_BASE_URL}/invoices" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"folio_id\": \"${folio_id}\",
+      \"invoice_number\": \"${invoice_number}\",
+      \"issued_amount\": \"${issued_amount}\",
+      \"due_date\": \"${due_date}\"
+    }"
+}
+
+void_invoice() {
+  local invoice_id="$1"
+
+  curl -sS \
+    -X POST "${API_BASE_URL}/invoices/${invoice_id}/void" \
+    -H "Accept: application/json"
+}
+
 echo "Seeding console validation data..." >&2
 
 echo "Creating rooms..." >&2
@@ -497,9 +557,61 @@ create_payment \
   "cash" \
   "console-seed-payment-past-001" >/dev/null
 
+echo "Creating billing account for range folio" >&2
+
+billing_account_response="$(
+  create_billing_account \
+    "Console Seed Billing Account"
+)"
+
+billing_account_id="$(echo "${billing_account_response}" | extract_id)"
+
+if [[ -z "${billing_account_id}" ]]; then
+  echo "Failed to extract billing account id" >&2
+  echo "${billing_account_response}" >&2
+  exit 1
+fi
+
+echo "Assigning billing account to range folio" >&2
+
+assign_response="$(
+  assign_billing_account \
+    "${range_folio_id}" \
+    "${billing_account_id}"
+)"
+
+echo "Closing range folio before invoice issue" >&2
+
+close_response="$(
+  close_folio "${range_folio_id}"
+)"
+
+echo "Adding invoice audit validation data to range reservation" >&2
+
+invoice_response="$(
+  create_invoice \
+    "${range_folio_id}" \
+    "INV-CONSOLE-SEED-001" \
+    "20000" \
+    "2026-07-10"
+)"
+
+invoice_id="$(echo "${invoice_response}" | extract_id)"
+
+if [[ -z "${invoice_id}" ]]; then
+  echo "Failed to extract invoice id" >&2
+  echo "${invoice_response}" >&2
+  exit 1
+fi
+
+void_invoice "${invoice_id}" >/dev/null
+
 echo "Billing validation expectations:" >&2
 echo "- confirmed: charges=13200 payments=5000 balance=8200" >&2
 echo "- range: charges=20000 payments=20000 balance=0" >&2
 echo "- past: charges=8000 payments=8000 balance=0" >&2
+echo "- confirmed audit: receive_deposit" >&2
+echo "- range audit: apply_payment + close_folio + issue_invoice + void_invoice" >&2
+echo "- past audit: apply_payment" >&2
 
 echo "Done." >&2

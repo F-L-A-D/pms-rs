@@ -1,5 +1,6 @@
 pub mod billing_account_repository;
 pub mod company_repository;
+pub mod deposit_application_repository;
 pub mod deposit_repository;
 pub mod folio_entry_repository;
 pub mod folio_repository;

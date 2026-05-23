@@ -15,7 +15,7 @@ use crate::{
         state::AppState,
     },
     error::app_error::validation,
-    usecase::billing::command::payment::create_deposit,
+    usecase::billing::command::deposit::create_deposit,
 };
 
 pub async fn create_deposit_handler(

@@ -40,6 +40,7 @@ pub async fn materialize_confidence_profile(
         | OperationType::ReceiveDeposit
         | OperationType::AdjustCharge
         | OperationType::AssignBillingAccount
+        | OperationType::ApplyDepositToReceivable
         | OperationType::IssueInvoice
         | OperationType::VoidInvoice
         | OperationType::RefundPayment

@@ -238,3 +238,21 @@ write_off_receivable() {
       \"reason\": \"${reason}\"
     }"
 }
+
+apply_deposit_to_receivable() {
+  local deposit_id="$1"
+  local receivable_id="$2"
+  local amount="$3"
+  local reason="$4"
+
+  curl -sS \
+    -X POST \
+    "${API_BASE_URL}/deposits/${deposit_id}/applications" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"receivable_id\": \"${receivable_id}\",
+      \"amount\": \"${amount}\",
+      \"reason\": \"${reason}\"
+    }"
+}

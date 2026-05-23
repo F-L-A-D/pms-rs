@@ -14,6 +14,7 @@ use crate::{
     repository::sqlite::operational::{
         billing::{
             billing_account_repository::SqliteBillingAccountRepository,
+            deposit_application_repository::SqliteDepositApplicationRepository,
             deposit_repository::SqliteDepositRepository,
             invoice_repository::SqliteInvoiceRepository,
             payment_allocation_repository::SqlitePaymentAllocationRepository,
@@ -145,6 +146,20 @@ async fn resolve_event_folio_id(
             let invoice = SqliteInvoiceRepository::find_by_id(tx, receivable.invoice_id).await?;
 
             Ok(invoice.map(|invoice| invoice.folio_id))
+        }
+        
+        "deposit_application" => {
+            let application =
+                SqliteDepositApplicationRepository::find_by_id(tx, event.aggregate_id).await?;
+
+            let Some(application) = application else {
+                return Ok(None);
+            };
+
+            let deposit =
+                SqliteDepositRepository::find_by_id(tx, application.deposit_id).await?;
+
+            Ok(deposit.map(|deposit| deposit.folio_id))
         }
 
         "payment" => {

@@ -44,6 +44,8 @@ pub enum OperationType {
 
     AssignBillingAccount,
 
+    ApplyDepositToReceivable,
+
     IssueInvoice,
     VoidInvoice,
 
@@ -77,6 +79,8 @@ impl OperationType {
             Self::AdjustCharge => "adjust_charge",
 
             Self::AssignBillingAccount => "assign_billing_account",
+
+            Self::ApplyDepositToReceivable => "apply_deposit_to_receivable",
 
             Self::IssueInvoice => "issue_invoice",
             Self::VoidInvoice => "void_invoice",
@@ -115,6 +119,8 @@ impl OperationType {
             "refund_payment" => Some(Self::RefundPayment),
 
             "assign_billing_account" => Some(Self::AssignBillingAccount),
+
+            "apply_deposit_to_receivable" => Some(Self::ApplyDepositToReceivable),
 
             "close_folio" => Some(Self::CloseFolio),
             "reopen_folio" => Some(Self::ReopenFolio),

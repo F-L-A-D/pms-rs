@@ -187,3 +187,126 @@ echo "- refund audit: payment.refund" >&2
 echo "- payment status after refund: partially_refunded" >&2
 echo "- payment refunded_amount after refund: 500" >&2
 echo "- payment unapplied_amount after refund: 1500" >&2
+
+echo "Adding receivable for deposit application..." >&2
+
+deposit_application_reservation_id="$(
+  create_guest_and_reservation \
+    "DepositApplication" \
+    "Tester" \
+    "deposit.application.tester@example.com" \
+    "console-seed-deposit-application-001" \
+    "2026-07-13" \
+    "2026-07-14" \
+    "standard"
+)"
+
+deposit_application_folio_id="$(
+  get_folio_id_for_reservation "${deposit_application_reservation_id}"
+)"
+
+echo "Receiving deposit for application validation..." >&2
+
+deposit_application_deposit_response="$(
+  create_deposit \
+    "${deposit_application_folio_id}" \
+    "2000" \
+    "credit_card" \
+    "console-seed-deposit-application-deposit-001" \
+    "Console seed: receive deposit for application validation"
+)"
+
+deposit_application_deposit_id="$(
+  echo "${deposit_application_deposit_response}" | extract_id
+)"
+
+if [[ -z "${deposit_application_deposit_id}" ]]; then
+  echo "Failed to extract deposit application deposit id" >&2
+  echo "${deposit_application_deposit_response}" >&2
+  exit 1
+fi
+
+create_folio_entry \
+  "${deposit_application_folio_id}" \
+  "room_charge" \
+  "2000" \
+  "Console seed: deposit application room charge" >/dev/null
+
+deposit_application_billing_account_response="$(
+  create_billing_account \
+    "Console Seed Deposit Application Account"
+)"
+
+deposit_application_billing_account_id="$(
+  echo "${deposit_application_billing_account_response}" | extract_id
+)"
+
+if [[ -z "${deposit_application_billing_account_id}" ]]; then
+  echo "Failed to extract deposit application billing account id" >&2
+  echo "${deposit_application_billing_account_response}" >&2
+  exit 1
+fi
+
+assign_billing_account \
+  "${deposit_application_folio_id}" \
+  "${deposit_application_billing_account_id}" >/dev/null
+
+close_folio "${deposit_application_folio_id}" >/dev/null
+
+deposit_application_invoice_response="$(
+  create_invoice \
+    "${deposit_application_folio_id}" \
+    "INV-CONSOLE-SEED-DEPOSIT-APPLICATION-001" \
+    "2000" \
+    "2026-07-21"
+)"
+
+deposit_application_invoice_id="$(
+  echo "${deposit_application_invoice_response}" | extract_id
+)"
+
+if [[ -z "${deposit_application_invoice_id}" ]]; then
+  echo "Failed to extract deposit application invoice id" >&2
+  echo "${deposit_application_invoice_response}" >&2
+  exit 1
+fi
+
+deposit_application_invoice_detail="$(
+  get_invoice "${deposit_application_invoice_id}"
+)"
+
+deposit_application_receivable_id="$(
+  echo "${deposit_application_invoice_detail}" | extract_receivable_id
+)"
+
+if [[ -z "${deposit_application_receivable_id}" ]]; then
+  echo "Failed to extract deposit application receivable id" >&2
+  echo "${deposit_application_invoice_detail}" >&2
+  exit 1
+fi
+
+echo "Applying deposit to receivable..." >&2
+
+deposit_application_response="$(
+  apply_deposit_to_receivable \
+    "${deposit_application_deposit_id}" \
+    "${deposit_application_receivable_id}" \
+    "1500" \
+    "Console seed: deposit application validation"
+)"
+
+deposit_application_id="$(
+  echo "${deposit_application_response}" | extract_id
+)"
+
+if [[ -z "${deposit_application_id}" ]]; then
+  echo "Failed to extract deposit application id" >&2
+  echo "${deposit_application_response}" >&2
+  exit 1
+fi
+
+echo "- deposit application audit: deposit.apply" >&2
+echo "- deposit status after application: partially_applied" >&2
+echo "- deposit unapplied_amount after application: 500" >&2
+echo "- receivable status after deposit application: open" >&2
+echo "- receivable outstanding_amount after deposit application: 500" >&2

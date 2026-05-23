@@ -109,6 +109,11 @@ pub async fn bootstrap(pool: &SqlitePool) {
         .await
         .unwrap();
 
+    sqlx::query(include_str!("billing/deposit_applications.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
     sqlx::query(include_str!("billing/billing_accounts.sql"))
         .execute(pool)
         .await

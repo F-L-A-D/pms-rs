@@ -54,6 +54,7 @@ pub async fn materialize_change_pattern(
         | OperationType::ReceiveDeposit
         | OperationType::AdjustCharge
         | OperationType::AssignBillingAccount
+        | OperationType::ApplyDepositToReceivable
         | OperationType::IssueInvoice
         | OperationType::VoidInvoice
         | OperationType::RefundPayment

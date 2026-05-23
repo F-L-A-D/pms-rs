@@ -1,5 +1,6 @@
 pub mod allocate_existing_payment_request;
 pub mod allocate_receivable_payment_request;
+pub mod apply_deposit_to_receivable_request;
 pub mod assign_billing_account_request;
 pub mod create_billing_account_request;
 pub mod create_deposit_request;

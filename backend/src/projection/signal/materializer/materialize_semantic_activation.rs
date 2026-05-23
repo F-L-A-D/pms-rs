@@ -89,6 +89,7 @@ pub async fn materialize_semantic_activation(
         | OperationType::ReceiveDeposit
         | OperationType::AdjustCharge
         | OperationType::AssignBillingAccount
+        | OperationType::ApplyDepositToReceivable
         | OperationType::IssueInvoice
         | OperationType::VoidInvoice
         | OperationType::RefundPayment

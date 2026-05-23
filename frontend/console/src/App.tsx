@@ -3,6 +3,7 @@ import { Link, Route, Routes } from "react-router-dom";
 import { ReservationDetailPage } from "./features/reservations/ReservationDetailPage";
 import { ReservationListPage } from "./features/reservations/ReservationListPage";
 import { FolioDetailPage } from "./features/billing/FolioDetailPage";
+import { RoomListPage } from "./features/rooms/RoomListPage";
 
 function App() {
   return (
@@ -22,6 +23,13 @@ function App() {
               className="font-medium text-slate-600 hover:text-slate-900"
             >
               Reservations
+            </Link>
+
+            <Link
+              to="/rooms"
+              className="font-medium text-slate-600 hover:text-slate-900"
+            >
+              Rooms
             </Link>
           </nav>
         </div>
@@ -46,6 +54,11 @@ function App() {
         <Route
           path="/folios/:folioId"
           element={<FolioDetailPage />}
+        />
+
+        <Route
+          path="/rooms"
+          element={<RoomListPage />}
         />
       </Routes>
     </div>

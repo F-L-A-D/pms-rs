@@ -146,9 +146,16 @@ impl Payment {
         Ok(())
     }
 
-    pub fn refund(&mut self, amount: Decimal) -> Result<(), String> {
+    pub fn refund(
+        &mut self,
+        amount: Decimal,
+    ) -> Result<(), String> {
         if amount <= Decimal::ZERO {
             return Err("refund amount must be positive".into());
+        }
+
+        if self.status == PaymentStatus::Voided {
+            return Err("voided payment cannot be refunded".into());
         }
 
         if amount > self.unapplied_amount {
@@ -157,6 +164,7 @@ impl Payment {
 
         self.unapplied_amount -= amount;
         self.refunded_amount += amount;
+
         self.refresh_status();
 
         Ok(())

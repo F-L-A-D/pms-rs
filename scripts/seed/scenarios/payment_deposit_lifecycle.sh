@@ -38,6 +38,27 @@ if [[ -z "${payment_id}" ]]; then
   exit 1
 fi
 
+echo "Receiving refund validation payment..." >&2
+
+refund_payment_response="$(
+  create_payment \
+    "${payment_deposit_folio_id}" \
+    "2000" \
+    "credit_card" \
+    "console-seed-refund-payment-001" \
+    "Console seed: refund payment validation"
+)"
+
+refund_payment_id="$(
+  echo "${refund_payment_response}" | extract_id
+)"
+
+if [[ -z "${refund_payment_id}" ]]; then
+  echo "Failed to extract refund payment id" >&2
+  echo "${refund_payment_response}" >&2
+  exit 1
+fi
+
 echo "Receiving deposit..." >&2
 
 deposit_response="$(
@@ -63,6 +84,8 @@ echo "Payment/Deposit lifecycle validation expectations:" >&2
 echo "- payment audit: receive_payment / payment.receive" >&2
 echo "- payment status: unapplied" >&2
 echo "- payment unapplied_amount: 3000" >&2
+echo "- refund validation payment status: unapplied" >&2
+echo "- refund validation payment unapplied_amount: 2000" >&2
 echo "- deposit audit: receive_deposit / deposit.receive" >&2
 echo "- deposit status: held" >&2
 echo "- deposit unapplied_amount: 5000" >&2
@@ -152,3 +175,15 @@ echo "- existing payment allocation audit: payment.allocate" >&2
 echo "- payment status after allocation: applied" >&2
 echo "- payment unapplied_amount after allocation: 0" >&2
 echo "- receivable status after allocation: settled" >&2
+
+echo "Refunding unapplied payment..." >&2
+
+refund_payment \
+  "${refund_payment_id}" \
+  "500" \
+  "Console seed: refund validation" >/dev/null
+
+echo "- refund audit: payment.refund" >&2
+echo "- payment status after refund: partially_refunded" >&2
+echo "- payment refunded_amount after refund: 500" >&2
+echo "- payment unapplied_amount after refund: 1500" >&2

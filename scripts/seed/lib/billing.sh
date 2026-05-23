@@ -197,6 +197,22 @@ allocate_existing_payment() {
     }"
 }
 
+refund_payment() {
+  local payment_id="$1"
+  local amount="$2"
+  local reason="$3"
+
+  curl -sS \
+    -X POST \
+    "${API_BASE_URL}/payments/${payment_id}/refunds" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"amount\": \"${amount}\",
+      \"reason\": \"${reason}\"
+    }"
+}
+
 reverse_payment_allocation() {
   local allocation_id="$1"
   local reason="$2"

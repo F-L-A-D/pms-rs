@@ -23,6 +23,7 @@ use crate::api::{
             allocate_existing_payment::allocate_existing_payment_handler,
             create_deposit::create_deposit_handler, create_payment::create_payment_handler,
             reverse_payment_allocation::reverse_payment_allocation_handler,
+            refund_payment::refund_payment_handler,
         },
         receivable::{
             allocate_receivable_payment::allocate_receivable_payment_handler,
@@ -83,5 +84,9 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/payments/:id/allocations",
             post(allocate_existing_payment_handler),
+        )
+        .route(
+            "/payments/:payment_id/refunds",
+            post(refund_payment_handler),
         )
 }

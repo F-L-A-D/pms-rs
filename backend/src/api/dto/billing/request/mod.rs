@@ -6,6 +6,7 @@ pub mod create_deposit_request;
 pub mod create_folio_entry_request;
 pub mod create_invoice_request;
 pub mod create_payment_request;
+pub mod refund_payment_request;
 pub mod reverse_payment_allocation_request;
 pub mod update_receivable_status_request;
 pub mod void_invoice_request;

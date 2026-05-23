@@ -51,36 +51,20 @@ pub async fn create_reservation_with_external_id(
     app: &Router,
     external_id: &str,
 ) -> ReservationResponse {
-    let guest =
-        create_guest(app).await;
+    let guest = create_guest(app).await;
 
-    let participant =
-        ReservationParticipantBuilder::new(guest.id)
-            .build();
+    let participant = ReservationParticipantBuilder::new(guest.id).build();
 
-    let request =
-        ReservationBuilder::new()
-            .with_external_id(external_id)
-            .with_participant(participant)
-            .build();
+    let request = ReservationBuilder::new()
+        .with_external_id(external_id)
+        .with_participant(participant)
+        .build();
 
-    let response =
-        post_json(
-            app,
-            "/reservations",
-            &request,
-        )
-        .await;
+    let response = post_json(app, "/reservations", &request).await;
 
-    assert_eq!(
-        response.status(),
-        StatusCode::CREATED,
-    );
+    assert_eq!(response.status(), StatusCode::CREATED,);
 
-    serde_json::from_value(
-        response_json(response).await,
-    )
-    .unwrap()
+    serde_json::from_value(response_json(response).await).unwrap()
 }
 
 pub async fn create_reservation_with_external_id_and_guest(
@@ -88,35 +72,18 @@ pub async fn create_reservation_with_external_id_and_guest(
     external_id: &str,
     guest_id: Uuid,
 ) -> ReservationResponse {
+    let participant = ReservationParticipantBuilder::new(guest_id)
+        .with_relation_type(ReservationGuestRelationType::Primary)
+        .build();
 
-    let participant =
-        ReservationParticipantBuilder::new(guest_id)
-            .with_relation_type(
-                ReservationGuestRelationType::Primary,
-            )
-            .build();
+    let request = ReservationBuilder::new()
+        .with_external_id(external_id)
+        .with_participant(participant)
+        .build();
 
-    let request =
-        ReservationBuilder::new()
-            .with_external_id(external_id)
-            .with_participant(participant)
-            .build();
+    let response = post_json(app, "/reservations", &request).await;
 
-    let response =
-        post_json(
-            app,
-            "/reservations",
-            &request,
-        )
-        .await;
+    assert_eq!(response.status(), StatusCode::CREATED,);
 
-    assert_eq!(
-        response.status(),
-        StatusCode::CREATED,
-    );
-
-    serde_json::from_value(
-        response_json(response).await,
-    )
-    .unwrap()
+    serde_json::from_value(response_json(response).await).unwrap()
 }

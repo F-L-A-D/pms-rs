@@ -21,11 +21,14 @@ pub async fn get_invoice_handler(
 ) -> Result<Json<InvoiceResponse>, ApiError> {
     let invoice_id = Uuid::parse_str(&id).map_err(|e| map_app_error(validation(e)))?;
 
-    let invoice = get_invoice::execute(&state.db, invoice_id)
+    let detail = get_invoice::execute(&state.db, invoice_id)
         .await
         .map_err(map_app_error)?;
 
-    Ok(Json(invoice.into()))
+    Ok(Json(InvoiceResponse::from_parts(
+        detail.invoice,
+        detail.receivable_id,
+    )))
 }
 
 pub async fn list_billing_account_invoices_handler(

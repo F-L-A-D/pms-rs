@@ -3,12 +3,7 @@ use uuid::Uuid;
 use crate::{
     db::connection::Db,
     domain::{
-        entity::{
-            guest::Guest, 
-            reservation::Reservation, 
-            room::Room,
-            folio::FolioStatus,
-        },
+        entity::{folio::FolioStatus, guest::Guest, reservation::Reservation, room::Room},
         semantic::{
             operation_change_event::OperationChangeEvent,
             operational_audit_log::OperationalAuditLog,
@@ -29,6 +24,7 @@ use crate::{
     },
     repository::sqlite::behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
     repository::sqlite::operational::{
+        billing::folio_repository::SqliteFolioRepository,
         guest::guest_repository::SqliteGuestRepository,
         operation::{
             operation_change_event_repository::SqliteOperationChangeEventRepository,
@@ -41,7 +37,6 @@ use crate::{
             reservation_trace_repository::SqliteReservationTraceRepository,
         },
         room::room_repository::SqliteRoomRepository,
-        billing::folio_repository::SqliteFolioRepository,
     },
 };
 
@@ -57,6 +52,7 @@ pub struct ReservationDetail {
     pub active_edit_sessions: Vec<ReservationEditSession>,
     pub room_history: Vec<ReservationTransition>,
     pub folio_id: Option<Uuid>,
+    pub folio_links: Vec<ReservationDetailFolioLink>,
 }
 
 #[derive(Debug)]
@@ -75,6 +71,12 @@ pub struct ReservationDetailRoom {
 pub struct ReservationDetailOperationEvent {
     pub event: OperationChangeEvent,
     pub semantic_signal: OperationSemanticSignal,
+}
+
+#[derive(Debug)]
+pub struct ReservationDetailFolioLink {
+    pub folio_id: Uuid,
+    pub status: FolioStatus,
 }
 
 pub async fn get_reservation(db: &Db, reservation_id: Uuid) -> AppResult<Option<Reservation>> {
@@ -145,23 +147,20 @@ pub async fn get_reservation_detail(
             .filter(|transition| transition.field_name == "room_id")
             .collect();
 
-    let folios =
-        SqliteFolioRepository::list_by_reservation_id(
-            &mut tx,
-            reservation_id,
-        )
-        .await?;
+    let folios = SqliteFolioRepository::list_by_reservation_id(&mut tx, reservation_id).await?;
 
-    let folio_id =
-        folios
-            .iter()
-            .find(|folio| {
-                matches!(
-                    folio.status,
-                    FolioStatus::Open | FolioStatus::Locked,
-                )
-            })
-            .map(|folio| folio.id);
+    let folio_id = folios
+        .iter()
+        .find(|folio| matches!(folio.status, FolioStatus::Open | FolioStatus::Locked,))
+        .map(|folio| folio.id);
+
+    let folio_links = folios
+        .iter()
+        .map(|folio| ReservationDetailFolioLink {
+            folio_id: folio.id,
+            status: folio.status,
+        })
+        .collect::<Vec<_>>();
 
     let audit_logs = SqliteOperationalAuditLogRepository::list_by_aggregate(
         &mut tx,
@@ -204,5 +203,6 @@ pub async fn get_reservation_detail(
         active_edit_sessions,
         room_history,
         folio_id,
+        folio_links,
     }))
 }

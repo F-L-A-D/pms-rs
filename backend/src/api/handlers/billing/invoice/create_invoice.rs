@@ -43,23 +43,7 @@ pub async fn create_invoice_handler(
         .await
         .map_err(map_app_error)?;
 
-    let response = InvoiceResponse {
-        id: invoice.id,
-
-        folio_id: invoice.folio_id,
-
-        billing_account_id: invoice.billing_account_id,
-
-        invoice_number: invoice.invoice_number,
-
-        issued_amount: invoice.issued_amount,
-
-        due_date: invoice.due_date,
-
-        status: invoice.status,
-
-        issued_at: invoice.issued_at,
-    };
+    let response = InvoiceResponse::from(invoice);
 
     Ok((StatusCode::CREATED, Json(response)))
 }

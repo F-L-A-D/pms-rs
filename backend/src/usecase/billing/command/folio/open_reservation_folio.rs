@@ -60,8 +60,7 @@ pub async fn open_reservation_folio_in_tx(
         return Err(conflict("cannot open folio for inactive reservation"));
     }
 
-    let existing_folios =
-        SqliteFolioRepository::list_by_reservation_id(tx, reservation_id).await?;
+    let existing_folios = SqliteFolioRepository::list_by_reservation_id(tx, reservation_id).await?;
 
     if existing_folios
         .iter()

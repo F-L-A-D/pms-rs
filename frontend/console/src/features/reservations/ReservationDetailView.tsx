@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 import type {
   CreateReservationNoteRequest,
   CreateReservationTraceRequest,
@@ -82,6 +83,16 @@ export function ReservationDetailView({
 }: ReservationDetailViewProps) {
   const room = reservation.room_assignment.room;
   const visibility = reservation.operational_visibility;
+
+  const activeFolios =
+    reservation.folios.filter((folio) =>
+      folio.status === "open" || folio.status === "locked"
+    );
+
+  const otherFolios =
+    reservation.folios.filter((folio) =>
+      folio.status !== "open" && folio.status !== "locked"
+    );
   const [noteBody, setNoteBody] = useState("");
   const [traceDepartmentCode, setTraceDepartmentCode] = useState("");
   const [traceBody, setTraceBody] = useState("");
@@ -152,10 +163,24 @@ export function ReservationDetailView({
             label="Assigned room ID"
             value={reservation.linked_resources.assigned_room_id}
           />
-          <Field
-            label="Folio ID"
-            value={reservation.linked_resources.folio_id}
-          />
+          <div className="grid grid-cols-[10rem_1fr] py-2 text-sm">
+            <dt className="text-slate-500">
+              Folio ID
+            </dt>
+
+            <dd>
+              {reservation.linked_resources.folio_id ? (
+                <Link
+                  className="font-medium text-blue-700 underline"
+                  to={`/folios/${reservation.linked_resources.folio_id}`}
+                >
+                  {reservation.linked_resources.folio_id}
+                </Link>
+              ) : (
+                "-"
+              )}
+            </dd>
+          </div>
           <Field label="Version" value={reservation.operation_metadata.version} />
           <Field
             label="Updated at"
@@ -164,6 +189,78 @@ export function ReservationDetailView({
           <Field label="Created at" value={reservation.created_at} />
           <Field label="Internal note" value={visibility.internal_note} />
         </dl>
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-base font-semibold text-slate-900">
+          Folios
+        </h2>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <h3 className="text-sm font-medium text-slate-700">
+              Active Folios
+            </h3>
+
+            {activeFolios.length === 0 ? (
+              <div className="mt-2 text-sm text-slate-500">
+                -
+              </div>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {activeFolios.map((folio) => (
+                  <div
+                    key={folio.folio_id}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <Link
+                      className="font-medium text-blue-700 underline"
+                      to={`/folios/${folio.folio_id}`}
+                    >
+                      {folio.folio_id}
+                    </Link>
+
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      {folio.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-medium text-slate-700">
+              Other Folios
+            </h3>
+
+            {otherFolios.length === 0 ? (
+              <div className="mt-2 text-sm text-slate-500">
+                -
+              </div>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {otherFolios.map((folio) => (
+                  <div
+                    key={folio.folio_id}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <Link
+                      className="font-medium text-blue-700 underline"
+                      to={`/folios/${folio.folio_id}`}
+                    >
+                      {folio.folio_id}
+                    </Link>
+
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      {folio.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="border border-slate-300 bg-white">

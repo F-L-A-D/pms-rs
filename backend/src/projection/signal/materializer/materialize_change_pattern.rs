@@ -28,7 +28,7 @@ pub async fn materialize_change_pattern(
         OperationType::Create => ChangePatternType::ReservationCreated,
         OperationType::Cancel => ChangePatternType::ReservationCancelled,
         OperationType::NoShow => ChangePatternType::ReservationMarkedNoShow,
-        OperationType::Reinstate => ChangePatternType::ReservationReinstated, 
+        OperationType::Reinstate => ChangePatternType::ReservationReinstated,
         OperationType::Modify => {
             if has_changed_field(&changed_fields, &["check_in", "check_out"]) {
                 ChangePatternType::ReservationDateChanged
@@ -49,6 +49,26 @@ pub async fn materialize_change_pattern(
                 ChangePatternType::ReservationUpdated
             }
         }
+        OperationType::PostCharge
+        | OperationType::ApplyPayment
+        | OperationType::ReceiveDeposit
+        | OperationType::AdjustCharge
+        | OperationType::AssignBillingAccount
+        | OperationType::ApplyDepositToReceivable
+        | OperationType::IssueInvoice
+        | OperationType::VoidInvoice
+        | OperationType::RefundPayment
+        | OperationType::RefundDeposit
+        | OperationType::CloseFolio
+        | OperationType::ReopenFolio
+        | OperationType::WriteOffReceivable
+        | OperationType::DisputeReceivable
+        | OperationType::ResolveReceivableDispute
+        | OperationType::AllocateReceivablePayment
+        | OperationType::AllocateExistingPayment
+        | OperationType::ReceivePayment
+        | OperationType::ReverseDepositApplication
+        | OperationType::ReversePaymentAllocation => ChangePatternType::ReservationUpdated,
     };
 
     Ok(ChangePattern {

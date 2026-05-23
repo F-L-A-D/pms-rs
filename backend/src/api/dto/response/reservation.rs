@@ -8,6 +8,7 @@ use crate::{
     api::dto::response::semantic_signal::OperationSemanticSignalResponse,
     domain::{
         entity::{
+            folio::FolioStatus,
             guest::{Gender, Guest},
             reservation::{ReservationStatus, StayStatus},
             room::Room,
@@ -20,8 +21,8 @@ use crate::{
             reservation_edit_session::ReservationEditSession,
             reservation_guest_relation::ReservationGuestRelationType,
             reservation_linked_resources::ReservationLinkedResources,
-            reservation_search_item::ReservationSearchItem,
             reservation_note::{ReservationNote, ReservationNoteKind},
+            reservation_search_item::ReservationSearchItem,
             reservation_trace::{ReservationTrace, ReservationTraceKind},
             reservation_transition::{ReservationTransition, ReservationTransitionType},
         },
@@ -46,6 +47,7 @@ pub struct ReservationResponse {
     pub created_at: DateTime<Utc>,
     pub operation_metadata: ReservationOperationMetadataResponse,
     pub linked_resources: ReservationLinkedResources,
+    pub folios: Vec<ReservationDetailFolioLinkResponse>,
     pub room_assignment: ReservationRoomAssignmentResponse,
     pub package_breakdowns: Vec<ReservationPackageBreakdownResponse>,
     pub daily_details: Vec<ReservationDailyDetailResponse>,
@@ -175,6 +177,12 @@ pub struct ReservationOperationalVisibilityResponse {
     pub audit_trail_available: bool,
     pub timeline_available: bool,
     pub semantic_signal_available: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReservationDetailFolioLinkResponse {
+    pub folio_id: Uuid,
+    pub status: FolioStatus,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -389,6 +397,15 @@ impl From<ReservationDetail> for ReservationResponse {
                 folio_id: detail.folio_id,
             },
 
+            folios: detail
+                .folio_links
+                .into_iter()
+                .map(|folio| ReservationDetailFolioLinkResponse {
+                    folio_id: folio.folio_id,
+                    status: folio.status,
+                })
+                .collect(),
+                
             room_assignment: ReservationRoomAssignmentResponse {
                 room_id,
                 room: detail
@@ -563,9 +580,7 @@ fn reservation_edit_session_to_response(
     }
 }
 
-impl From<ReservationSearchItem>
-    for ReservationSearchItemResponse
-{
+impl From<ReservationSearchItem> for ReservationSearchItemResponse {
     fn from(item: ReservationSearchItem) -> Self {
         Self {
             id: item.id,
@@ -573,14 +588,9 @@ impl From<ReservationSearchItem>
             check_in: item.check_in,
             check_out: item.check_out,
 
-            reservation_status: item
-                .reservation_status
-                .to_snake()
-                .to_string(),
+            reservation_status: item.reservation_status.to_snake().to_string(),
 
-            stay_status: item
-                .stay_status
-                .map(|status| status.to_snake().to_string()),
+            stay_status: item.stay_status.map(|status| status.to_snake().to_string()),
 
             room_class: item.room_class,
             room_id: item.room_id,

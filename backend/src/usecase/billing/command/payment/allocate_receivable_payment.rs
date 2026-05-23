@@ -9,18 +9,26 @@ use crate::{
         entity::{
             payment::Payment, payment_allocation::PaymentAllocation, receivable::ReceivableStatus,
         },
-        semantic::settlement_transition::{SettlementTransition, SettlementTransitionType},
+        semantic::{
+            operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
+            operation_context::OperationContext,
+            settlement_transition::{SettlementTransition, SettlementTransitionType},
+        },
     },
     error::app_error::{conflict, infra, not_found, validation, AppResult},
     repository::sqlite::{
         behavioral::settlement_transition_repository::SqliteSettlementTransitionRepository,
-        operational::billing::{
-            invoice_repository::SqliteInvoiceRepository,
-            payment_allocation_repository::SqlitePaymentAllocationRepository,
-            payment_repository::SqlitePaymentRepository,
-            receivable_repository::SqliteReceivableRepository,
+        operational::{
+            billing::{
+                invoice_repository::SqliteInvoiceRepository,
+                payment_allocation_repository::SqlitePaymentAllocationRepository,
+                payment_repository::SqlitePaymentRepository,
+                receivable_repository::SqliteReceivableRepository,
+            },
+            operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
         },
     },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
 pub struct ReceivablePaymentAllocationResult {
@@ -57,14 +65,33 @@ pub async fn execute(
             .await?
             .ok_or_else(|| not_found("invoice not found"))?;
 
-        let payment = Payment {
-            id: Uuid::new_v4(),
-            folio_id: invoice.folio_id,
-            amount: input.amount,
-            method: input.method,
-            external_reference: input.external_reference,
-            paid_at: Utc::now(),
-        };
+        let before_receivable_status = receivable.status.clone();
+
+        let before_outstanding_amount = receivable.outstanding_amount;
+
+        let before_json = serde_json::json!({
+            "receivable_id": receivable.id,
+            "invoice_id": receivable.invoice_id,
+            "folio_id": invoice.folio_id,
+            "payment_id": null,
+            "allocation_id": null,
+            "payment_amount": input.amount,
+            "receivable_status": receivable.status,
+            "receivable_outstanding_amount": receivable.outstanding_amount,
+        })
+        .to_string();
+
+        let mut payment = Payment::new(
+            Uuid::new_v4(),
+            invoice.folio_id,
+            input.amount,
+            input.method,
+            input.external_reference,
+            Utc::now(),
+        )
+        .map_err(conflict)?;
+
+        payment.apply(input.amount).map_err(conflict)?;
 
         SqlitePaymentRepository::save(&mut tx, &payment).await?;
 
@@ -110,6 +137,74 @@ pub async fn execute(
         }
 
         SqliteReceivableRepository::save(&mut tx, &receivable).await?;
+
+        let context = OperationContext::api_system();
+
+        let after_json = serde_json::json!({
+            "receivable_id": receivable.id,
+            "invoice_id": receivable.invoice_id,
+            "folio_id": invoice.folio_id,
+            "payment_id": payment.id,
+            "allocation_id": allocation.id,
+            "payment_amount": payment.amount,
+            "payment_method": payment.method,
+            "payment_reference": payment.external_reference,
+            "receivable_status": receivable.status,
+            "receivable_outstanding_amount": receivable.outstanding_amount,
+        })
+        .to_string();
+
+        let mut changed_fields = vec![];
+
+        if before_outstanding_amount != receivable.outstanding_amount {
+            changed_fields.push(ChangedField::new(
+                "receivable_outstanding_amount",
+                Some(before_outstanding_amount.to_string()),
+                Some(receivable.outstanding_amount.to_string()),
+            ));
+        }
+
+        if before_receivable_status != receivable.status {
+            changed_fields.push(ChangedField::new(
+                "receivable_status",
+                Some(before_receivable_status.to_snake().to_string()),
+                Some(receivable.status.to_snake().to_string()),
+            ));
+        }
+
+        let changed_fields_json = serde_json::to_string(&changed_fields).map_err(infra)?;
+
+        let operation_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "payment_allocation".to_string(),
+            aggregate_id: allocation.id,
+            operation_type: OperationType::AllocateReceivablePayment,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: Some(before_json.clone()),
+            after_json: after_json.clone(),
+            changed_fields_json: changed_fields_json.clone(),
+            occurred_at: Utc::now(),
+        };
+
+        SqliteOperationChangeEventRepository::save(&mut tx, &operation_event).await?;
+
+        record_audit_log(
+            &mut tx,
+            &context,
+            RecordAuditLogInput {
+                aggregate_type: "payment_allocation".to_string(),
+                aggregate_id: allocation.id,
+                action: "receivable.payment.allocate".to_string(),
+                before_json: Some(before_json),
+                after_json,
+                changed_fields_json,
+                reason: input.reason,
+            },
+        )
+        .await?;
 
         Ok(ReceivablePaymentAllocationResult {
             allocation,

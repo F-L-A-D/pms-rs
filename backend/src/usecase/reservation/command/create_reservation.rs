@@ -41,8 +41,8 @@ use crate::{
             reservation_repository::SqliteReservationRepository,
         },
     },
-    usecase::billing::command::folio::open_reservation_folio::open_reservation_folio_in_tx,
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
+    usecase::billing::command::folio::open_reservation_folio::open_reservation_folio_in_tx,
     usecase::timeline::command::record_event::record_event,
 };
 
@@ -120,13 +120,7 @@ pub async fn execute(
 
         SqliteReservationRepository::save(&mut tx, &reservation).await?;
 
-        let _folio =
-            open_reservation_folio_in_tx(
-                &mut tx,
-                reservation.id,
-                &context,
-            )
-            .await?;
+        let _folio = open_reservation_folio_in_tx(&mut tx, reservation.id, &context).await?;
 
         for participant in &reservation.participants {
             SqliteReservationGuestRelationRepository::save(&mut tx, participant).await?;

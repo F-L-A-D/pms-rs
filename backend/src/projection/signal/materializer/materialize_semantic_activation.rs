@@ -83,6 +83,31 @@ pub async fn materialize_semantic_activation(
                 )
             }
         }
+
+        OperationType::PostCharge
+        | OperationType::ApplyPayment
+        | OperationType::ReceiveDeposit
+        | OperationType::AdjustCharge
+        | OperationType::AssignBillingAccount
+        | OperationType::ApplyDepositToReceivable
+        | OperationType::IssueInvoice
+        | OperationType::VoidInvoice
+        | OperationType::RefundPayment
+        | OperationType::RefundDeposit
+        | OperationType::CloseFolio
+        | OperationType::ReopenFolio
+        | OperationType::WriteOffReceivable
+        | OperationType::DisputeReceivable
+        | OperationType::ResolveReceivableDispute
+        | OperationType::AllocateReceivablePayment
+        | OperationType::AllocateExistingPayment
+        | OperationType::ReceivePayment
+        | OperationType::ReverseDepositApplication
+        | OperationType::ReversePaymentAllocation => (
+            SemanticActivationKey::BillingRelevantChange,
+            Decimal::new(80, 2),
+            Decimal::new(90, 2),
+        ),
     };
 
     Ok(SemanticActivation {

@@ -1,5 +1,8 @@
 pub mod billing_account;
 pub mod company;
+pub mod deposit;
+pub mod deposit_application;
+pub mod deposit_refund;
 pub mod folio;
 pub mod folio_entry;
 pub mod guest;
@@ -7,6 +10,7 @@ pub mod invoice;
 pub mod package_definition;
 pub mod payment;
 pub mod payment_allocation;
+pub mod payment_refund;
 pub mod receivable;
 pub mod reservation;
 pub mod room;

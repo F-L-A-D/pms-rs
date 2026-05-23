@@ -202,6 +202,11 @@ export type SemanticActivation = {
   updated_at: string;
 };
 
+export type ReservationDetailFolioLink = {
+  folio_id: string;
+  status: string;
+};
+
 export type ReservationDetail = {
   id: string;
   external_id: string | null;
@@ -218,6 +223,7 @@ export type ReservationDetail = {
   created_at: string;
   operation_metadata: ReservationOperationMetadata;
   linked_resources: ReservationLinkedResources;
+  folios: ReservationDetailFolioLink[];
   room_assignment: ReservationRoomAssignment;
   package_breakdowns: ReservationPackageBreakdown[];
   daily_details: ReservationDailyDetail[];

@@ -1,6 +1,15 @@
+pub mod allocate_existing_payment_request;
 pub mod allocate_receivable_payment_request;
+pub mod apply_deposit_to_receivable_request;
 pub mod assign_billing_account_request;
+pub mod create_billing_account_request;
 pub mod create_deposit_request;
 pub mod create_folio_entry_request;
 pub mod create_invoice_request;
 pub mod create_payment_request;
+pub mod refund_deposit_request;
+pub mod refund_payment_request;
+pub mod reverse_deposit_application_request;
+pub mod reverse_payment_allocation_request;
+pub mod update_receivable_status_request;
+pub mod void_invoice_request;

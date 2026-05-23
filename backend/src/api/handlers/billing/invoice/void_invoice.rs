@@ -7,7 +7,10 @@ use uuid::Uuid;
 
 use crate::{
     api::{
-        dto::billing::response::invoice_response::InvoiceResponse,
+        dto::billing::{
+            request::void_invoice_request::VoidInvoiceRequest,
+            response::invoice_response::InvoiceResponse,
+        },
         error::{map_app_error, ApiError},
         state::AppState,
     },
@@ -18,10 +21,11 @@ use crate::{
 pub async fn void_invoice_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    Json(request): Json<VoidInvoiceRequest>,
 ) -> Result<Json<InvoiceResponse>, ApiError> {
     let invoice_id = Uuid::parse_str(&id).map_err(|e| map_app_error(validation(e)))?;
 
-    let invoice = void_invoice::execute(&state.db, invoice_id)
+    let invoice = void_invoice::execute(&state.db, invoice_id, request.reason)
         .await
         .map_err(map_app_error)?;
 

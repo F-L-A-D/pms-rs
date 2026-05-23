@@ -35,6 +35,26 @@ pub async fn materialize_confidence_profile(
         OperationType::Cancel => Decimal::new(95, 2),
         OperationType::NoShow => Decimal::new(95, 2),
         OperationType::Reinstate => Decimal::new(90, 2),
+        OperationType::PostCharge
+        | OperationType::ApplyPayment
+        | OperationType::ReceiveDeposit
+        | OperationType::AdjustCharge
+        | OperationType::AssignBillingAccount
+        | OperationType::ApplyDepositToReceivable
+        | OperationType::IssueInvoice
+        | OperationType::VoidInvoice
+        | OperationType::RefundPayment
+        | OperationType::RefundDeposit
+        | OperationType::CloseFolio
+        | OperationType::ReopenFolio
+        | OperationType::WriteOffReceivable
+        | OperationType::DisputeReceivable
+        | OperationType::ResolveReceivableDispute
+        | OperationType::AllocateReceivablePayment
+        | OperationType::AllocateExistingPayment
+        | OperationType::ReceivePayment
+        | OperationType::ReverseDepositApplication
+        | OperationType::ReversePaymentAllocation => Decimal::new(90, 2),
     };
     let source_penalty = match event.source {
         OperationSource::Api => Decimal::ZERO,
@@ -43,10 +63,10 @@ pub async fn materialize_confidence_profile(
     };
     let before_penalty = if matches!(
         event.operation_type,
-        OperationType::Modify 
-        | OperationType::Cancel 
-        | OperationType::NoShow
-        | OperationType::Reinstate
+        OperationType::Modify
+            | OperationType::Cancel
+            | OperationType::NoShow
+            | OperationType::Reinstate
     ) && event.before_json.is_none()
     {
         Decimal::new(20, 2)

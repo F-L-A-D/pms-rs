@@ -6,15 +6,10 @@ use uuid::Uuid;
 
 use pms_rs::{
     api::dto::request::{
-        guest::{
-            CreateGuestRequest,
-            UpdateGuestRequest,
-        },
+        guest::{CreateGuestRequest, UpdateGuestRequest},
         reservation::{
-            CreateReservationRequest,
-            ReservationDailyDetailRequest,
-            ReservationPackageBreakdownRequest,
-            ReservationParticipantRequest,
+            CreateReservationRequest, ReservationDailyDetailRequest,
+            ReservationPackageBreakdownRequest, ReservationParticipantRequest,
         },
         room::CreateRoomRequest,
     },
@@ -158,10 +153,7 @@ impl ReservationParticipantBuilder {
         }
     }
 
-    pub fn with_relation_type(
-        mut self,
-        value: ReservationGuestRelationType,
-    ) -> Self {
+    pub fn with_relation_type(mut self, value: ReservationGuestRelationType) -> Self {
         self.relation_type = value;
         self
     }
@@ -187,26 +179,21 @@ impl ReservationBuilder {
             source_channel: None,
             plan_code: None,
             participants: vec![],
-            daily_details: vec![
-                ReservationDailyDetailRequest {
-                    service_date: today.to_string(),
-                    room_class: "standard".to_string(),
-                    plan_code: None,
-                    adult_count: 2,
-                    child_count: 0,
-                    sleep_sharing_child_count: 0,
-                    sleep_sharing_children: vec![],
-                    package_breakdowns: vec![],
-                },
-            ],
+            daily_details: vec![ReservationDailyDetailRequest {
+                service_date: today.to_string(),
+                room_class: "standard".to_string(),
+                plan_code: None,
+                adult_count: 2,
+                child_count: 0,
+                sleep_sharing_child_count: 0,
+                sleep_sharing_children: vec![],
+                package_breakdowns: vec![],
+            }],
             package_breakdowns: vec![],
         }
     }
 
-    pub fn with_participant(
-        mut self,
-        participant: ReservationParticipantRequest,
-    ) -> Self {
+    pub fn with_participant(mut self, participant: ReservationParticipantRequest) -> Self {
         self.participants.push(participant);
         self
     }
@@ -225,12 +212,8 @@ impl ReservationBuilder {
         self
     }
 
-    pub fn with_external_id(
-        mut self,
-        value: impl Into<String>,
-    ) -> Self {
-        self.external_id =
-            Some(value.into());
+    pub fn with_external_id(mut self, value: impl Into<String>) -> Self {
+        self.external_id = Some(value.into());
 
         self
     }

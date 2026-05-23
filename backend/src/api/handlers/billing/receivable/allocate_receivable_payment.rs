@@ -39,6 +39,7 @@ pub async fn allocate_receivable_payment_handler(
             amount,
             method: req.method,
             external_reference: req.external_reference,
+            reason: req.reason,
         },
     )
     .await

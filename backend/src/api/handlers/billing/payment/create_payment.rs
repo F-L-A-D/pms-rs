@@ -30,31 +30,15 @@ pub async fn create_payment_handler(
 
     let input = CreatePaymentInput {
         folio_id,
-
         amount,
-
         method: req.method,
-
         external_reference: req.external_reference,
+        reason: req.reason,
     };
 
     let payment = create_payment::execute(&state.db, input)
         .await
         .map_err(map_app_error)?;
 
-    let response = PaymentResponse {
-        id: payment.id,
-
-        folio_id: payment.folio_id,
-
-        amount: payment.amount,
-
-        method: payment.method,
-
-        external_reference: payment.external_reference,
-
-        paid_at: payment.paid_at,
-    };
-
-    Ok((StatusCode::CREATED, Json(response)))
+    Ok((StatusCode::CREATED, Json(PaymentResponse::from(payment))))
 }

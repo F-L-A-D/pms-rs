@@ -35,6 +35,34 @@ pub enum OperationType {
     Cancel,
     NoShow,
     Reinstate,
+
+    PostCharge,
+    ReceivePayment,
+    ApplyPayment,
+    ReceiveDeposit,
+    AdjustCharge,
+
+    AssignBillingAccount,
+
+    ApplyDepositToReceivable,
+    ReverseDepositApplication,
+
+    IssueInvoice,
+    VoidInvoice,
+
+    RefundPayment,
+    RefundDeposit,
+
+    CloseFolio,
+    ReopenFolio,
+
+    WriteOffReceivable,
+    DisputeReceivable,
+    ResolveReceivableDispute,
+
+    AllocateReceivablePayment,
+    AllocateExistingPayment,
+    ReversePaymentAllocation,
 }
 
 impl OperationType {
@@ -45,6 +73,34 @@ impl OperationType {
             Self::Cancel => "cancel",
             Self::NoShow => "no_show",
             Self::Reinstate => "reinstate",
+
+            Self::PostCharge => "post_charge",
+            Self::ReceivePayment => "receive_payment",
+            Self::ApplyPayment => "apply_payment",
+            Self::ReceiveDeposit => "receive_deposit",
+            Self::AdjustCharge => "adjust_charge",
+
+            Self::AssignBillingAccount => "assign_billing_account",
+
+            Self::ApplyDepositToReceivable => "apply_deposit_to_receivable",
+            Self::ReverseDepositApplication => "reverse_deposit_application",
+
+            Self::IssueInvoice => "issue_invoice",
+            Self::VoidInvoice => "void_invoice",
+
+            Self::RefundPayment => "refund_payment",
+            Self::RefundDeposit => "refund_deposit",
+
+            Self::CloseFolio => "close_folio",
+            Self::ReopenFolio => "reopen_folio",
+
+            Self::WriteOffReceivable => "write_off_receivable",
+            Self::DisputeReceivable => "dispute_receivable",
+            Self::ResolveReceivableDispute => "resolve_receivable_dispute",
+
+            Self::AllocateReceivablePayment => "allocate_receivable_payment",
+            Self::AllocateExistingPayment => "allocate_existing_payment",
+            Self::ReversePaymentAllocation => "reverse_payment_allocation",
         }
     }
 
@@ -55,12 +111,40 @@ impl OperationType {
             "cancel" => Some(Self::Cancel),
             "no_show" => Some(Self::NoShow),
             "reinstate" => Some(Self::Reinstate),
+
+            "post_charge" => Some(Self::PostCharge),
+            "receive_payment" => Some(Self::ReceivePayment),
+            "apply_payment" => Some(Self::ApplyPayment),
+            "receive_deposit" => Some(Self::ReceiveDeposit),
+            "adjust_charge" => Some(Self::AdjustCharge),
+
+            "issue_invoice" => Some(Self::IssueInvoice),
+            "void_invoice" => Some(Self::VoidInvoice),
+
+            "refund_payment" => Some(Self::RefundPayment),
+            "refund_deposit" => Some(Self::RefundDeposit),
+
+            "assign_billing_account" => Some(Self::AssignBillingAccount),
+            "reverse_deposit_application" => Some(Self::ReverseDepositApplication),
+
+            "apply_deposit_to_receivable" => Some(Self::ApplyDepositToReceivable),
+
+            "close_folio" => Some(Self::CloseFolio),
+            "reopen_folio" => Some(Self::ReopenFolio),
+
+            "write_off_receivable" => Some(Self::WriteOffReceivable),
+            "dispute_receivable" => Some(Self::DisputeReceivable),
+            "resolve_receivable_dispute" => Some(Self::ResolveReceivableDispute),
+
+            "allocate_receivable_payment" => Some(Self::AllocateReceivablePayment),
+            "allocate_existing_payment" => Some(Self::AllocateExistingPayment),
+            "reverse_payment_allocation" => Some(Self::ReversePaymentAllocation),
             _ => None,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct OperationChangeEvent {
     pub id: Uuid,
     pub operation_id: Uuid,

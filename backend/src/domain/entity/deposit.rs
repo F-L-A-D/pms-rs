@@ -12,69 +12,41 @@ use serde::{
 
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PaymentMethod {
-    Cash,
-    CreditCard,
-    BankTransfer,
-    Online,
-    Other,
-}
-
-impl PaymentMethod {
-    pub fn to_snake(&self) -> &'static str {
-        match self {
-            Self::Cash => "cash",
-            Self::CreditCard => "credit_card",
-            Self::BankTransfer => "bank_transfer",
-            Self::Online => "online",
-            Self::Other => "other",
-        }
-    }
-
-    pub fn from_snake(value: &str) -> Option<Self> {
-        match value {
-            "cash" => Some(Self::Cash),
-            "credit_card" => Some(Self::CreditCard),
-            "bank_transfer" => Some(Self::BankTransfer),
-            "online" => Some(Self::Online),
-            "other" => Some(Self::Other),
-            _ => None,
-        }
-    }
-}
+use crate::domain::entity::payment::PaymentMethod;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum PaymentStatus {
-    Unapplied,
+pub enum DepositStatus {
+    Held,
     PartiallyApplied,
     Applied,
     PartiallyRefunded,
     Refunded,
+    Forfeited,
     Voided,
 }
 
-impl PaymentStatus {
+impl DepositStatus {
     pub fn to_snake(&self) -> &'static str {
         match self {
-            Self::Unapplied => "unapplied",
+            Self::Held => "held",
             Self::PartiallyApplied => "partially_applied",
             Self::Applied => "applied",
             Self::PartiallyRefunded => "partially_refunded",
             Self::Refunded => "refunded",
+            Self::Forfeited => "forfeited",
             Self::Voided => "voided",
         }
     }
 
     pub fn from_snake(value: &str) -> Option<Self> {
         match value {
-            "unapplied" => Some(Self::Unapplied),
+            "held" => Some(Self::Held),
             "partially_applied" => Some(Self::PartiallyApplied),
             "applied" => Some(Self::Applied),
             "partially_refunded" => Some(Self::PartiallyRefunded),
             "refunded" => Some(Self::Refunded),
+            "forfeited" => Some(Self::Forfeited),
             "voided" => Some(Self::Voided),
             _ => None,
         }
@@ -82,29 +54,29 @@ impl PaymentStatus {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Payment {
+pub struct Deposit {
     pub id: Uuid,
     pub folio_id: Uuid,
     pub amount: Decimal,
     pub unapplied_amount: Decimal,
     pub refunded_amount: Decimal,
-    pub status: PaymentStatus,
+    pub status: DepositStatus,
     pub method: PaymentMethod,
     pub external_reference: Option<String>,
-    pub paid_at: DateTime<Utc>,
+    pub received_at: DateTime<Utc>,
 }
 
-impl Payment {
+impl Deposit {
     pub fn new(
         id: Uuid,
         folio_id: Uuid,
         amount: Decimal,
         method: PaymentMethod,
         external_reference: Option<String>,
-        paid_at: DateTime<Utc>,
+        received_at: DateTime<Utc>,
     ) -> Result<Self, String> {
         if amount <= Decimal::ZERO {
-            return Err("payment amount must be positive".into());
+            return Err("deposit amount must be positive".into());
         }
 
         Ok(Self {
@@ -113,10 +85,10 @@ impl Payment {
             amount,
             unapplied_amount: amount,
             refunded_amount: Decimal::ZERO,
-            status: PaymentStatus::Unapplied,
+            status: DepositStatus::Held,
             method,
             external_reference,
-            paid_at,
+            received_at,
         })
     }
 
@@ -125,11 +97,11 @@ impl Payment {
         amount: Decimal,
     ) -> Result<(), String> {
         if amount <= Decimal::ZERO {
-            return Err("application amount must be positive".into());
+            return Err("deposit application amount must be positive".into());
         }
 
         if amount > self.unapplied_amount {
-            return Err("application amount exceeds unapplied amount".into());
+            return Err("deposit application amount exceeds unapplied amount".into());
         }
 
         self.unapplied_amount -= amount;
@@ -143,14 +115,14 @@ impl Payment {
         amount: Decimal,
     ) -> Result<(), String> {
         if amount <= Decimal::ZERO {
-            return Err("reverse amount must be positive".into());
+            return Err("deposit reverse amount must be positive".into());
         }
 
         let max_unapplied =
             self.amount - self.refunded_amount;
 
         if self.unapplied_amount + amount > max_unapplied {
-            return Err("reverse amount exceeds payment balance".into());
+            return Err("deposit reverse amount exceeds available balance".into());
         }
 
         self.unapplied_amount += amount;
@@ -164,11 +136,11 @@ impl Payment {
         amount: Decimal,
     ) -> Result<(), String> {
         if amount <= Decimal::ZERO {
-            return Err("refund amount must be positive".into());
+            return Err("deposit refund amount must be positive".into());
         }
 
         if amount > self.unapplied_amount {
-            return Err("refund amount exceeds unapplied amount".into());
+            return Err("deposit refund amount exceeds unapplied amount".into());
         }
 
         self.unapplied_amount -= amount;
@@ -178,36 +150,59 @@ impl Payment {
         Ok(())
     }
 
+    pub fn forfeit(
+        &mut self,
+        amount: Decimal,
+    ) -> Result<(), String> {
+        if amount <= Decimal::ZERO {
+            return Err("deposit forfeit amount must be positive".into());
+        }
+
+        if amount > self.unapplied_amount {
+            return Err("deposit forfeit amount exceeds unapplied amount".into());
+        }
+
+        self.unapplied_amount -= amount;
+
+        if self.unapplied_amount == Decimal::ZERO {
+            self.status = DepositStatus::Forfeited;
+        } else {
+            self.refresh_status();
+        }
+
+        Ok(())
+    }
+
     pub fn void(&mut self) -> Result<(), String> {
         if self.unapplied_amount != self.amount {
-            return Err("only fully unapplied payment can be voided".into());
+            return Err("only fully held deposit can be voided".into());
         }
 
         if self.refunded_amount != Decimal::ZERO {
-            return Err("refunded payment cannot be voided".into());
+            return Err("refunded deposit cannot be voided".into());
         }
 
         self.unapplied_amount = Decimal::ZERO;
-        self.status = PaymentStatus::Voided;
+        self.status = DepositStatus::Voided;
 
         Ok(())
     }
 
     fn refresh_status(&mut self) {
-        if self.status == PaymentStatus::Voided {
+        if self.status == DepositStatus::Voided {
             return;
         }
 
         if self.refunded_amount == self.amount {
-            self.status = PaymentStatus::Refunded;
+            self.status = DepositStatus::Refunded;
         } else if self.refunded_amount > Decimal::ZERO {
-            self.status = PaymentStatus::PartiallyRefunded;
+            self.status = DepositStatus::PartiallyRefunded;
         } else if self.unapplied_amount == self.amount {
-            self.status = PaymentStatus::Unapplied;
+            self.status = DepositStatus::Held;
         } else if self.unapplied_amount == Decimal::ZERO {
-            self.status = PaymentStatus::Applied;
+            self.status = DepositStatus::Applied;
         } else {
-            self.status = PaymentStatus::PartiallyApplied;
+            self.status = DepositStatus::PartiallyApplied;
         }
     }
 }

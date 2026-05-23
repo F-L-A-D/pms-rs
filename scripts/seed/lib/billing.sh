@@ -23,6 +23,7 @@ create_deposit() {
   local amount="$2"
   local method="$3"
   local external_reference="$4"
+  local reason="${5:-}"
 
   curl -sS \
     -X POST "${API_BASE_URL}/folios/deposits" \
@@ -32,7 +33,8 @@ create_deposit() {
       \"folio_id\": \"${folio_id}\",
       \"amount\": \"${amount}\",
       \"method\": \"${method}\",
-      \"external_reference\": \"${external_reference}\"
+      \"external_reference\": \"${external_reference}\",
+      \"reason\": \"${reason}\"
     }"
 }
 
@@ -41,6 +43,7 @@ create_payment() {
   local amount="$2"
   local method="$3"
   local external_reference="$4"
+  local reason="${5:-}"
 
   curl -sS \
     -X POST "${API_BASE_URL}/folios/payments" \
@@ -50,7 +53,8 @@ create_payment() {
       \"folio_id\": \"${folio_id}\",
       \"amount\": \"${amount}\",
       \"method\": \"${method}\",
-      \"external_reference\": \"${external_reference}\"
+      \"external_reference\": \"${external_reference}\",
+      \"reason\": \"${reason}\"
     }"
 }
 
@@ -183,6 +187,18 @@ reverse_payment_allocation() {
     -X POST \
     "${API_BASE_URL}/payment-allocations/${allocation_id}/reverse" \
     -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"reason\": \"${reason}\"
+    }"
+}
+
+write_off_receivable() {
+  local receivable_id="$1"
+  local reason="$2"
+
+  curl -sS -X POST \
+    "${API_BASE_URL}/receivables/${receivable_id}/write-off" \
     -H "Content-Type: application/json" \
     -d "{
       \"reason\": \"${reason}\"

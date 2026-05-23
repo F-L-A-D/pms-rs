@@ -49,6 +49,7 @@ pub async fn materialize_confidence_profile(
         | OperationType::DisputeReceivable
         | OperationType::ResolveReceivableDispute
         | OperationType::AllocateReceivablePayment
+        | OperationType::ReceivePayment
         | OperationType::ReversePaymentAllocation => Decimal::new(90, 2),
     };
     let source_penalty = match event.source {

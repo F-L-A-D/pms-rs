@@ -4,16 +4,18 @@ use uuid::Uuid;
 
 use crate::{
     db::connection::Db,
-    domain::semantic::{
-        operation_change_event::{
-            ChangedField,
-            OperationChangeEvent,
-            OperationType,
-        },
-        operation_context::OperationContext,
-        settlement_transition::{
-            SettlementTransition,
-            SettlementTransitionType,
+    domain::{
+        semantic::{
+            operation_change_event::{
+                ChangedField,
+                OperationChangeEvent,
+                OperationType,
+            },
+            operation_context::OperationContext,
+            settlement_transition::{
+                SettlementTransition,
+                SettlementTransitionType,
+            },
         },
     },
     error::app_error::{
@@ -27,6 +29,7 @@ use crate::{
         operational::{
             billing::{
                 payment_allocation_repository::SqlitePaymentAllocationRepository,
+                payment_repository::SqlitePaymentRepository,
                 receivable_repository::SqliteReceivableRepository,
             },
             operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
@@ -53,10 +56,14 @@ pub async fn execute(
                 allocation_id,
             )
             .await?
-            .ok_or_else(|| not_found("payment allocation not found"))?;
+            .ok_or_else(|| {
+                not_found("payment allocation not found")
+            })?;
 
         if allocation.reversed_at.is_some() {
-            return Err(conflict("payment allocation already reversed"));
+            return Err(conflict(
+                "payment allocation already reversed",
+            ));
         }
 
         let mut receivable =
@@ -65,16 +72,34 @@ pub async fn execute(
                 allocation.receivable_id,
             )
             .await?
-            .ok_or_else(|| not_found("receivable not found"))?;
+            .ok_or_else(|| {
+                not_found("receivable not found")
+            })?;
+
+        let mut payment =
+            SqlitePaymentRepository::find_by_id(
+                &mut tx,
+                allocation.payment_id,
+            )
+            .await?
+            .ok_or_else(|| {
+                not_found("payment not found")
+            })?;
 
         let before_reversed_at =
             allocation.reversed_at;
 
         let before_receivable_status =
-            receivable.status.clone();
+            receivable.status;
 
         let before_outstanding_amount =
             receivable.outstanding_amount;
+
+        let before_payment_unapplied_amount =
+            payment.unapplied_amount;
+
+        let before_payment_status =
+            payment.status;
 
         let before_json =
             serde_json::json!({
@@ -85,22 +110,35 @@ pub async fn execute(
                 "reversed_at": allocation.reversed_at,
                 "receivable_status": receivable.status,
                 "receivable_outstanding_amount": receivable.outstanding_amount,
+                "payment_unapplied_amount": payment.unapplied_amount,
+                "payment_status": payment.status,
             })
             .to_string();
 
+        payment
+            .reverse_application(allocation.amount)
+            .map_err(conflict)?;
+
         let _ = allocation.reverse(Utc::now());
 
-        let new_outstanding =
+        let new_outstanding_amount =
             receivable.outstanding_amount
-            + allocation.amount;
+                + allocation.amount;
 
-        receivable.reopen_with_outstanding_amount(
-            new_outstanding,
-        );
+        receivable
+            .reopen_with_outstanding_amount(
+                new_outstanding_amount,
+            );
+
+        SqlitePaymentRepository::save(
+            &mut tx,
+            &payment,
+        )
+        .await?;
 
         SqlitePaymentAllocationRepository::mark_reversed(
             &mut tx,
-            &allocation
+            &allocation,
         )
         .await?;
 
@@ -135,13 +173,17 @@ pub async fn execute(
                 "reversed_at": allocation.reversed_at,
                 "receivable_status": receivable.status,
                 "receivable_outstanding_amount": receivable.outstanding_amount,
+                "payment_unapplied_amount": payment.unapplied_amount,
+                "payment_status": payment.status,
             })
             .to_string();
 
         let mut changed_fields =
-            vec![];
+            Vec::new();
 
-        if before_reversed_at != allocation.reversed_at {
+        if before_reversed_at
+            != allocation.reversed_at
+        {
             changed_fields.push(
                 ChangedField::new(
                     "reversed_at",
@@ -154,42 +196,107 @@ pub async fn execute(
             );
         }
 
-        if before_receivable_status != receivable.status {
+        if before_receivable_status
+            != receivable.status
+        {
             changed_fields.push(
                 ChangedField::new(
                     "receivable_status",
-                    Some(before_receivable_status.to_snake().to_string()),
-                    Some(receivable.status.to_snake().to_string()),
+                    Some(
+                        before_receivable_status
+                            .to_snake()
+                            .to_string(),
+                    ),
+                    Some(
+                        receivable
+                            .status
+                            .to_snake()
+                            .to_string(),
+                    ),
                 ),
             );
         }
 
-        if before_outstanding_amount != receivable.outstanding_amount {
+        if before_outstanding_amount
+            != receivable.outstanding_amount
+        {
             changed_fields.push(
                 ChangedField::new(
                     "receivable_outstanding_amount",
-                    Some(before_outstanding_amount.to_string()),
-                    Some(receivable.outstanding_amount.to_string()),
+                    Some(
+                        before_outstanding_amount
+                            .to_string(),
+                    ),
+                    Some(
+                        receivable
+                            .outstanding_amount
+                            .to_string(),
+                    ),
+                ),
+            );
+        }
+
+        if before_payment_unapplied_amount
+            != payment.unapplied_amount
+        {
+            changed_fields.push(
+                ChangedField::new(
+                    "payment_unapplied_amount",
+                    Some(
+                        before_payment_unapplied_amount
+                            .to_string(),
+                    ),
+                    Some(
+                        payment
+                            .unapplied_amount
+                            .to_string(),
+                    ),
+                ),
+            );
+        }
+
+        if before_payment_status
+            != payment.status
+        {
+            changed_fields.push(
+                ChangedField::new(
+                    "payment_status",
+                    Some(
+                        before_payment_status
+                            .to_snake()
+                            .to_string(),
+                    ),
+                    Some(
+                        payment
+                            .status
+                            .to_snake()
+                            .to_string(),
+                    ),
                 ),
             );
         }
 
         let changed_fields_json =
-            serde_json::to_string(&changed_fields)
-                .map_err(infra)?;
+            serde_json::to_string(
+                &changed_fields,
+            )
+            .map_err(infra)?;
 
         let operation_event =
             OperationChangeEvent {
                 id: Uuid::new_v4(),
                 operation_id: context.operation_id,
-                aggregate_type: "payment_allocation".to_string(),
+                aggregate_type:
+                    "payment_allocation".to_string(),
                 aggregate_id: allocation.id,
                 operation_type:
                     OperationType::ReversePaymentAllocation,
                 actor: context.actor,
                 actor_id: context.actor_id.clone(),
                 source: context.source,
-                before_json: Some(before_json.clone()),
+                before_json: Some(
+                    before_json.clone(),
+                ),
                 after_json: after_json.clone(),
                 changed_fields_json:
                     changed_fields_json.clone(),
@@ -206,9 +313,12 @@ pub async fn execute(
             &mut tx,
             &context,
             RecordAuditLogInput {
-                aggregate_type: "payment_allocation".to_string(),
+                aggregate_type:
+                    "payment_allocation".to_string(),
                 aggregate_id: allocation.id,
-                action: "payment_allocation.reverse".to_string(),
+                action:
+                    "payment_allocation.reverse"
+                        .to_string(),
                 before_json: Some(before_json),
                 after_json,
                 changed_fields_json,
@@ -222,8 +332,10 @@ pub async fn execute(
     .await;
 
     match result {
-        Ok(_) => {
-            tx.commit().await.map_err(infra)?;
+        Ok(()) => {
+            tx.commit()
+                .await
+                .map_err(infra)?;
 
             Ok(())
         }

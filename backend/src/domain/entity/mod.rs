@@ -1,5 +1,6 @@
 pub mod billing_account;
 pub mod company;
+pub mod deposit;
 pub mod folio;
 pub mod folio_entry;
 pub mod guest;

@@ -37,6 +37,7 @@ pub enum OperationType {
     Reinstate,
 
     PostCharge,
+    ReceivePayment,
     ApplyPayment,
     ReceiveDeposit,
     AdjustCharge,
@@ -69,6 +70,7 @@ impl OperationType {
             Self::Reinstate => "reinstate",
 
             Self::PostCharge => "post_charge",
+            Self::ReceivePayment => "receive_payment",
             Self::ApplyPayment => "apply_payment",
             Self::ReceiveDeposit => "receive_deposit",
             Self::AdjustCharge => "adjust_charge",
@@ -101,6 +103,7 @@ impl OperationType {
             "reinstate" => Some(Self::Reinstate),
 
             "post_charge" => Some(Self::PostCharge),
+            "receive_payment" => Some(Self::ReceivePayment),
             "apply_payment" => Some(Self::ApplyPayment),
             "receive_deposit" => Some(Self::ReceiveDeposit),
             "adjust_charge" => Some(Self::AdjustCharge),

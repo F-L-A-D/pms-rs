@@ -782,11 +782,12 @@ async fn should_reject_payment_for_locked_folio() {
             amount: Decimal::new(10000, 2),
             method: PaymentMethod::Cash,
             external_reference: None,
+            reason: None,
         },
     )
     .await;
 
-    assert!(matches!(result, Err(AppError::Domain(_))));
+    assert!(matches!(result, Err(AppError::Conflict(_))));
 }
 
 #[tokio::test]
@@ -803,11 +804,12 @@ async fn should_reject_payment_for_closed_folio() {
             amount: Decimal::new(10000, 2),
             method: PaymentMethod::Cash,
             external_reference: None,
+            reason: None,
         },
     )
     .await;
 
-    assert!(matches!(result, Err(AppError::Domain(_))));
+    assert!(matches!(result, Err(AppError::Conflict(_))));
 }
 
 async fn seed_invoiced_receivable(

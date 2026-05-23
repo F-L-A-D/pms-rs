@@ -21,6 +21,7 @@ use crate::{
     repository::sqlite::operational::{
         billing::{
             billing_account_repository::SqliteBillingAccountRepository,
+            deposit_repository::SqliteDepositRepository,
             invoice_repository::SqliteInvoiceRepository,
             payment_allocation_repository::SqlitePaymentAllocationRepository,
             payment_repository::SqlitePaymentRepository,
@@ -225,6 +226,17 @@ async fn resolve_event_folio_id(
             Ok(payment.map(|payment| payment.folio_id))
         }
 
+        "deposit" => {
+            let deposit =
+                SqliteDepositRepository::find_by_id(
+                    tx,
+                    event.aggregate_id,
+                )
+                .await?;
+
+            Ok(deposit.map(|deposit| deposit.folio_id))
+        }
+
         _ => {
             Ok(None)
         }
@@ -255,6 +267,42 @@ fn extract_billing_audit(
         serde_json::from_str(json)
             .map_err(infra)?;
 
+    let amount =
+        read_decimal(
+            &value,
+            "amount",
+        )?
+        .or(
+            read_decimal(
+                &value,
+                "payment_amount",
+            )?,
+        );
+
+    let payment_method =
+        read_payment_method(
+            &value,
+            "method",
+        )?
+        .or(
+            read_payment_method(
+                &value,
+                "payment_method",
+            )?,
+        );
+
+    let payment_reference =
+        read_string(
+            &value,
+            "external_reference",
+        )
+        .or_else(|| {
+            read_string(
+                &value,
+                "payment_reference",
+            )
+        });
+
     Ok(
         BillingAuditExtract {
             folio_id: read_uuid(
@@ -274,18 +322,9 @@ fn extract_billing_audit(
                 "invoice_id",
             )?,
 
-            amount: read_decimal(
-                &value,
-                "amount",
-            )?,
-            payment_method: read_payment_method(
-                &value,
-                "method",
-            )?,
-            payment_reference: read_string(
-                &value,
-                "external_reference",
-            ),
+            amount,
+            payment_method,
+            payment_reference,
 
             invoice_number: read_string(
                 &value,

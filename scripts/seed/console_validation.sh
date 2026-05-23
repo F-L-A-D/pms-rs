@@ -19,5 +19,6 @@ echo "Seeding console validation data..." >&2
 source "${SCRIPT_DIR}/scenarios/reservation_workflow.sh"
 source "${SCRIPT_DIR}/scenarios/billing_audit.sh"
 source "${SCRIPT_DIR}/scenarios/billing_receivable.sh"
+source "${SCRIPT_DIR}/scenarios/payment_deposit_lifecycle.sh"
 
 echo "Done." >&2

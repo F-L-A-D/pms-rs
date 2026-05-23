@@ -111,15 +111,20 @@ pub async fn execute(
             })
             .to_string();
 
-        let payment =
-            Payment {
-                id: Uuid::new_v4(),
-                folio_id: invoice.folio_id,
-                amount: input.amount,
-                method: input.method,
-                external_reference: input.external_reference,
-                paid_at: Utc::now(),
-            };
+        let mut payment =
+            Payment::new(
+                Uuid::new_v4(),
+                invoice.folio_id,
+                input.amount,
+                input.method,
+                input.external_reference,
+                Utc::now(),
+            )
+            .map_err(conflict)?;
+        
+        payment
+            .apply(input.amount)
+            .map_err(conflict)?;
 
         SqlitePaymentRepository::save(
             &mut tx,

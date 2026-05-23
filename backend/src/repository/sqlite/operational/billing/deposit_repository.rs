@@ -14,10 +14,12 @@ use sqlx::{
 use uuid::Uuid;
 
 use crate::{
-    domain::entity::payment::{
-        Payment,
-        PaymentMethod,
-        PaymentStatus,
+    domain::entity::{
+        deposit::{
+            Deposit,
+            DepositStatus,
+        },
+        payment::PaymentMethod,
     },
     error::app_error::{
         infra,
@@ -25,16 +27,16 @@ use crate::{
     },
 };
 
-pub struct SqlitePaymentRepository;
+pub struct SqliteDepositRepository;
 
-impl SqlitePaymentRepository {
+impl SqliteDepositRepository {
     pub async fn save(
         tx: &mut Transaction<'_, Sqlite>,
-        payment: &Payment,
+        deposit: &Deposit,
     ) -> AppResult<()> {
         sqlx::query(
             r#"
-            INSERT INTO payments (
+            INSERT INTO deposits (
                 id,
                 folio_id,
                 amount,
@@ -43,7 +45,7 @@ impl SqlitePaymentRepository {
                 status,
                 method,
                 external_reference,
-                paid_at
+                received_at
             )
             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
             ON CONFLICT(id) DO UPDATE SET
@@ -54,18 +56,18 @@ impl SqlitePaymentRepository {
                 status = excluded.status,
                 method = excluded.method,
                 external_reference = excluded.external_reference,
-                paid_at = excluded.paid_at
+                received_at = excluded.received_at
             "#,
         )
-        .bind(payment.id.to_string())
-        .bind(payment.folio_id.to_string())
-        .bind(payment.amount.to_string())
-        .bind(payment.unapplied_amount.to_string())
-        .bind(payment.refunded_amount.to_string())
-        .bind(payment.status.to_snake())
-        .bind(payment.method.to_snake())
-        .bind(&payment.external_reference)
-        .bind(payment.paid_at.to_rfc3339())
+        .bind(deposit.id.to_string())
+        .bind(deposit.folio_id.to_string())
+        .bind(deposit.amount.to_string())
+        .bind(deposit.unapplied_amount.to_string())
+        .bind(deposit.refunded_amount.to_string())
+        .bind(deposit.status.to_snake())
+        .bind(deposit.method.to_snake())
+        .bind(&deposit.external_reference)
+        .bind(deposit.received_at.to_rfc3339())
         .execute(&mut **tx)
         .await
         .map_err(infra)?;
@@ -75,8 +77,8 @@ impl SqlitePaymentRepository {
 
     pub async fn find_by_id(
         tx: &mut Transaction<'_, Sqlite>,
-        payment_id: Uuid,
-    ) -> AppResult<Option<Payment>> {
+        deposit_id: Uuid,
+    ) -> AppResult<Option<Deposit>> {
         let row =
             sqlx::query(
                 r#"
@@ -89,24 +91,24 @@ impl SqlitePaymentRepository {
                     status,
                     method,
                     external_reference,
-                    paid_at
-                FROM payments
+                    received_at
+                FROM deposits
                 WHERE id = ?1
                 "#,
             )
-            .bind(payment_id.to_string())
+            .bind(deposit_id.to_string())
             .fetch_optional(&mut **tx)
             .await
             .map_err(infra)?;
 
-        row.map(row_to_payment)
+        row.map(row_to_deposit)
             .transpose()
     }
 
     pub async fn list_by_folio_id(
         tx: &mut Transaction<'_, Sqlite>,
         folio_id: Uuid,
-    ) -> AppResult<Vec<Payment>> {
+    ) -> AppResult<Vec<Deposit>> {
         let rows =
             sqlx::query(
                 r#"
@@ -119,10 +121,10 @@ impl SqlitePaymentRepository {
                     status,
                     method,
                     external_reference,
-                    paid_at
-                FROM payments
+                    received_at
+                FROM deposits
                 WHERE folio_id = ?1
-                ORDER BY paid_at ASC
+                ORDER BY received_at ASC
                 "#,
             )
             .bind(folio_id.to_string())
@@ -131,14 +133,14 @@ impl SqlitePaymentRepository {
             .map_err(infra)?;
 
         rows.into_iter()
-            .map(row_to_payment)
+            .map(row_to_deposit)
             .collect()
     }
 }
 
-fn row_to_payment(
+fn row_to_deposit(
     row: sqlx::sqlite::SqliteRow,
-) -> AppResult<Payment> {
+) -> AppResult<Deposit> {
     let id: String =
         row.try_get("id").map_err(infra)?;
 
@@ -163,18 +165,18 @@ fn row_to_payment(
     let external_reference: Option<String> =
         row.try_get("external_reference").map_err(infra)?;
 
-    let paid_at: String =
-        row.try_get("paid_at").map_err(infra)?;
+    let received_at: String =
+        row.try_get("received_at").map_err(infra)?;
 
     let status =
-        PaymentStatus::from_snake(&status)
-            .ok_or_else(|| infra("invalid payment status"))?;
+        DepositStatus::from_snake(&status)
+            .ok_or_else(|| infra("invalid deposit status"))?;
 
     let method =
         PaymentMethod::from_snake(&method)
             .ok_or_else(|| infra("invalid payment method"))?;
 
-    Ok(Payment {
+    Ok(Deposit {
         id: Uuid::parse_str(&id).map_err(infra)?,
         folio_id: Uuid::parse_str(&folio_id).map_err(infra)?,
         amount: amount.parse::<Decimal>().map_err(infra)?,
@@ -189,7 +191,7 @@ fn row_to_payment(
         status,
         method,
         external_reference,
-        paid_at: DateTime::parse_from_rfc3339(&paid_at)
+        received_at: DateTime::parse_from_rfc3339(&received_at)
             .map_err(infra)?
             .with_timezone(&Utc),
     })

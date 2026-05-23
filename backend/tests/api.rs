@@ -8,6 +8,7 @@ mod api {
     pub mod package_plan_test;
     pub mod reservation_search_test;
     pub mod reservation_test;
+    mod room_daily_state_visibility_test;
     pub mod room_maintenance_test;
     pub mod room_test;
     pub mod stay_test;

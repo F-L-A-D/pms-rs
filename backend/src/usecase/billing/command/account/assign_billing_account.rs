@@ -8,11 +8,7 @@ use crate::{
     domain::{
         entity::folio::{Folio, FolioStatus},
         semantic::{
-            operation_change_event::{
-                ChangedField,
-                OperationChangeEvent,
-                OperationType,
-            },
+            operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
             operation_context::OperationContext,
         },
     },
@@ -24,32 +20,20 @@ use crate::{
         },
         operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
     },
-    usecase::audit::command::record_audit_log::{
-        record_audit_log,
-        RecordAuditLogInput,
-    },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
-pub async fn execute(
-    db: &Db,
-    input: AssignBillingAccountInput,
-) -> AppResult<Folio> {
+pub async fn execute(db: &Db, input: AssignBillingAccountInput) -> AppResult<Folio> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
-        let mut folio =
-            match SqliteFolioRepository::find_by_id(
-                &mut tx,
-                input.folio_id,
-            )
-            .await?
-            {
-                Some(folio) => folio,
+        let mut folio = match SqliteFolioRepository::find_by_id(&mut tx, input.folio_id).await? {
+            Some(folio) => folio,
 
-                None => {
-                    return Err(not_found("folio not found"));
-                }
-            };
+            None => {
+                return Err(not_found("folio not found"));
+            }
+        };
 
         if !matches!(folio.status, FolioStatus::Open) {
             return Err(conflict(
@@ -57,81 +41,59 @@ pub async fn execute(
             ));
         }
 
-        SqliteBillingAccountRepository::find_by_id(
-            &mut tx,
-            input.billing_account_id,
-        )
-        .await?
-        .ok_or_else(|| not_found("billing account not found"))?;
+        SqliteBillingAccountRepository::find_by_id(&mut tx, input.billing_account_id)
+            .await?
+            .ok_or_else(|| not_found("billing account not found"))?;
 
-        let context =
-            OperationContext::api_system();
+        let context = OperationContext::api_system();
 
-        let before_billing_account_id =
-            folio.billing_account_id;
+        let before_billing_account_id = folio.billing_account_id;
 
-        let before_json =
-            serde_json::json!({
-                "id": folio.id,
-                "folio_id": folio.id,
-                "reservation_id": folio.reservation_id,
-                "billing_account_id": before_billing_account_id,
-                "status": folio.status,
-            })
-            .to_string();
+        let before_json = serde_json::json!({
+            "id": folio.id,
+            "folio_id": folio.id,
+            "reservation_id": folio.reservation_id,
+            "billing_account_id": before_billing_account_id,
+            "status": folio.status,
+        })
+        .to_string();
 
-        folio.billing_account_id =
-            Some(input.billing_account_id);
+        folio.billing_account_id = Some(input.billing_account_id);
 
-        SqliteFolioRepository::save(
-            &mut tx,
-            &folio,
-        )
-        .await?;
+        SqliteFolioRepository::save(&mut tx, &folio).await?;
 
-        let after_json =
-            serde_json::json!({
-                "id": folio.id,
-                "folio_id": folio.id,
-                "reservation_id": folio.reservation_id,
-                "billing_account_id": folio.billing_account_id,
-                "status": folio.status,
-            })
-            .to_string();
+        let after_json = serde_json::json!({
+            "id": folio.id,
+            "folio_id": folio.id,
+            "reservation_id": folio.reservation_id,
+            "billing_account_id": folio.billing_account_id,
+            "status": folio.status,
+        })
+        .to_string();
 
-        let changed_fields_json =
-            serde_json::to_string(&vec![
-                ChangedField::new(
-                    "billing_account_id",
-                    before_billing_account_id
-                        .map(|id| id.to_string()),
-                    folio.billing_account_id
-                        .map(|id| id.to_string()),
-                ),
-            ])
-            .map_err(infra)?;
+        let changed_fields_json = serde_json::to_string(&vec![ChangedField::new(
+            "billing_account_id",
+            before_billing_account_id.map(|id| id.to_string()),
+            folio.billing_account_id.map(|id| id.to_string()),
+        )])
+        .map_err(infra)?;
 
-        let operation_event =
-            OperationChangeEvent {
-                id: Uuid::new_v4(),
-                operation_id: context.operation_id,
-                aggregate_type: "folio".to_string(),
-                aggregate_id: folio.id,
-                operation_type: OperationType::AssignBillingAccount,
-                actor: context.actor,
-                actor_id: context.actor_id.clone(),
-                source: context.source,
-                before_json: Some(before_json.clone()),
-                after_json: after_json.clone(),
-                changed_fields_json: changed_fields_json.clone(),
-                occurred_at: Utc::now(),
-            };
+        let operation_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "folio".to_string(),
+            aggregate_id: folio.id,
+            operation_type: OperationType::AssignBillingAccount,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: Some(before_json.clone()),
+            after_json: after_json.clone(),
+            changed_fields_json: changed_fields_json.clone(),
+            occurred_at: Utc::now(),
+        };
 
-        SqliteOperationChangeEventRepository::save(
-            &mut tx,
-            &operation_event,
-        )
-        .await?;
+        SqliteOperationChangeEventRepository::save(&mut tx, &operation_event).await?;
 
         record_audit_log(
             &mut tx,

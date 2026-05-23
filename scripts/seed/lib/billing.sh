@@ -179,6 +179,24 @@ allocate_receivable_payment() {
     }"
 }
 
+allocate_existing_payment() {
+  local payment_id="$1"
+  local receivable_id="$2"
+  local amount="$3"
+  local reason="$4"
+
+  curl -sS \
+    -X POST \
+    "${API_BASE_URL}/payments/${payment_id}/allocations" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"receivable_id\": \"${receivable_id}\",
+      \"amount\": \"${amount}\",
+      \"reason\": \"${reason}\"
+    }"
+}
+
 reverse_payment_allocation() {
   local allocation_id="$1"
   local reason="$2"

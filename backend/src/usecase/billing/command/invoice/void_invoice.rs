@@ -10,16 +10,9 @@ use crate::{
             receivable::ReceivableStatus,
         },
         semantic::{
-            operation_change_event::{
-                ChangedField,
-                OperationChangeEvent,
-                OperationType,
-            },
+            operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
             operation_context::OperationContext,
-            settlement_transition::{
-                SettlementTransition,
-                SettlementTransitionType,
-            },
+            settlement_transition::{SettlementTransition, SettlementTransitionType},
         },
     },
     error::app_error::{conflict, infra, not_found, AppResult},
@@ -34,35 +27,22 @@ use crate::{
             operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
         },
     },
-    usecase::audit::command::record_audit_log::{
-        record_audit_log,
-        RecordAuditLogInput,
-    },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
-pub async fn execute(
-    db: &Db,
-    invoice_id: Uuid,
-    reason: Option<String>,
-) -> AppResult<Invoice> {
-
+pub async fn execute(db: &Db, invoice_id: Uuid, reason: Option<String>) -> AppResult<Invoice> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
-        let mut invoice =
-            SqliteInvoiceRepository::find_by_id(&mut tx, invoice_id)
-                .await?
-                .ok_or_else(|| not_found("invoice not found"))?;
+        let mut invoice = SqliteInvoiceRepository::find_by_id(&mut tx, invoice_id)
+            .await?
+            .ok_or_else(|| not_found("invoice not found"))?;
 
         if invoice.status != InvoiceStatus::Issued {
             return Err(conflict("only issued invoices can be voided"));
         }
 
-        let mut receivable =
-            SqliteReceivableRepository::find_by_invoice_id(
-                &mut tx,
-                invoice.id,
-            )
+        let mut receivable = SqliteReceivableRepository::find_by_invoice_id(&mut tx, invoice.id)
             .await?
             .ok_or_else(|| not_found("receivable not found"))?;
 
@@ -74,14 +54,11 @@ pub async fn execute(
         }
 
         let active_allocations =
-            SqlitePaymentAllocationRepository::list_by_receivable_id(
-                &mut tx,
-                receivable.id,
-            )
-            .await?
-            .into_iter()
-            .filter(|allocation| allocation.reversed_at.is_none())
-            .collect::<Vec<_>>();
+            SqlitePaymentAllocationRepository::list_by_receivable_id(&mut tx, receivable.id)
+                .await?
+                .into_iter()
+                .filter(|allocation| allocation.reversed_at.is_none())
+                .collect::<Vec<_>>();
 
         if !active_allocations.is_empty() {
             return Err(conflict(
@@ -89,147 +66,97 @@ pub async fn execute(
             ));
         }
 
-        let before_invoice_status =
-            invoice.status.clone();
+        let before_invoice_status = invoice.status.clone();
 
-        let before_receivable_status =
-            receivable.status.clone();
+        let before_receivable_status = receivable.status.clone();
 
-        let before_json =
-            serde_json::json!({
-                "id": invoice.id,
-                "invoice_id": invoice.id,
-                "folio_id": invoice.folio_id,
-                "billing_account_id": invoice.billing_account_id,
-                "invoice_number": invoice.invoice_number,
-                "issued_amount": invoice.issued_amount,
-                "due_date": invoice.due_date,
-                "status": invoice.status,
-                "receivable_id": receivable.id,
-                "receivable_status": receivable.status,
-            })
-            .to_string();
+        let before_json = serde_json::json!({
+            "id": invoice.id,
+            "invoice_id": invoice.id,
+            "folio_id": invoice.folio_id,
+            "billing_account_id": invoice.billing_account_id,
+            "invoice_number": invoice.invoice_number,
+            "issued_amount": invoice.issued_amount,
+            "due_date": invoice.due_date,
+            "status": invoice.status,
+            "receivable_id": receivable.id,
+            "receivable_status": receivable.status,
+        })
+        .to_string();
 
         invoice.void();
         receivable.void();
 
-        SqliteInvoiceRepository::save(
-            &mut tx,
-            &invoice,
-        )
-        .await?;
+        SqliteInvoiceRepository::save(&mut tx, &invoice).await?;
 
-        SqliteReceivableRepository::save(
-            &mut tx,
-            &receivable,
-        )
-        .await?;
+        SqliteReceivableRepository::save(&mut tx, &receivable).await?;
 
-        let invoice_voided_transition =
-            SettlementTransition {
-                id: Uuid::new_v4(),
-                receivable_id: receivable.id,
-                transition_type:
-                    SettlementTransitionType::InvoiceVoided,
-                amount: invoice.issued_amount,
-                occurred_at: Utc::now(),
-            };
+        let invoice_voided_transition = SettlementTransition {
+            id: Uuid::new_v4(),
+            receivable_id: receivable.id,
+            transition_type: SettlementTransitionType::InvoiceVoided,
+            amount: invoice.issued_amount,
+            occurred_at: Utc::now(),
+        };
 
-        SqliteSettlementTransitionRepository::save(
-            &mut tx,
-            &invoice_voided_transition,
-        )
-        .await?;
+        SqliteSettlementTransitionRepository::save(&mut tx, &invoice_voided_transition).await?;
 
-        let receivable_voided_transition =
-            SettlementTransition {
-                id: Uuid::new_v4(),
-                receivable_id: receivable.id,
-                transition_type:
-                    SettlementTransitionType::ReceivableVoided,
-                amount: invoice.issued_amount,
-                occurred_at: Utc::now(),
-            };
+        let receivable_voided_transition = SettlementTransition {
+            id: Uuid::new_v4(),
+            receivable_id: receivable.id,
+            transition_type: SettlementTransitionType::ReceivableVoided,
+            amount: invoice.issued_amount,
+            occurred_at: Utc::now(),
+        };
 
-        SqliteSettlementTransitionRepository::save(
-            &mut tx,
-            &receivable_voided_transition,
-        )
-        .await?;
+        SqliteSettlementTransitionRepository::save(&mut tx, &receivable_voided_transition).await?;
 
-        let context =
-            OperationContext::api_system();
+        let context = OperationContext::api_system();
 
-        let after_json =
-            serde_json::json!({
-                "id": invoice.id,
-                "invoice_id": invoice.id,
-                "folio_id": invoice.folio_id,
-                "billing_account_id": invoice.billing_account_id,
-                "invoice_number": invoice.invoice_number,
-                "issued_amount": invoice.issued_amount,
-                "due_date": invoice.due_date,
-                "status": invoice.status,
-                "receivable_id": receivable.id,
-                "receivable_status": receivable.status,
-            })
-            .to_string();
+        let after_json = serde_json::json!({
+            "id": invoice.id,
+            "invoice_id": invoice.id,
+            "folio_id": invoice.folio_id,
+            "billing_account_id": invoice.billing_account_id,
+            "invoice_number": invoice.invoice_number,
+            "issued_amount": invoice.issued_amount,
+            "due_date": invoice.due_date,
+            "status": invoice.status,
+            "receivable_id": receivable.id,
+            "receivable_status": receivable.status,
+        })
+        .to_string();
 
-        let changed_fields_json =
-            serde_json::to_string(&vec![
-                ChangedField::new(
-                    "status",
-                    Some(
-                        before_invoice_status
-                            .to_snake()
-                            .to_string(),
-                    ),
-                    Some(
-                        invoice
-                            .status
-                            .to_snake()
-                            .to_string(),
-                    ),
-                ),
-                ChangedField::new(
-                    "receivable_status",
-                    Some(
-                        before_receivable_status
-                            .to_snake()
-                            .to_string(),
-                    ),
-                    Some(
-                        receivable
-                            .status
-                            .to_snake()
-                            .to_string(),
-                    ),
-                ),
-            ])
-            .map_err(infra)?;
+        let changed_fields_json = serde_json::to_string(&vec![
+            ChangedField::new(
+                "status",
+                Some(before_invoice_status.to_snake().to_string()),
+                Some(invoice.status.to_snake().to_string()),
+            ),
+            ChangedField::new(
+                "receivable_status",
+                Some(before_receivable_status.to_snake().to_string()),
+                Some(receivable.status.to_snake().to_string()),
+            ),
+        ])
+        .map_err(infra)?;
 
-        let operation_event =
-            OperationChangeEvent {
-                id: Uuid::new_v4(),
-                operation_id: context.operation_id,
-                aggregate_type: "invoice".to_string(),
-                aggregate_id: invoice.id,
-                operation_type: OperationType::VoidInvoice,
-                actor: context.actor,
-                actor_id: context.actor_id.clone(),
-                source: context.source,
-                before_json: Some(before_json.clone()),
-                after_json: after_json.clone(),
-                changed_fields_json:
-                    changed_fields_json.clone(),
-                occurred_at: Utc::now(),
-            };
+        let operation_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "invoice".to_string(),
+            aggregate_id: invoice.id,
+            operation_type: OperationType::VoidInvoice,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: Some(before_json.clone()),
+            after_json: after_json.clone(),
+            changed_fields_json: changed_fields_json.clone(),
+            occurred_at: Utc::now(),
+        };
 
-        SqliteOperationChangeEventRepository::save(
-            &mut tx,
-            &operation_event,
-        )
-        .await?;
+        SqliteOperationChangeEventRepository::save(&mut tx, &operation_event).await?;
 
         record_audit_log(
             &mut tx,

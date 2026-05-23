@@ -16,9 +16,7 @@ use crate::{
     },
     error::app_error::validation,
     usecase::billing::command::receivable::{
-        dispute_receivable,
-        resolve_receivable_dispute,
-        write_off_receivable,
+        dispute_receivable, resolve_receivable_dispute, write_off_receivable,
     },
 };
 
@@ -27,16 +25,9 @@ pub async fn dispute_receivable_handler(
     Path(id): Path<String>,
     Json(request): Json<UpdateReceivableStatusRequest>,
 ) -> Result<Json<ReceivableResponse>, ApiError> {
-    let receivable_id =
-        Uuid::parse_str(&id)
-            .map_err(|e| map_app_error(validation(e)))?;
+    let receivable_id = Uuid::parse_str(&id).map_err(|e| map_app_error(validation(e)))?;
 
-    let receivable =
-        dispute_receivable::execute(
-            &state.db,
-            receivable_id,
-            request.reason,
-        )
+    let receivable = dispute_receivable::execute(&state.db, receivable_id, request.reason)
         .await
         .map_err(map_app_error)?;
 
@@ -48,16 +39,9 @@ pub async fn resolve_receivable_dispute_handler(
     Path(id): Path<String>,
     Json(request): Json<UpdateReceivableStatusRequest>,
 ) -> Result<Json<ReceivableResponse>, ApiError> {
-    let receivable_id =
-        Uuid::parse_str(&id)
-            .map_err(|e| map_app_error(validation(e)))?;
+    let receivable_id = Uuid::parse_str(&id).map_err(|e| map_app_error(validation(e)))?;
 
-    let receivable =
-        resolve_receivable_dispute::execute(
-            &state.db,
-            receivable_id,
-            request.reason,
-        )
+    let receivable = resolve_receivable_dispute::execute(&state.db, receivable_id, request.reason)
         .await
         .map_err(map_app_error)?;
 
@@ -69,16 +53,9 @@ pub async fn write_off_receivable_handler(
     Path(id): Path<String>,
     Json(request): Json<UpdateReceivableStatusRequest>,
 ) -> Result<Json<ReceivableResponse>, ApiError> {
-    let receivable_id =
-        Uuid::parse_str(&id)
-            .map_err(|e| map_app_error(validation(e)))?;
+    let receivable_id = Uuid::parse_str(&id).map_err(|e| map_app_error(validation(e)))?;
 
-    let receivable =
-        write_off_receivable::execute(
-            &state.db,
-            receivable_id,
-            request.reason,
-        )
+    let receivable = write_off_receivable::execute(&state.db, receivable_id, request.reason)
         .await
         .map_err(map_app_error)?;
 

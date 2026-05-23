@@ -149,20 +149,18 @@ pub async fn get_reservation_detail(
 
     let folios = SqliteFolioRepository::list_by_reservation_id(&mut tx, reservation_id).await?;
 
-    let folio_id = 
-        folios
-            .iter()
-            .find(|folio| matches!(folio.status, FolioStatus::Open | FolioStatus::Locked,))
-            .map(|folio| folio.id);
+    let folio_id = folios
+        .iter()
+        .find(|folio| matches!(folio.status, FolioStatus::Open | FolioStatus::Locked,))
+        .map(|folio| folio.id);
 
-    let folio_links =
-        folios
-            .iter()
-            .map(|folio| ReservationDetailFolioLink {
-                folio_id: folio.id,
-                status: folio.status,
-            })
-            .collect::<Vec<_>>();
+    let folio_links = folios
+        .iter()
+        .map(|folio| ReservationDetailFolioLink {
+            folio_id: folio.id,
+            status: folio.status,
+        })
+        .collect::<Vec<_>>();
 
     let audit_logs = SqliteOperationalAuditLogRepository::list_by_aggregate(
         &mut tx,

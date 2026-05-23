@@ -1,14 +1,8 @@
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 
 use rust_decimal::Decimal;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use uuid::Uuid;
 
@@ -120,10 +114,7 @@ impl Payment {
         })
     }
 
-    pub fn apply(
-        &mut self,
-        amount: Decimal,
-    ) -> Result<(), String> {
+    pub fn apply(&mut self, amount: Decimal) -> Result<(), String> {
         if amount <= Decimal::ZERO {
             return Err("application amount must be positive".into());
         }
@@ -138,16 +129,12 @@ impl Payment {
         Ok(())
     }
 
-    pub fn reverse_application(
-        &mut self,
-        amount: Decimal,
-    ) -> Result<(), String> {
+    pub fn reverse_application(&mut self, amount: Decimal) -> Result<(), String> {
         if amount <= Decimal::ZERO {
             return Err("reverse amount must be positive".into());
         }
 
-        let max_unapplied =
-            self.amount - self.refunded_amount;
+        let max_unapplied = self.amount - self.refunded_amount;
 
         if self.unapplied_amount + amount > max_unapplied {
             return Err("reverse amount exceeds payment balance".into());
@@ -159,10 +146,7 @@ impl Payment {
         Ok(())
     }
 
-    pub fn refund(
-        &mut self,
-        amount: Decimal,
-    ) -> Result<(), String> {
+    pub fn refund(&mut self, amount: Decimal) -> Result<(), String> {
         if amount <= Decimal::ZERO {
             return Err("refund amount must be positive".into());
         }

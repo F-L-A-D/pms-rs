@@ -2,10 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::domain::entity::billing_account::{
-    BillingAccount,
-    BillingAccountStatus,
-};
+use crate::domain::entity::billing_account::{BillingAccount, BillingAccountStatus};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BillingAccountResponse {

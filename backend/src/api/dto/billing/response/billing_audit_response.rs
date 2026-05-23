@@ -11,7 +11,7 @@ use crate::domain::{
     semantic::{
         operation_change_event::OperationType,
         operation_context::{OperationActor, OperationSource},
-    }
+    },
 };
 
 #[derive(Debug, Clone, Serialize)]

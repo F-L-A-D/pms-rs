@@ -4,22 +4,15 @@ use uuid::Uuid;
 use crate::{
     api::dto::billing::input::create_billing_account_input::CreateBillingAccountInput,
     db::connection::Db,
-    domain::entity::billing_account::{
-        BillingAccount,
-        BillingAccountStatus,
-    },
+    domain::entity::billing_account::{BillingAccount, BillingAccountStatus},
     error::app_error::{infra, AppResult},
     repository::sqlite::operational::billing::billing_account_repository::SqliteBillingAccountRepository,
 };
 
-pub async fn execute(
-    db: &Db,
-    input: CreateBillingAccountInput,
-) -> AppResult<BillingAccount> {
+pub async fn execute(db: &Db, input: CreateBillingAccountInput) -> AppResult<BillingAccount> {
     let mut tx = db.begin_tx().await;
-    
-    let result = async {
 
+    let result = async {
         let account = BillingAccount {
             id: Uuid::new_v4(),
             company_id: input.company_id,
@@ -28,11 +21,7 @@ pub async fn execute(
             created_at: Utc::now(),
         };
 
-        SqliteBillingAccountRepository::save(
-            &mut tx,
-            &account,
-        )
-        .await?;
+        SqliteBillingAccountRepository::save(&mut tx, &account).await?;
 
         Ok(account)
     }
@@ -51,5 +40,4 @@ pub async fn execute(
             Err(e)
         }
     }
-    
 }

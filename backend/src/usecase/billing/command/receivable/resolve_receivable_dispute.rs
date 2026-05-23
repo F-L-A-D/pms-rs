@@ -5,31 +5,14 @@ use uuid::Uuid;
 use crate::{
     db::connection::Db,
     domain::{
-        entity::{
-            receivable::{
-                Receivable,
-                ReceivableStatus,
-            },
-        },
+        entity::receivable::{Receivable, ReceivableStatus},
         semantic::{
-            operation_change_event::{
-                ChangedField,
-                OperationChangeEvent,
-                OperationType,
-            },
+            operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
             operation_context::OperationContext,
-            settlement_transition::{
-                SettlementTransition,
-                SettlementTransitionType,
-            },
+            settlement_transition::{SettlementTransition, SettlementTransitionType},
         },
     },
-    error::app_error::{
-        conflict,
-        infra,
-        not_found,
-        AppResult,
-    },
+    error::app_error::{conflict, infra, not_found, AppResult},
     repository::sqlite::{
         behavioral::settlement_transition_repository::SqliteSettlementTransitionRepository,
         operational::{
@@ -37,10 +20,7 @@ use crate::{
             operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
         },
     },
-    usecase::audit::command::record_audit_log::{
-        record_audit_log,
-        RecordAuditLogInput,
-    },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
 pub async fn execute(
@@ -51,11 +31,7 @@ pub async fn execute(
     let mut tx = db.begin_tx().await;
 
     let result = async {
-        let mut receivable =
-            SqliteReceivableRepository::find_by_id(
-                &mut tx,
-                receivable_id,
-            )
+        let mut receivable = SqliteReceivableRepository::find_by_id(&mut tx, receivable_id)
             .await?
             .ok_or_else(|| not_found("receivable not found"))?;
 
@@ -63,97 +39,69 @@ pub async fn execute(
             return Err(conflict("only disputed receivables can be resolved"));
         }
 
-        let before_receivable_status =
-            receivable.status.clone();
+        let before_receivable_status = receivable.status.clone();
 
-        let before_json =
-            serde_json::json!({
-                "id": receivable.id,
-                "receivable_id": receivable.id,
-                "invoice_id": receivable.invoice_id,
-                "outstanding_amount": receivable.outstanding_amount,
-                "due_date": receivable.due_date,
-                "status": receivable.status,
-            })
-            .to_string();
+        let before_json = serde_json::json!({
+            "id": receivable.id,
+            "receivable_id": receivable.id,
+            "invoice_id": receivable.invoice_id,
+            "outstanding_amount": receivable.outstanding_amount,
+            "due_date": receivable.due_date,
+            "status": receivable.status,
+        })
+        .to_string();
 
         receivable.resolve_dispute();
 
-        SqliteReceivableRepository::save(
-            &mut tx,
-            &receivable,
-        )
-        .await?;
+        SqliteReceivableRepository::save(&mut tx, &receivable).await?;
 
         SqliteSettlementTransitionRepository::save(
             &mut tx,
             &SettlementTransition {
                 id: Uuid::new_v4(),
                 receivable_id: receivable.id,
-                transition_type:
-                    SettlementTransitionType::ReceivableDisputeResolved,
+                transition_type: SettlementTransitionType::ReceivableDisputeResolved,
                 amount: receivable.outstanding_amount,
                 occurred_at: Utc::now(),
             },
         )
         .await?;
 
-        let context =
-            OperationContext::api_system();
+        let context = OperationContext::api_system();
 
-        let after_json =
-            serde_json::json!({
-                "id": receivable.id,
-                "receivable_id": receivable.id,
-                "invoice_id": receivable.invoice_id,
-                "outstanding_amount": receivable.outstanding_amount,
-                "due_date": receivable.due_date,
-                "status": receivable.status,
-            })
-            .to_string();
+        let after_json = serde_json::json!({
+            "id": receivable.id,
+            "receivable_id": receivable.id,
+            "invoice_id": receivable.invoice_id,
+            "outstanding_amount": receivable.outstanding_amount,
+            "due_date": receivable.due_date,
+            "status": receivable.status,
+        })
+        .to_string();
 
-        let changed_fields_json =
-            serde_json::to_string(&vec![
-                ChangedField::new(
-                    "status",
-                    Some(
-                        before_receivable_status
-                            .to_snake()
-                            .to_string(),
-                    ),
-                    Some(
-                        receivable
-                            .status
-                            .to_snake()
-                            .to_string(),
-                    ),
-                ),
-            ])
-            .map_err(infra)?;
+        let changed_fields_json = serde_json::to_string(&vec![ChangedField::new(
+            "status",
+            Some(before_receivable_status.to_snake().to_string()),
+            Some(receivable.status.to_snake().to_string()),
+        )])
+        .map_err(infra)?;
 
-        let operation_event =
-            OperationChangeEvent {
-                id: Uuid::new_v4(),
-                operation_id: context.operation_id,
-                aggregate_type: "receivable".to_string(),
-                aggregate_id: receivable.id,
-                operation_type:
-                    OperationType::ResolveReceivableDispute,
-                actor: context.actor,
-                actor_id: context.actor_id.clone(),
-                source: context.source,
-                before_json: Some(before_json.clone()),
-                after_json: after_json.clone(),
-                changed_fields_json:
-                    changed_fields_json.clone(),
-                occurred_at: Utc::now(),
-            };
+        let operation_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "receivable".to_string(),
+            aggregate_id: receivable.id,
+            operation_type: OperationType::ResolveReceivableDispute,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: Some(before_json.clone()),
+            after_json: after_json.clone(),
+            changed_fields_json: changed_fields_json.clone(),
+            occurred_at: Utc::now(),
+        };
 
-        SqliteOperationChangeEventRepository::save(
-            &mut tx,
-            &operation_event,
-        )
-        .await?;
+        SqliteOperationChangeEventRepository::save(&mut tx, &operation_event).await?;
 
         record_audit_log(
             &mut tx,

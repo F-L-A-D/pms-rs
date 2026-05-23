@@ -1,3 +1,4 @@
+pub mod allocate_existing_payment_input;
 pub mod allocate_receivable_payment_input;
 pub mod assign_billing_account_input;
 pub mod close_folio_input;

@@ -21,10 +21,9 @@ pub async fn get_invoice_handler(
 ) -> Result<Json<InvoiceResponse>, ApiError> {
     let invoice_id = Uuid::parse_str(&id).map_err(|e| map_app_error(validation(e)))?;
 
-    let detail =
-        get_invoice::execute(&state.db, invoice_id)
-            .await
-            .map_err(map_app_error)?;
+    let detail = get_invoice::execute(&state.db, invoice_id)
+        .await
+        .map_err(map_app_error)?;
 
     Ok(Json(InvoiceResponse::from_parts(
         detail.invoice,

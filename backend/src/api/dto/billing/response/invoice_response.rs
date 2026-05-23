@@ -1,8 +1,4 @@
-use chrono::{
-    DateTime,
-    NaiveDate,
-    Utc,
-};
+use chrono::{DateTime, NaiveDate, Utc};
 
 use rust_decimal::Decimal;
 
@@ -10,10 +6,7 @@ use serde::Serialize;
 
 use uuid::Uuid;
 
-use crate::domain::entity::invoice::{
-    Invoice,
-    InvoiceStatus,
-};
+use crate::domain::entity::invoice::{Invoice, InvoiceStatus};
 
 #[derive(Debug, Serialize)]
 pub struct InvoiceResponse {
@@ -45,10 +38,7 @@ impl From<Invoice> for InvoiceResponse {
 }
 
 impl InvoiceResponse {
-    pub fn from_parts(
-        invoice: Invoice,
-        receivable_id: Option<Uuid>,
-    ) -> Self {
+    pub fn from_parts(invoice: Invoice, receivable_id: Option<Uuid>) -> Self {
         Self {
             id: invoice.id,
             folio_id: invoice.folio_id,

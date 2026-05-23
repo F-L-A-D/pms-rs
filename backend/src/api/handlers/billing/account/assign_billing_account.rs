@@ -1,10 +1,7 @@
 use axum::{
-    extract::{
-        Path,
-        State,
-    },
-    http::StatusCode, 
-    Json
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
 };
 
 use uuid::Uuid;
@@ -28,15 +25,13 @@ pub async fn assign_billing_account_handler(
     Path(folio_id): Path<Uuid>,
     Json(req): Json<AssignBillingAccountRequest>,
 ) -> Result<(StatusCode, Json<FolioResponse>), ApiError> {
-
     let billing_account_id =
         Uuid::parse_str(&req.billing_account_id).map_err(|e| map_app_error(validation(e)))?;
 
-    let input =
-        AssignBillingAccountInput {
-            folio_id,
-            billing_account_id,
-        };
+    let input = AssignBillingAccountInput {
+        folio_id,
+        billing_account_id,
+    };
 
     let folio = assign_billing_account::execute(&state.db, input)
         .await

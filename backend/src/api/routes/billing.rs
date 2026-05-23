@@ -10,9 +10,9 @@ use crate::api::{
             create_billing_account::create_billing_account_handler,
         },
         folio::{
-            create_folio_entry::create_folio_entry_handler, folio_audit::get_folio_audit_handler,
-            folio_query::get_folio_handler, open_reservation_folio::open_reservation_folio_handler,
-            close_folio::close_folio_handler,
+            close_folio::close_folio_handler, create_folio_entry::create_folio_entry_handler,
+            folio_audit::get_folio_audit_handler, folio_query::get_folio_handler,
+            open_reservation_folio::open_reservation_folio_handler,
         },
         invoice::{
             create_invoice::create_invoice_handler,
@@ -20,6 +20,7 @@ use crate::api::{
             void_invoice::void_invoice_handler,
         },
         payment::{
+            allocate_existing_payment::allocate_existing_payment_handler,
             create_deposit::create_deposit_handler, create_payment::create_payment_handler,
             reverse_payment_allocation::reverse_payment_allocation_handler,
         },
@@ -46,14 +47,8 @@ pub fn routes() -> Router<AppState> {
         .route("/folios/payments", post(create_payment_handler))
         .route("/folios/deposits", post(create_deposit_handler))
         .route("/folios/:id", get(get_folio_handler))
-        .route(
-            "/folios/:id/close",
-            post(close_folio_handler),
-        )
-        .route(
-            "/billing-accounts",
-            post(create_billing_account_handler),
-        )
+        .route("/folios/:id/close", post(close_folio_handler))
+        .route("/billing-accounts", post(create_billing_account_handler))
         .route(
             "/folios/:id/billing-account",
             post(assign_billing_account_handler),
@@ -85,4 +80,8 @@ pub fn routes() -> Router<AppState> {
             get(list_billing_account_invoices_handler),
         )
         .route("/folios/:folio_id/audit", get(get_folio_audit_handler))
+        .route(
+            "/payments/:id/allocations",
+            post(allocate_existing_payment_handler),
+        )
 }

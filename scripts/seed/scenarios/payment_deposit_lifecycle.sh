@@ -66,3 +66,89 @@ echo "- payment unapplied_amount: 3000" >&2
 echo "- deposit audit: receive_deposit / deposit.receive" >&2
 echo "- deposit status: held" >&2
 echo "- deposit unapplied_amount: 5000" >&2
+
+echo "Adding receivable for existing payment allocation..." >&2
+
+create_folio_entry \
+  "${payment_deposit_folio_id}" \
+  "room_charge" \
+  "3000" \
+  "Console seed: existing payment allocation room charge" >/dev/null
+
+payment_deposit_billing_account_response="$(
+  create_billing_account \
+    "Console Seed Payment Deposit Account"
+)"
+
+payment_deposit_billing_account_id="$(
+  echo "${payment_deposit_billing_account_response}" | extract_id
+)"
+
+if [[ -z "${payment_deposit_billing_account_id}" ]]; then
+  echo "Failed to extract payment deposit billing account id" >&2
+  echo "${payment_deposit_billing_account_response}" >&2
+  exit 1
+fi
+
+assign_billing_account \
+  "${payment_deposit_folio_id}" \
+  "${payment_deposit_billing_account_id}" >/dev/null
+
+close_folio "${payment_deposit_folio_id}" >/dev/null
+
+payment_deposit_invoice_response="$(
+  create_invoice \
+    "${payment_deposit_folio_id}" \
+    "INV-CONSOLE-SEED-PAYMENT-DEPOSIT-001" \
+    "3000" \
+    "2026-07-20"
+)"
+
+payment_deposit_invoice_id="$(
+  echo "${payment_deposit_invoice_response}" | extract_id
+)"
+
+if [[ -z "${payment_deposit_invoice_id}" ]]; then
+  echo "Failed to extract payment deposit invoice id" >&2
+  echo "${payment_deposit_invoice_response}" >&2
+  exit 1
+fi
+
+payment_deposit_invoice_detail="$(
+  get_invoice "${payment_deposit_invoice_id}"
+)"
+
+payment_deposit_receivable_id="$(
+  echo "${payment_deposit_invoice_detail}" | extract_receivable_id
+)"
+
+if [[ -z "${payment_deposit_receivable_id}" ]]; then
+  echo "Failed to extract payment deposit receivable id" >&2
+  echo "${payment_deposit_invoice_detail}" >&2
+  exit 1
+fi
+
+echo "Allocating existing payment to receivable..." >&2
+
+existing_payment_allocation_response="$(
+  allocate_existing_payment \
+    "${payment_id}" \
+    "${payment_deposit_receivable_id}" \
+    "3000" \
+    "Console seed: existing payment allocation validation"
+)"
+
+existing_payment_allocation_id="$(
+  echo "${existing_payment_allocation_response}" | extract_allocation_id
+)"
+
+if [[ -z "${existing_payment_allocation_id}" ]]; then
+  echo "Failed to extract existing payment allocation id" >&2
+  echo "${existing_payment_allocation_response}" >&2
+  exit 1
+fi
+
+echo "- existing payment allocation audit: payment.allocate" >&2
+echo "- payment status after allocation: applied" >&2
+echo "- payment unapplied_amount after allocation: 0" >&2
+echo "- receivable status after allocation: settled" >&2

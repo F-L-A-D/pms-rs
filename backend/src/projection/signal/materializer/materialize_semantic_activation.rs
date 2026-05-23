@@ -98,6 +98,7 @@ pub async fn materialize_semantic_activation(
         | OperationType::DisputeReceivable
         | OperationType::ResolveReceivableDispute
         | OperationType::AllocateReceivablePayment
+        | OperationType::AllocateExistingPayment
         | OperationType::ReceivePayment
         | OperationType::ReversePaymentAllocation => (
             SemanticActivationKey::BillingRelevantChange,

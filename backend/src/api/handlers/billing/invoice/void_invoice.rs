@@ -23,16 +23,9 @@ pub async fn void_invoice_handler(
     Path(id): Path<String>,
     Json(request): Json<VoidInvoiceRequest>,
 ) -> Result<Json<InvoiceResponse>, ApiError> {
-    let invoice_id =
-        Uuid::parse_str(&id)
-            .map_err(|e| map_app_error(validation(e)))?;
+    let invoice_id = Uuid::parse_str(&id).map_err(|e| map_app_error(validation(e)))?;
 
-    let invoice =
-        void_invoice::execute(
-            &state.db,
-            invoice_id,
-            request.reason,
-        )
+    let invoice = void_invoice::execute(&state.db, invoice_id, request.reason)
         .await
         .map_err(map_app_error)?;
 

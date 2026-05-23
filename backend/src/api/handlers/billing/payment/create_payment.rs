@@ -40,8 +40,5 @@ pub async fn create_payment_handler(
         .await
         .map_err(map_app_error)?;
 
-    Ok((
-        StatusCode::CREATED,
-        Json(PaymentResponse::from(payment)),
-    ))
+    Ok((StatusCode::CREATED, Json(PaymentResponse::from(payment))))
 }

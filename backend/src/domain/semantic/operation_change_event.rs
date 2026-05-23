@@ -41,22 +41,23 @@ pub enum OperationType {
     ApplyPayment,
     ReceiveDeposit,
     AdjustCharge,
-    
+
     AssignBillingAccount,
-    
+
     IssueInvoice,
     VoidInvoice,
-    
+
     RefundPayment,
 
     CloseFolio,
     ReopenFolio,
-    
+
     WriteOffReceivable,
     DisputeReceivable,
     ResolveReceivableDispute,
 
     AllocateReceivablePayment,
+    AllocateExistingPayment,
     ReversePaymentAllocation,
 }
 
@@ -90,6 +91,7 @@ impl OperationType {
             Self::ResolveReceivableDispute => "resolve_receivable_dispute",
 
             Self::AllocateReceivablePayment => "allocate_receivable_payment",
+            Self::AllocateExistingPayment => "allocate_existing_payment",
             Self::ReversePaymentAllocation => "reverse_payment_allocation",
         }
     }
@@ -113,15 +115,16 @@ impl OperationType {
             "refund_payment" => Some(Self::RefundPayment),
 
             "assign_billing_account" => Some(Self::AssignBillingAccount),
-            
+
             "close_folio" => Some(Self::CloseFolio),
             "reopen_folio" => Some(Self::ReopenFolio),
-            
+
             "write_off_receivable" => Some(Self::WriteOffReceivable),
             "dispute_receivable" => Some(Self::DisputeReceivable),
             "resolve_receivable_dispute" => Some(Self::ResolveReceivableDispute),
 
             "allocate_receivable_payment" => Some(Self::AllocateReceivablePayment),
+            "allocate_existing_payment" => Some(Self::AllocateExistingPayment),
             "reverse_payment_allocation" => Some(Self::ReversePaymentAllocation),
             _ => None,
         }

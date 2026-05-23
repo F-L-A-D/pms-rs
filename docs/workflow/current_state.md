@@ -4,7 +4,7 @@
 
 Projection runtime stabilization and hospitality operational expansion have reached a stable backend foundation.
 
-The current focus has shifted from backend-only semantic expansion to an integrated operational console phase:
+The current focus is the integrated operational console phase:
 
 - backend/frontend repository separation
 - frontend console foundation
@@ -13,7 +13,7 @@ The current focus has shifted from backend-only semantic expansion to an integra
 - Reservation Detail as the first vertical UI slice
 - Folio Detail as the first Billing workflow slice
 - Billing Audit as the first billing traceability validation surface
-- practical discovery of missing workflow, DTO, projection, audit, and linked-resource requirements through UI usage
+- practical discovery of missing workflow, DTO, projection, audit, linked-resource, and operational lifecycle requirements through UI usage
 
 The goal is not frontend completeness. The goal is to use a minimal console UI to expose operational gaps that are difficult to find from backend tests alone.
 
@@ -29,6 +29,11 @@ Current reservation and billing console validation has reached a stable checkpoi
 - Closed folios are reachable from Reservation Detail.
 - Reservation Detail → Folio Detail navigation is implemented and verified.
 - Folio Detail → Billing Audit visibility is implemented and verified.
+- Billing lifecycle foundation has reached a stable backend checkpoint.
+- Payment lifecycle validation is implemented.
+- Deposit lifecycle validation is implemented.
+- Invoice / Receivable lifecycle validation is implemented.
+- Billing audit reason and before/after correctness have been improved for the current scope.
 
 ---
 
@@ -110,11 +115,232 @@ Verified:
 
 ---
 
+## Billing Lifecycle Validation
+
+Billing lifecycle validation has reached a stable backend checkpoint.
+
+The current backend supports the core billing operational lifecycle needed for console inspection:
+
+Invoice / Receivable:
+
+- create_invoice
+- void_invoice
+- dispute_receivable
+- resolve_receivable_dispute
+- write_off_receivable
+- receivable detail
+- receivable aging
+
+Payment lifecycle:
+
+- receive_payment
+- allocate_existing_payment
+- reverse_payment_allocation
+- refund_payment
+
+Deposit lifecycle:
+
+- receive_deposit
+- apply_deposit_to_receivable
+- reverse_deposit_application
+- refund_deposit
+
+Current lifecycle model:
+
+Payment:
+
+```text
+receive_payment
+→ allocate_existing_payment
+→ reverse_payment_allocation
+→ refund_payment
+````
+
+Deposit:
+
+```text
+receive_deposit
+→ apply_deposit_to_receivable
+→ reverse_deposit_application
+→ refund_deposit
+```
+
+Implemented backend capabilities:
+
+* Payment lifecycle foundation.
+* Payment entity supports:
+
+  * unapplied_amount
+  * refunded_amount
+  * status
+* PaymentStatus supports:
+
+  * unapplied
+  * partially_applied
+  * applied
+  * partially_refunded
+  * refunded
+  * voided
+* `create_payment` now means receiving an unapplied payment.
+* `allocate_existing_payment` applies an existing payment to a receivable.
+* `reverse_payment_allocation` reverses payment allocation.
+* `refund_payment` refunds unapplied payment amount.
+* PaymentRefund entity and repository are implemented.
+* Payment refund table is implemented.
+
+Implemented Deposit capabilities:
+
+* Deposit lifecycle foundation.
+* Deposit entity supports:
+
+  * unapplied_amount
+  * refunded_amount
+  * status
+* DepositStatus supports:
+
+  * held
+  * partially_applied
+  * applied
+  * partially_refunded
+  * refunded
+  * forfeited
+  * voided
+* `create_deposit` means receiving a held deposit.
+* `apply_deposit_to_receivable` applies deposit amount to a receivable.
+* `reverse_deposit_application` reverses a deposit application.
+* `refund_deposit` refunds unapplied deposit amount.
+* DepositApplication entity and repository are implemented.
+* DepositRefund entity and repository are implemented.
+* Deposit application table is implemented.
+* Deposit refund table is implemented.
+
+Implemented audit actions:
+
+Payment:
+
+* `payment.receive`
+* `payment.allocate`
+* `payment.allocation.reverse`
+* `payment.refund`
+
+Deposit:
+
+* `deposit.receive`
+* `deposit.apply`
+* `deposit.application.reverse`
+* `deposit.refund`
+
+Invoice / Receivable:
+
+* `invoice.issue`
+* `invoice.void`
+* `receivable.dispute`
+* `receivable.dispute.resolve`
+* `receivable.write_off`
+
+Implemented operation types:
+
+* ReceivePayment
+* AllocateExistingPayment
+* ReversePaymentAllocation
+* RefundPayment
+* ReceiveDeposit
+* ApplyDepositToReceivable
+* ReverseDepositApplication
+* RefundDeposit
+* IssueInvoice
+* VoidInvoice
+* DisputeReceivable
+* ResolveReceivableDispute
+* WriteOffReceivable
+* AssignBillingAccount
+* CloseFolio
+
+Validated payment lifecycle:
+
+receive_payment:
+
+* operation_type: receive_payment
+* action: payment.receive
+* status: unapplied
+* unapplied_amount set to payment amount
+
+allocate_existing_payment:
+
+* operation_type: allocate_existing_payment
+* action: payment.allocate
+* payment_unapplied_amount changes to 0
+* payment_status changes to applied
+* receivable_outstanding_amount changes to 0
+* receivable_status changes to settled
+
+reverse_payment_allocation:
+
+* operation_type: reverse_payment_allocation
+* action: payment.allocation.reverse
+* allocation reversed_at changes from null to timestamp
+* payment_unapplied_amount is restored
+* payment_status is restored
+* receivable_outstanding_amount is restored
+* receivable_status is restored
+
+refund_payment:
+
+* operation_type: refund_payment
+* action: payment.refund
+* payment_refunded_amount changes from 0
+* payment_unapplied_amount decreases
+* payment_status changes to partially_refunded or refunded
+
+Validated deposit lifecycle:
+
+receive_deposit:
+
+* operation_type: receive_deposit
+* action: deposit.receive
+* status: held
+* unapplied_amount set to deposit amount
+
+apply_deposit_to_receivable:
+
+* operation_type: apply_deposit_to_receivable
+* action: deposit.apply
+* deposit_unapplied_amount decreases
+* deposit_status changes to partially_applied or applied
+* receivable_outstanding_amount decreases
+* receivable_status updates accordingly
+
+reverse_deposit_application:
+
+* operation_type: reverse_deposit_application
+* action: deposit.application.reverse
+* deposit_application_reversed_at changes from null to timestamp
+* deposit_unapplied_amount is restored
+* deposit_status is restored
+* receivable_outstanding_amount is restored
+* receivable_status is restored
+
+refund_deposit:
+
+* operation_type: refund_deposit
+* action: deposit.refund
+* deposit_refunded_amount changes from 0
+* deposit_unapplied_amount decreases
+* deposit_status changes to partially_refunded or refunded
+
+Confirmed refund_deposit validation:
+
+* deposit_refunded_amount: 0 → 1500
+* deposit_unapplied_amount: 5000 → 3500
+* deposit_status: held → partially_refunded
+
+---
+
 ## Billing Audit Workflow Validation
 
-Billing Audit Workflow Validation has reached a working console checkpoint.
+Billing Audit Workflow Validation has reached a stable console checkpoint.
 
-The console now supports the operational path:
+The console supports the operational path:
 
 Reservation Search
 → Reservation Detail
@@ -123,128 +349,183 @@ Reservation Search
 
 Billing Audit currently validates traceability for the main billing workflow:
 
-payment applied
+payment / deposit received
+→ payment / deposit allocated or applied
+→ allocation or application reversed
+→ payment / deposit refunded
 → billing account assigned
 → folio closed
 → invoice issued
 → invoice voided
+→ receivable disputed / resolved / written off
 
 Implemented backend capabilities:
 
-- Billing Audit API from Folio Detail.
-- `BillingAuditResponse` with business-readable display fields:
-  - amount
-  - payment_method
-  - payment_reference
-  - invoice_number
-  - issued_amount
-  - billing_account_id
-  - billing_account_name
-- operation event recording for:
-  - create_payment
-  - create_deposit
-  - create_invoice
-  - void_invoice
-  - assign_billing_account
-  - close_folio
-- billing account creation API.
-- close folio handler and route.
-- assign billing account request cleanup:
-  - `folio_id` is sourced from Path
-  - request body carries only `billing_account_id`
-- billing operation types:
-  - apply_payment
-  - receive_deposit
-  - assign_billing_account
-  - close_folio
-  - issue_invoice
-  - void_invoice
-- fixed operation type persistence typo:
-  - `assigun_billing_account` → `assign_billing_account`
+* Billing Audit API from Folio Detail.
+* `BillingAuditResponse` with business-readable display fields:
+
+  * amount
+  * payment_method
+  * payment_reference
+  * invoice_number
+  * issued_amount
+  * billing_account_id
+  * billing_account_name
+* operation event recording for:
+
+  * create_payment
+  * create_deposit
+  * allocate_existing_payment
+  * reverse_payment_allocation
+  * refund_payment
+  * apply_deposit_to_receivable
+  * reverse_deposit_application
+  * refund_deposit
+  * create_invoice
+  * void_invoice
+  * dispute_receivable
+  * resolve_receivable_dispute
+  * write_off_receivable
+  * assign_billing_account
+  * close_folio
+* billing account creation API.
+* close folio handler and route.
+* assign billing account request cleanup:
+
+  * `folio_id` is sourced from Path
+  * request body carries only `billing_account_id`
+* fixed operation type persistence typo:
+
+  * `assigun_billing_account` → `assign_billing_account`
 
 Implemented frontend capabilities:
 
-- Billing Audit section on Folio Detail.
-- Billing Audit table with business-readable columns:
-  - Amount
-  - Method
-  - Reference
-  - Invoice
-  - Billing Account
-  - Actor
-  - Source
-  - Reason
-  - Trace
-- Reservation Detail folio grouping:
-  - Active Folios
-  - Other Folios
-- Closed folios can be reached from Reservation Detail.
+* Billing Audit section on Folio Detail.
+* Billing Audit table with business-readable columns:
 
-Validated Billing Audit response for range reservation:
+  * Amount
+  * Method
+  * Reference
+  * Invoice
+  * Billing Account
+  * Actor
+  * Source
+  * Reason
+  * Trace
+* Reservation Detail folio grouping:
 
-- apply_payment
-- assign_billing_account
-- close_folio
-- issue_invoice
-- void_invoice
+  * Active Folios
+  * Other Folios
+* Closed folios can be reached from Reservation Detail.
+
+Validated Billing Audit response for billing lifecycle scenarios:
+
+* receive_payment
+* receive_deposit
+* allocate_existing_payment
+* reverse_payment_allocation
+* refund_payment
+* apply_deposit_to_receivable
+* reverse_deposit_application
+* refund_deposit
+* assign_billing_account
+* close_folio
+* issue_invoice
+* void_invoice
+* dispute_receivable
+* resolve_receivable_dispute
+* write_off_receivable
 
 Verified display fields:
 
-apply_payment:
+receive_payment / receive_deposit:
 
-- amount
-- payment_method
-- payment_reference
+* amount
+* payment_method
+* payment_reference
+
+payment allocation / refund:
+
+* payment_id
+* amount
+* before_json
+* after_json
+* changed_fields_json
+* reason
+
+deposit application / refund:
+
+* aggregate_id
+* amount
+* before_json
+* after_json
+* changed_fields_json
+* reason
 
 assign_billing_account:
 
-- billing_account_id
-- billing_account_name
+* billing_account_id
+* billing_account_name
 
 close_folio:
 
-- billing_account_id
-- billing_account_name
-- status transition
+* billing_account_id
+* billing_account_name
+* status transition
 
 issue_invoice:
 
-- invoice_number
-- issued_amount
-- billing_account_name
+* invoice_number
+* issued_amount
+* billing_account_name
+* receivable_id visibility from Invoice Detail
 
 void_invoice:
 
-- invoice_number
-- issued_amount
-- billing_account_name
+* invoice_number
+* issued_amount
+* billing_account_name
+* invoice status transition
+* receivable status transition
 
 Current Billing Audit response includes:
 
-- operation_id
-- folio_id
-- folio_entry_id
-- payment_id
-- invoice_id
-- aggregate_type
-- aggregate_id
-- operation_type
-- actor
-- actor_id
-- source
-- action
-- reason
-- amount
-- payment_method
-- payment_reference
-- invoice_number
-- issued_amount
-- billing_account_id
-- billing_account_name
-- before_json
-- after_json
-- changed_fields_json
-- occurred_at
+* operation_id
+* folio_id
+* folio_entry_id
+* payment_id
+* invoice_id
+* aggregate_type
+* aggregate_id
+* operation_type
+* actor
+* actor_id
+* source
+* action
+* reason
+* amount
+* payment_method
+* payment_reference
+* invoice_number
+* issued_amount
+* billing_account_id
+* billing_account_name
+* before_json
+* after_json
+* changed_fields_json
+* occurred_at
+
+Folio Audit resolution supports:
+
+* folio_entry → folio_id
+* payment → folio_id
+* payment_allocation → payment → folio_id
+* payment_refund → payment → folio_id
+* deposit → folio_id
+* deposit_application → deposit → folio_id
+* deposit_refund → deposit → folio_id
+* invoice → folio_id
+* receivable → invoice → folio_id
 
 ---
 
@@ -254,25 +535,25 @@ Reservation Detail now distinguishes between the backward-compatible active foli
 
 Existing field:
 
-- `linked_resources.folio_id`
+* `linked_resources.folio_id`
 
 Meaning:
 
-- Open / Locked representative folio.
-- Used for backward compatibility and active folio visibility.
+* Open / Locked representative folio.
+* Used for backward compatibility and active folio visibility.
 
 New field:
 
-- `folios`
+* `folios`
 
 Meaning:
 
-- All folios linked to the reservation, including Closed folios.
+* All folios linked to the reservation, including Closed folios.
 
 Console display:
 
-- Active Folios
-- Other Folios
+* Active Folios
+* Other Folios
 
 This resolves the issue where closed folios disappeared from Reservation Detail after invoice workflow validation.
 
@@ -282,53 +563,78 @@ This resolves the issue where closed folios disappeared from Reservation Detail 
 
 Console validation seed scenarios are available for:
 
-- confirmed
-- modified
-- cancelled
-- no_show
-- reinstated
-- range search
-- room assigned
-- room unassigned
-- note
-- trace
-- room charge
-- tax charge
-- deposit
-- payment
-- manual adjustment
-- balance validation
-- billing account creation
-- billing account assignment
-- folio close
-- invoice issue
-- invoice void
-- billing audit traceability
+* confirmed
+* modified
+* cancelled
+* no_show
+* reinstated
+* range search
+* room assigned
+* room unassigned
+* note
+* trace
+* room charge
+* tax charge
+* deposit received
+* payment received
+* manual adjustment
+* balance validation
+* billing account creation
+* billing account assignment
+* folio close
+* invoice issue
+* invoice void
+* receivable dispute
+* receivable dispute resolve
+* receivable write-off
+* payment allocation
+* payment allocation reverse
+* payment refund
+* deposit application
+* deposit application reverse
+* deposit refund
+* billing audit traceability
 
-These seeds are used to validate Search, Detail, room assignment lifecycle, audit visibility, operation event visibility, linked-resource visibility, billing visibility, invoice visibility, and balance calculation.
+These seeds are used to validate Search, Detail, room assignment lifecycle, audit visibility, operation event visibility, linked-resource visibility, billing visibility, invoice visibility, receivable visibility, payment/deposit lifecycle visibility, and balance calculation.
 
 Current Billing validation seed expectations:
 
 confirmed reservation:
 
-- charges 13200
-- payments 5000
-- balance 8200
-- audit: receive_deposit
+* charges 13200
+* payments 5000
+* balance 8200
+* audit: receive_deposit
 
 range reservation:
 
-- charges 20000
-- payments 20000
-- balance 0
-- audit: apply_payment + assign_billing_account + close_folio + issue_invoice + void_invoice
+* charges 20000
+* payments 20000
+* balance 0
+* audit:
+
+  * apply_payment
+  * assign_billing_account
+  * close_folio
+  * issue_invoice
+  * void_invoice
 
 past reservation:
 
-- charges 8000
-- payments 8000
-- balance 0
-- audit: apply_payment
+* charges 8000
+* payments 8000
+* balance 0
+* audit: apply_payment
+
+payment/deposit lifecycle validation:
+
+* payment.receive
+* payment.allocate
+* payment.refund
+* deposit.receive
+* deposit.apply
+* deposit.application.reverse
+* deposit.refund
 
 ---
 
@@ -348,94 +654,78 @@ This slice validated that billing workflows can be traced through operation even
 
 Confirmed visible from the UI:
 
-- reservation summary
-- booking_channel
-- source_channel
-- room assignment status
-- participants
-- participant details
-- linked resources
-- active folio link
-- all folio links
-- closed folio links
-- notes
-- traces
-- audit logs
-- operation events
-- folio entries
-- room charges
-- tax charges
-- deposits
-- payments
-- balance
-- billing audit events
-- billing account assignment
-- folio close
-- invoice issue
-- invoice void
-- payment method
-- payment reference
-- invoice number
-- billing account name
+* reservation summary
+* booking_channel
+* source_channel
+* room assignment status
+* participants
+* participant details
+* linked resources
+* active folio link
+* all folio links
+* closed folio links
+* notes
+* traces
+* audit logs
+* operation events
+* folio entries
+* room charges
+* tax charges
+* deposits
+* payments
+* balance
+* billing audit events
+* billing account assignment
+* folio close
+* invoice issue
+* invoice void
+* payment lifecycle events
+* deposit lifecycle events
+* receivable lifecycle events
+* payment method
+* payment reference
+* invoice number
+* billing account name
+* operation reason
+* before/after changes
 
 The purpose remains discovery of missing backend capability, not final UI design.
 
 ---
 
-## Current Expansion Areas
+## Current Stable Areas
 
-Good next areas:
+Stable backend foundations:
 
-- Billing audit reason handling
-- Void invoice before/after correction
-- Payment detail visibility
-- Invoice detail visibility
-- Payment Detail navigation
-- Invoice Detail navigation
-- Billing Audit read model / projection decision
-- OperationContext propagation from handlers
-- Guest Detail after Folio Detail
-- Reservation Detail → Guest Detail navigation
+* projection runtime and topology orchestration
+* transaction ownership rules
+* repository transaction behavior
+* explicit enum snake_case persistence
+* operational/projection authority separation
+* backend as semantic authority
+* linked-resource separation between active representative link and all linked resources
+* Reservation Search MVP
+* Reservation Detail workflow validation
+* Folio Detail workflow validation
+* Billing Audit workflow validation
+* Billing lifecycle command foundation
+* Payment lifecycle foundation
+* Deposit lifecycle foundation
+* Invoice / Receivable lifecycle foundation
 
-Areas that should remain stable:
+Stable Billing lifecycle capabilities:
 
-- projection runtime and topology orchestration
-- transaction ownership rules
-- repository transaction behavior
-- explicit enum snake_case persistence
-- operational/projection authority separation
-- backend as semantic authority
-- linked-resource separation between active representative link and all linked resources
+* Payment receive / allocate / reverse allocation / refund
+* Deposit receive / apply / reverse application / refund
+* Invoice issue / void
+* Receivable dispute / resolve / write-off
+* Folio close
+* Billing account assignment
+* Folio Audit traceability
 
 ---
 
 ## Current Known Gaps
-
-### Void invoice changed fields
-
-`void_invoice.changed_fields_json.receivable_status.before_value` is currently `null`.
-
-Current:
-
-- receivable_status: null → voided
-
-Target:
-
-- receivable_status: open → voided
-
-### Reason handling
-
-`reason` is currently mostly `null`.
-
-Reason should become required or strongly encouraged for high-risk billing operations:
-
-- void_invoice
-- manual_adjustment
-- refund
-- write_off
-- reopen_folio
-- payment reversal
-- receivable dispute
 
 ### Billing Audit query model
 
@@ -445,22 +735,22 @@ This is acceptable for validation.
 
 Later candidates:
 
-- `billing_audit_items` projection
+* `billing_audit_items` projection
 
 or normalized trace columns on operation events:
 
-- folio_id
-- folio_entry_id
-- payment_id
-- invoice_id
-- billing_account_id
+* folio_id
+* folio_entry_id
+* payment_id
+* invoice_id
+* billing_account_id
 
 ### Actor / source handling
 
 Actor/source are still mostly:
 
-- actor = system
-- source = api
+* actor = system
+* source = api
 
 Later, handlers should pass explicit `OperationContext`.
 
@@ -470,47 +760,100 @@ Payment Detail and Invoice Detail links are not implemented yet.
 
 Audit rows expose `payment_id` and `invoice_id`, but there is no detail page navigation yet.
 
+### Billing UI operation forms
+
+Billing lifecycle backend commands exist, but not all of them have dedicated console operation forms.
+
+Examples:
+
+* payment refund
+* payment allocation reverse
+* deposit application
+* deposit application reverse
+* deposit refund
+* receivable dispute / resolve / write-off
+
+These are currently validated mainly through API seed and audit inspection.
+
+### Deposit forfeit / void
+
+Deposit status supports forfeited and voided, but forfeit / void workflows are not yet implemented as operational commands.
+
 ---
 
 ## Next Phase
 
 Next phase:
 
-Billing Audit Workflow Validation continued
+Room / Housekeeping Workflow Validation
 
 Primary objective:
 
-Use Folio Detail and Billing Audit as operational inspection surfaces to validate billing traceability.
+Use the operational console to validate Room and Housekeeping workflows after Billing lifecycle validation has reached a stable checkpoint.
 
-Focus areas:
+The next focus should start with a current-state review of:
 
-- reason handling
-- before/after correctness
-- payment traceability
-- invoice traceability
-- actor visibility
-- operation source visibility
-- detail navigation
-- eventual read model / projection boundary
+* Room entity
+* RoomDailyState
+* Room status / room assignment semantics
+* Stay / Reservation / Room linkage
+* Housekeeping task model
+* Housekeeping operational commands
+* Housekeeping console visibility
+* Room state changes caused by check-in / check-out / housekeeping work
 
-The objective is to answer:
+Likely validation surfaces:
 
-- Why did this balance occur?
-- Who created the entry?
-- When was it created?
-- Which workflow created it?
-- Which payment or invoice is related?
-- Why was a high-risk billing operation performed?
+* Room list
+* Room detail
+* Housekeeping task list
+* Housekeeping task detail
+* Reservation Detail → Room visibility
+* Room → current stay / reservation visibility
+
+Initial questions:
+
+* What is the authoritative source for current room state?
+* How does room assignment affect operational room visibility?
+* How does check-in affect room occupancy?
+* How does check-out affect dirty/clean status?
+* What lifecycle should housekeeping tasks follow?
+* Which room states should be operational state versus projection/read model?
+* Which state transitions require audit and reason?
+
+Candidate lifecycle scope:
+
+Room:
+
+* room created
+* room assigned
+* room unassigned
+* room occupied
+* room vacated
+* room marked dirty
+* room marked clean
+* room inspected
+* room out_of_order
+* room returned_to_service
+
+Housekeeping:
+
+* task created
+* task assigned
+* task started
+* task completed
+* task inspected
+* task reopened
 
 The goal remains discovery of missing:
 
-- workflow
-- business logic
-- navigation
-- events
-- DTO fields
-- query models
-- projections
-- operational data
+* workflow
+* business logic
+* navigation
+* events
+* DTO fields
+* query models
+* projections
+* operational data
 
 Do not over-polish the UI.

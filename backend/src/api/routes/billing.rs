@@ -11,28 +11,22 @@ use crate::api::{
         },
         deposit::{
             apply_deposit_to_receivable::apply_deposit_to_receivable_handler,
-            create_deposit::create_deposit_handler,
+            create_deposit::create_deposit_handler, refund_deposit::refund_deposit_handler,
             reverse_deposit_application::reverse_deposit_application_handler,
         },
         folio::{
-            close_folio::close_folio_handler,
-            create_folio_entry::create_folio_entry_handler,
-            folio_audit::get_folio_audit_handler,
-            folio_query::get_folio_handler,
+            close_folio::close_folio_handler, create_folio_entry::create_folio_entry_handler,
+            folio_audit::get_folio_audit_handler, folio_query::get_folio_handler,
             open_reservation_folio::open_reservation_folio_handler,
         },
         invoice::{
             create_invoice::create_invoice_handler,
-            invoice_query::{
-                get_invoice_handler,
-                list_billing_account_invoices_handler,
-            },
+            invoice_query::{get_invoice_handler, list_billing_account_invoices_handler},
             void_invoice::void_invoice_handler,
         },
         payment::{
             allocate_existing_payment::allocate_existing_payment_handler,
-            create_payment::create_payment_handler,
-            refund_payment::refund_payment_handler,
+            create_payment::create_payment_handler, refund_payment::refund_payment_handler,
             reverse_payment_allocation::reverse_payment_allocation_handler,
         },
         receivable::{
@@ -40,8 +34,7 @@ use crate::api::{
             receivable_detail::get_receivable_handler,
             receivable_query::get_receivable_aging_handler,
             update_receivable_status::{
-                dispute_receivable_handler,
-                resolve_receivable_dispute_handler,
+                dispute_receivable_handler, resolve_receivable_dispute_handler,
                 write_off_receivable_handler,
             },
         },
@@ -107,5 +100,9 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/deposits/:id/applications",
             post(apply_deposit_to_receivable_handler),
+        )
+        .route(
+            "/deposits/:deposit_id/refunds",
+            post(refund_deposit_handler),
         )
 }

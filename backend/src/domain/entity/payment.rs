@@ -146,10 +146,7 @@ impl Payment {
         Ok(())
     }
 
-    pub fn refund(
-        &mut self,
-        amount: Decimal,
-    ) -> Result<(), String> {
+    pub fn refund(&mut self, amount: Decimal) -> Result<(), String> {
         if amount <= Decimal::ZERO {
             return Err("refund amount must be positive".into());
         }

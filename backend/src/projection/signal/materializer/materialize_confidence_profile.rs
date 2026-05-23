@@ -44,6 +44,7 @@ pub async fn materialize_confidence_profile(
         | OperationType::IssueInvoice
         | OperationType::VoidInvoice
         | OperationType::RefundPayment
+        | OperationType::RefundDeposit
         | OperationType::CloseFolio
         | OperationType::ReopenFolio
         | OperationType::WriteOffReceivable

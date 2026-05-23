@@ -93,6 +93,7 @@ pub async fn materialize_semantic_activation(
         | OperationType::IssueInvoice
         | OperationType::VoidInvoice
         | OperationType::RefundPayment
+        | OperationType::RefundDeposit
         | OperationType::CloseFolio
         | OperationType::ReopenFolio
         | OperationType::WriteOffReceivable

@@ -51,6 +51,7 @@ pub enum OperationType {
     VoidInvoice,
 
     RefundPayment,
+    RefundDeposit,
 
     CloseFolio,
     ReopenFolio,
@@ -88,6 +89,7 @@ impl OperationType {
             Self::VoidInvoice => "void_invoice",
 
             Self::RefundPayment => "refund_payment",
+            Self::RefundDeposit => "refund_deposit",
 
             Self::CloseFolio => "close_folio",
             Self::ReopenFolio => "reopen_folio",
@@ -118,7 +120,9 @@ impl OperationType {
 
             "issue_invoice" => Some(Self::IssueInvoice),
             "void_invoice" => Some(Self::VoidInvoice),
+
             "refund_payment" => Some(Self::RefundPayment),
+            "refund_deposit" => Some(Self::RefundDeposit),
 
             "assign_billing_account" => Some(Self::AssignBillingAccount),
             "reverse_deposit_application" => Some(Self::ReverseDepositApplication),

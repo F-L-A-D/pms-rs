@@ -6,23 +6,23 @@ use serde::Serialize;
 
 use uuid::Uuid;
 
-use crate::domain::entity::payment_refund::PaymentRefund;
+use crate::domain::entity::deposit_refund::DepositRefund;
 
 #[derive(Debug, Serialize)]
-pub struct PaymentRefundResponse {
+pub struct DepositRefundResponse {
     pub id: Uuid,
-    pub payment_id: Uuid,
+    pub deposit_id: Uuid,
     pub amount: Decimal,
     pub reason: Option<String>,
     pub refunded_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
 }
 
-impl From<PaymentRefund> for PaymentRefundResponse {
-    fn from(value: PaymentRefund) -> Self {
+impl From<DepositRefund> for DepositRefundResponse {
+    fn from(value: DepositRefund) -> Self {
         Self {
             id: value.id,
-            payment_id: value.payment_id,
+            deposit_id: value.deposit_id,
             amount: value.amount,
             reason: value.reason,
             refunded_at: value.refunded_at,

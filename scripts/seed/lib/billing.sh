@@ -270,3 +270,19 @@ reverse_deposit_application() {
       \"reason\": \"${reason}\"
     }"
 }
+
+refund_deposit() {
+  local deposit_id="$1"
+  local amount="$2"
+  local reason="$3"
+
+  curl -sS \
+    -X POST \
+    "${API_BASE_URL}/deposits/${deposit_id}/refunds" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"amount\": \"${amount}\",
+      \"reason\": \"${reason}\"
+    }"
+}

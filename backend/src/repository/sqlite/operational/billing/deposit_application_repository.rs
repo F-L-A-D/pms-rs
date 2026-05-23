@@ -76,25 +76,18 @@ impl SqliteDepositApplicationRepository {
     }
 }
 
-fn row_to_deposit_application(
-    row: sqlx::sqlite::SqliteRow,
-) -> AppResult<DepositApplication> {
+fn row_to_deposit_application(row: sqlx::sqlite::SqliteRow) -> AppResult<DepositApplication> {
     let id: String = row.try_get("id").map_err(infra)?;
 
-    let deposit_id: String =
-        row.try_get("deposit_id").map_err(infra)?;
+    let deposit_id: String = row.try_get("deposit_id").map_err(infra)?;
 
-    let receivable_id: String =
-        row.try_get("receivable_id").map_err(infra)?;
+    let receivable_id: String = row.try_get("receivable_id").map_err(infra)?;
 
-    let amount: String =
-        row.try_get("amount").map_err(infra)?;
+    let amount: String = row.try_get("amount").map_err(infra)?;
 
-    let applied_at: String =
-        row.try_get("applied_at").map_err(infra)?;
+    let applied_at: String = row.try_get("applied_at").map_err(infra)?;
 
-    let reversed_at: Option<String> =
-        row.try_get("reversed_at").map_err(infra)?;
+    let reversed_at: Option<String> = row.try_get("reversed_at").map_err(infra)?;
 
     Ok(DepositApplication {
         id: Uuid::parse_str(&id).map_err(infra)?,
@@ -106,8 +99,7 @@ fn row_to_deposit_application(
             .with_timezone(&Utc),
         reversed_at: reversed_at
             .map(|value| {
-                DateTime::parse_from_rfc3339(&value)
-                    .map(|parsed| parsed.with_timezone(&Utc))
+                DateTime::parse_from_rfc3339(&value).map(|parsed| parsed.with_timezone(&Utc))
             })
             .transpose()
             .map_err(infra)?,

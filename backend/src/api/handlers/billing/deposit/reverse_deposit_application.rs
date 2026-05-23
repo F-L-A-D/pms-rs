@@ -24,9 +24,7 @@ pub async fn reverse_deposit_application_handler(
     Path(id): Path<String>,
     Json(request): Json<ReverseDepositApplicationRequest>,
 ) -> Result<StatusCode, ApiError> {
-    let deposit_application_id =
-        Uuid::parse_str(&id)
-            .map_err(|e| map_app_error(validation(e)))?;
+    let deposit_application_id = Uuid::parse_str(&id).map_err(|e| map_app_error(validation(e)))?;
 
     reverse_deposit_application::execute(
         &state.db,

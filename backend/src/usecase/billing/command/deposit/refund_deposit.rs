@@ -5,10 +5,10 @@ use rust_decimal::Decimal;
 use uuid::Uuid;
 
 use crate::{
-    api::dto::billing::input::refund_payment_input::RefundPaymentInput,
+    api::dto::billing::input::refund_deposit_input::RefundDepositInput,
     db::connection::Db,
     domain::{
-        entity::payment_refund::PaymentRefund,
+        entity::deposit_refund::DepositRefund,
         semantic::{
             operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
             operation_context::OperationContext,
@@ -17,50 +17,50 @@ use crate::{
     error::app_error::{conflict, infra, not_found, validation, AppResult},
     repository::sqlite::operational::{
         billing::{
-            payment_refund_repository::SqlitePaymentRefundRepository,
-            payment_repository::SqlitePaymentRepository,
+            deposit_refund_repository::SqliteDepositRefundRepository,
+            deposit_repository::SqliteDepositRepository,
         },
         operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
     },
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
-pub async fn execute(db: &Db, input: RefundPaymentInput) -> AppResult<PaymentRefund> {
+pub async fn execute(db: &Db, input: RefundDepositInput) -> AppResult<DepositRefund> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
         if input.amount <= Decimal::ZERO {
-            return Err(validation("refund amount must be positive"));
+            return Err(validation("deposit refund amount must be positive"));
         }
 
-        let mut payment = SqlitePaymentRepository::find_by_id(&mut tx, input.payment_id)
+        let mut deposit = SqliteDepositRepository::find_by_id(&mut tx, input.deposit_id)
             .await?
-            .ok_or_else(|| not_found("payment not found"))?;
+            .ok_or_else(|| not_found("deposit not found"))?;
 
-        let before_refunded_amount = payment.refunded_amount;
+        let before_refunded_amount = deposit.refunded_amount;
 
-        let before_unapplied_amount = payment.unapplied_amount;
+        let before_unapplied_amount = deposit.unapplied_amount;
 
-        let before_payment_status = payment.status;
+        let before_deposit_status = deposit.status;
 
         let before_json = serde_json::json!({
-            "payment_id": payment.id,
-            "folio_id": payment.folio_id,
-            "amount": payment.amount,
+            "deposit_id": deposit.id,
+            "folio_id": deposit.folio_id,
+            "amount": deposit.amount,
             "refund_amount": input.amount,
-            "refunded_amount": payment.refunded_amount,
-            "unapplied_amount": payment.unapplied_amount,
-            "payment_status": payment.status,
+            "refunded_amount": deposit.refunded_amount,
+            "unapplied_amount": deposit.unapplied_amount,
+            "deposit_status": deposit.status,
         })
         .to_string();
 
-        payment.refund(input.amount).map_err(conflict)?;
+        deposit.refund(input.amount).map_err(conflict)?;
 
         let now = Utc::now();
 
-        let refund = PaymentRefund::new(
+        let refund = DepositRefund::new(
             Uuid::new_v4(),
-            payment.id,
+            deposit.id,
             input.amount,
             input.reason.clone(),
             now,
@@ -68,39 +68,39 @@ pub async fn execute(db: &Db, input: RefundPaymentInput) -> AppResult<PaymentRef
         )
         .map_err(conflict)?;
 
-        SqlitePaymentRepository::save(&mut tx, &payment).await?;
+        SqliteDepositRepository::save(&mut tx, &deposit).await?;
 
-        SqlitePaymentRefundRepository::save(&mut tx, &refund).await?;
+        SqliteDepositRefundRepository::save(&mut tx, &refund).await?;
 
         let context = OperationContext::api_system();
 
         let after_json = serde_json::json!({
-            "payment_refund_id": refund.id,
-            "payment_id": payment.id,
-            "folio_id": payment.folio_id,
-            "amount": payment.amount,
+            "deposit_refund_id": refund.id,
+            "deposit_id": deposit.id,
+            "folio_id": deposit.folio_id,
+            "amount": deposit.amount,
             "refund_amount": refund.amount,
-            "refunded_amount": payment.refunded_amount,
-            "unapplied_amount": payment.unapplied_amount,
-            "payment_status": payment.status,
+            "refunded_amount": deposit.refunded_amount,
+            "unapplied_amount": deposit.unapplied_amount,
+            "deposit_status": deposit.status,
         })
         .to_string();
 
         let changed_fields_json = serde_json::to_string(&vec![
             ChangedField::new(
-                "payment_refunded_amount",
+                "deposit_refunded_amount",
                 Some(before_refunded_amount.to_string()),
-                Some(payment.refunded_amount.to_string()),
+                Some(deposit.refunded_amount.to_string()),
             ),
             ChangedField::new(
-                "payment_unapplied_amount",
+                "deposit_unapplied_amount",
                 Some(before_unapplied_amount.to_string()),
-                Some(payment.unapplied_amount.to_string()),
+                Some(deposit.unapplied_amount.to_string()),
             ),
             ChangedField::new(
-                "payment_status",
-                Some(before_payment_status.to_snake().to_string()),
-                Some(payment.status.to_snake().to_string()),
+                "deposit_status",
+                Some(before_deposit_status.to_snake().to_string()),
+                Some(deposit.status.to_snake().to_string()),
             ),
         ])
         .map_err(infra)?;
@@ -108,9 +108,9 @@ pub async fn execute(db: &Db, input: RefundPaymentInput) -> AppResult<PaymentRef
         let operation_event = OperationChangeEvent {
             id: Uuid::new_v4(),
             operation_id: context.operation_id,
-            aggregate_type: "payment".to_string(),
-            aggregate_id: payment.id,
-            operation_type: OperationType::RefundPayment,
+            aggregate_type: "deposit".to_string(),
+            aggregate_id: deposit.id,
+            operation_type: OperationType::RefundDeposit,
             actor: context.actor,
             actor_id: context.actor_id.clone(),
             source: context.source,
@@ -126,9 +126,9 @@ pub async fn execute(db: &Db, input: RefundPaymentInput) -> AppResult<PaymentRef
             &mut tx,
             &context,
             RecordAuditLogInput {
-                aggregate_type: "payment".to_string(),
-                aggregate_id: payment.id,
-                action: "payment.refund".to_string(),
+                aggregate_type: "deposit".to_string(),
+                aggregate_id: deposit.id,
+                action: "deposit.refund".to_string(),
                 before_json: Some(before_json),
                 after_json,
                 changed_fields_json,

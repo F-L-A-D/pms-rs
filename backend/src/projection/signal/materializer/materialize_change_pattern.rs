@@ -58,6 +58,7 @@ pub async fn materialize_change_pattern(
         | OperationType::IssueInvoice
         | OperationType::VoidInvoice
         | OperationType::RefundPayment
+        | OperationType::RefundDeposit
         | OperationType::CloseFolio
         | OperationType::ReopenFolio
         | OperationType::WriteOffReceivable

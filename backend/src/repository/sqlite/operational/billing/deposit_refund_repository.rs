@@ -7,19 +7,19 @@ use sqlx::{Row, Sqlite, Transaction};
 use uuid::Uuid;
 
 use crate::{
-    domain::entity::payment_refund::PaymentRefund,
+    domain::entity::deposit_refund::DepositRefund,
     error::app_error::{infra, AppResult},
 };
 
-pub struct SqlitePaymentRefundRepository;
+pub struct SqliteDepositRefundRepository;
 
-impl SqlitePaymentRefundRepository {
-    pub async fn save(tx: &mut Transaction<'_, Sqlite>, refund: &PaymentRefund) -> AppResult<()> {
+impl SqliteDepositRefundRepository {
+    pub async fn save(tx: &mut Transaction<'_, Sqlite>, refund: &DepositRefund) -> AppResult<()> {
         sqlx::query(
             r#"
-            INSERT INTO payment_refunds (
+            INSERT INTO deposit_refunds (
                 id,
-                payment_id,
+                deposit_id,
                 amount,
                 reason,
                 refunded_at,
@@ -29,7 +29,7 @@ impl SqlitePaymentRefundRepository {
             "#,
         )
         .bind(refund.id.to_string())
-        .bind(refund.payment_id.to_string())
+        .bind(refund.deposit_id.to_string())
         .bind(refund.amount.to_string())
         .bind(refund.reason.as_deref())
         .bind(refund.refunded_at.to_rfc3339())
@@ -44,17 +44,17 @@ impl SqlitePaymentRefundRepository {
     pub async fn find_by_id(
         tx: &mut Transaction<'_, Sqlite>,
         id: Uuid,
-    ) -> AppResult<Option<PaymentRefund>> {
+    ) -> AppResult<Option<DepositRefund>> {
         let row = sqlx::query(
             r#"
             SELECT
                 id,
-                payment_id,
+                deposit_id,
                 amount,
                 reason,
                 refunded_at,
                 created_at
-            FROM payment_refunds
+            FROM deposit_refunds
             WHERE id = ?
             "#,
         )
@@ -66,11 +66,11 @@ impl SqlitePaymentRefundRepository {
         row.map(Self::from_row).transpose()
     }
 
-    fn from_row(row: sqlx::sqlite::SqliteRow) -> AppResult<PaymentRefund> {
+    fn from_row(row: sqlx::sqlite::SqliteRow) -> AppResult<DepositRefund> {
         let id = Uuid::parse_str(row.get::<String, _>("id").as_str()).map_err(infra)?;
 
-        let payment_id =
-            Uuid::parse_str(row.get::<String, _>("payment_id").as_str()).map_err(infra)?;
+        let deposit_id =
+            Uuid::parse_str(row.get::<String, _>("deposit_id").as_str()).map_err(infra)?;
 
         let amount = row
             .get::<String, _>("amount")
@@ -86,9 +86,9 @@ impl SqlitePaymentRefundRepository {
             .map_err(infra)?
             .with_timezone(&Utc);
 
-        PaymentRefund::new(
+        DepositRefund::new(
             id,
-            payment_id,
+            deposit_id,
             amount,
             row.get::<Option<String>, _>("reason"),
             refunded_at,

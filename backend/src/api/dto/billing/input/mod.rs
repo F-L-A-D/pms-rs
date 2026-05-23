@@ -1,6 +1,6 @@
-pub mod apply_deposit_to_receivable_input;
 pub mod allocate_existing_payment_input;
 pub mod allocate_receivable_payment_input;
+pub mod apply_deposit_to_receivable_input;
 pub mod assign_billing_account_input;
 pub mod close_folio_input;
 pub mod create_billing_account_input;
@@ -9,5 +9,6 @@ pub mod create_folio_entry_input;
 pub mod create_invoice_input;
 pub mod create_payment_input;
 pub mod open_reservation_folio_input;
+pub mod refund_deposit_input;
 pub mod refund_payment_input;
 pub mod reverse_deposit_application_input;

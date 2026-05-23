@@ -1,6 +1,7 @@
 pub mod billing_account_response;
 pub mod billing_audit_response;
 pub mod deposit_application_response;
+pub mod deposit_refund_response;
 pub mod deposit_response;
 pub mod folio_detail_response;
 pub mod folio_entry_response;

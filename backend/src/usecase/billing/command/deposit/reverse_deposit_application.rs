@@ -8,13 +8,9 @@ use crate::{
     domain::{
         entity::receivable::ReceivableStatus,
         semantic::{
-            operation_change_event::{
-                ChangedField, OperationChangeEvent, OperationType,
-            },
+            operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
             operation_context::OperationContext,
-            settlement_transition::{
-                SettlementTransition, SettlementTransitionType,
-            },
+            settlement_transition::{SettlementTransition, SettlementTransitionType},
         },
     },
     error::app_error::{conflict, infra, not_found, AppResult},
@@ -30,51 +26,32 @@ use crate::{
             operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
         },
     },
-    usecase::audit::command::record_audit_log::{
-        record_audit_log, RecordAuditLogInput,
-    },
+    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
 };
 
-pub async fn execute(
-    db: &Db,
-    input: ReverseDepositApplicationInput,
-) -> AppResult<()> {
+pub async fn execute(db: &Db, input: ReverseDepositApplicationInput) -> AppResult<()> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
         let mut application =
-            SqliteDepositApplicationRepository::find_by_id(
-                &mut tx,
-                input.deposit_application_id,
-            )
-            .await?
-            .ok_or_else(|| not_found("deposit application not found"))?;
+            SqliteDepositApplicationRepository::find_by_id(&mut tx, input.deposit_application_id)
+                .await?
+                .ok_or_else(|| not_found("deposit application not found"))?;
 
         if application.reversed_at.is_some() {
             return Err(conflict("deposit application already reversed"));
         }
 
-        let mut deposit =
-            SqliteDepositRepository::find_by_id(
-                &mut tx,
-                application.deposit_id,
-            )
+        let mut deposit = SqliteDepositRepository::find_by_id(&mut tx, application.deposit_id)
             .await?
             .ok_or_else(|| not_found("deposit not found"))?;
 
         let mut receivable =
-            SqliteReceivableRepository::find_by_id(
-                &mut tx,
-                application.receivable_id,
-            )
-            .await?
-            .ok_or_else(|| not_found("receivable not found"))?;
+            SqliteReceivableRepository::find_by_id(&mut tx, application.receivable_id)
+                .await?
+                .ok_or_else(|| not_found("receivable not found"))?;
 
-        let invoice =
-            SqliteInvoiceRepository::find_by_id(
-                &mut tx,
-                receivable.invoice_id,
-            )
+        let invoice = SqliteInvoiceRepository::find_by_id(&mut tx, receivable.invoice_id)
             .await?
             .ok_or_else(|| not_found("invoice not found"))?;
 
@@ -108,107 +85,79 @@ pub async fn execute(
 
         let before_reversed_at = application.reversed_at;
 
-        let before_deposit_unapplied_amount =
-            deposit.unapplied_amount;
+        let before_deposit_unapplied_amount = deposit.unapplied_amount;
 
-        let before_deposit_status =
-            deposit.status;
+        let before_deposit_status = deposit.status;
 
-        let before_receivable_status =
-            receivable.status;
+        let before_receivable_status = receivable.status;
 
-        let before_receivable_outstanding_amount =
-            receivable.outstanding_amount;
+        let before_receivable_outstanding_amount = receivable.outstanding_amount;
 
-        let before_json =
-            serde_json::json!({
-                "deposit_application_id": application.id,
-                "deposit_id": application.deposit_id,
-                "receivable_id": application.receivable_id,
-                "folio_id": invoice.folio_id,
-                "application_amount": application.amount,
-                "deposit_application_reversed_at": application.reversed_at,
-                "deposit_unapplied_amount": deposit.unapplied_amount,
-                "deposit_status": deposit.status,
-                "receivable_outstanding_amount": receivable.outstanding_amount,
-                "receivable_status": receivable.status,
-            })
-            .to_string();
+        let before_json = serde_json::json!({
+            "deposit_application_id": application.id,
+            "deposit_id": application.deposit_id,
+            "receivable_id": application.receivable_id,
+            "folio_id": invoice.folio_id,
+            "application_amount": application.amount,
+            "deposit_application_reversed_at": application.reversed_at,
+            "deposit_unapplied_amount": deposit.unapplied_amount,
+            "deposit_status": deposit.status,
+            "receivable_outstanding_amount": receivable.outstanding_amount,
+            "receivable_status": receivable.status,
+        })
+        .to_string();
 
         deposit
             .reverse_application(application.amount)
             .map_err(conflict)?;
 
-        application
-            .reverse(Utc::now())
-            .map_err(conflict)?;
+        application.reverse(Utc::now()).map_err(conflict)?;
 
-        let new_outstanding_amount =
-            receivable.outstanding_amount + application.amount;
+        let new_outstanding_amount = receivable.outstanding_amount + application.amount;
 
-        receivable.reopen_with_outstanding_amount(
-            new_outstanding_amount,
-        );
+        receivable.reopen_with_outstanding_amount(new_outstanding_amount);
 
-        SqliteDepositRepository::save(
-            &mut tx,
-            &deposit,
-        )
-        .await?;
+        SqliteDepositRepository::save(&mut tx, &deposit).await?;
 
-        SqliteDepositApplicationRepository::save(
-            &mut tx,
-            &application,
-        )
-        .await?;
+        SqliteDepositApplicationRepository::save(&mut tx, &application).await?;
 
-        SqliteReceivableRepository::save(
-            &mut tx,
-            &receivable,
-        )
-        .await?;
+        SqliteReceivableRepository::save(&mut tx, &receivable).await?;
 
         SqliteSettlementTransitionRepository::save(
             &mut tx,
             &SettlementTransition {
                 id: Uuid::new_v4(),
                 receivable_id: receivable.id,
-                transition_type:
-                    SettlementTransitionType::DepositApplicationReversed,
+                transition_type: SettlementTransitionType::DepositApplicationReversed,
                 amount: application.amount,
                 occurred_at: Utc::now(),
             },
         )
         .await?;
 
-        let context =
-            OperationContext::api_system();
+        let context = OperationContext::api_system();
 
-        let after_json =
-            serde_json::json!({
-                "deposit_application_id": application.id,
-                "deposit_id": application.deposit_id,
-                "receivable_id": application.receivable_id,
-                "folio_id": invoice.folio_id,
-                "application_amount": application.amount,
-                "deposit_application_reversed_at": application.reversed_at,
-                "deposit_unapplied_amount": deposit.unapplied_amount,
-                "deposit_status": deposit.status,
-                "receivable_outstanding_amount": receivable.outstanding_amount,
-                "receivable_status": receivable.status,
-            })
-            .to_string();
+        let after_json = serde_json::json!({
+            "deposit_application_id": application.id,
+            "deposit_id": application.deposit_id,
+            "receivable_id": application.receivable_id,
+            "folio_id": invoice.folio_id,
+            "application_amount": application.amount,
+            "deposit_application_reversed_at": application.reversed_at,
+            "deposit_unapplied_amount": deposit.unapplied_amount,
+            "deposit_status": deposit.status,
+            "receivable_outstanding_amount": receivable.outstanding_amount,
+            "receivable_status": receivable.status,
+        })
+        .to_string();
 
-        let mut changed_fields =
-            Vec::new();
+        let mut changed_fields = Vec::new();
 
         if before_reversed_at != application.reversed_at {
             changed_fields.push(ChangedField::new(
                 "deposit_application_reversed_at",
                 before_reversed_at.map(|value| value.to_rfc3339()),
-                application
-                    .reversed_at
-                    .map(|value| value.to_rfc3339()),
+                application.reversed_at.map(|value| value.to_rfc3339()),
             ));
         }
 
@@ -228,15 +177,10 @@ pub async fn execute(
             ));
         }
 
-        if before_receivable_outstanding_amount
-            != receivable.outstanding_amount
-        {
+        if before_receivable_outstanding_amount != receivable.outstanding_amount {
             changed_fields.push(ChangedField::new(
                 "receivable_outstanding_amount",
-                Some(
-                    before_receivable_outstanding_amount
-                        .to_string(),
-                ),
+                Some(before_receivable_outstanding_amount.to_string()),
                 Some(receivable.outstanding_amount.to_string()),
             ));
         }
@@ -249,32 +193,24 @@ pub async fn execute(
             ));
         }
 
-        let changed_fields_json =
-            serde_json::to_string(&changed_fields)
-                .map_err(infra)?;
+        let changed_fields_json = serde_json::to_string(&changed_fields).map_err(infra)?;
 
-        let operation_event =
-            OperationChangeEvent {
-                id: Uuid::new_v4(),
-                operation_id: context.operation_id,
-                aggregate_type: "deposit_application".to_string(),
-                aggregate_id: application.id,
-                operation_type:
-                    OperationType::ReverseDepositApplication,
-                actor: context.actor,
-                actor_id: context.actor_id.clone(),
-                source: context.source,
-                before_json: Some(before_json.clone()),
-                after_json: after_json.clone(),
-                changed_fields_json: changed_fields_json.clone(),
-                occurred_at: Utc::now(),
-            };
+        let operation_event = OperationChangeEvent {
+            id: Uuid::new_v4(),
+            operation_id: context.operation_id,
+            aggregate_type: "deposit_application".to_string(),
+            aggregate_id: application.id,
+            operation_type: OperationType::ReverseDepositApplication,
+            actor: context.actor,
+            actor_id: context.actor_id.clone(),
+            source: context.source,
+            before_json: Some(before_json.clone()),
+            after_json: after_json.clone(),
+            changed_fields_json: changed_fields_json.clone(),
+            occurred_at: Utc::now(),
+        };
 
-        SqliteOperationChangeEventRepository::save(
-            &mut tx,
-            &operation_event,
-        )
-        .await?;
+        SqliteOperationChangeEventRepository::save(&mut tx, &operation_event).await?;
 
         record_audit_log(
             &mut tx,

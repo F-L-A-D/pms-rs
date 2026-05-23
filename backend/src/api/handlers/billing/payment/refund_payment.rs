@@ -27,27 +27,18 @@ pub async fn refund_payment_handler(
     Path(payment_id): Path<Uuid>,
     Json(req): Json<RefundPaymentRequest>,
 ) -> Result<(StatusCode, Json<PaymentRefundResponse>), ApiError> {
-    let amount =
-        req.amount
-            .parse::<Decimal>()
-            .map_err(|_| {
-                map_app_error(
-                    validation("invalid refund amount"),
-                )
-            })?;
+    let amount = req
+        .amount
+        .parse::<Decimal>()
+        .map_err(|_| map_app_error(validation("invalid refund amount")))?;
 
-    let input =
-        RefundPaymentInput {
-            payment_id,
-            amount,
-            reason: req.reason,
-        };
+    let input = RefundPaymentInput {
+        payment_id,
+        amount,
+        reason: req.reason,
+    };
 
-    let refund =
-        refund_payment::execute(
-            &state.db,
-            input,
-        )
+    let refund = refund_payment::execute(&state.db, input)
         .await
         .map_err(map_app_error)?;
 

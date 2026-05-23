@@ -322,3 +322,15 @@ echo "- deposit status after reverse deposit application: held" >&2
 echo "- deposit unapplied_amount after reverse deposit application: 2000" >&2
 echo "- receivable status after reverse deposit application: open" >&2
 echo "- receivable outstanding_amount after reverse deposit application: 2000" >&2
+
+echo "Refunding unapplied deposit..." >&2
+
+refund_deposit \
+  "${deposit_id}" \
+  "1500" \
+  "Console seed: deposit refund validation" >/dev/null
+
+echo "- deposit refund audit: deposit.refund" >&2
+echo "- deposit status after refund: partially_refunded" >&2
+echo "- deposit refunded_amount after refund: 1500" >&2
+echo "- deposit unapplied_amount after refund: 3500" >&2

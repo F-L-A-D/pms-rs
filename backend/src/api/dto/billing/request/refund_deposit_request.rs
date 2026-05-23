@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub struct RefundPaymentRequest {
+pub struct RefundDepositRequest {
     pub amount: String,
     pub reason: Option<String>,
 }

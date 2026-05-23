@@ -147,7 +147,7 @@ async fn resolve_event_folio_id(
 
             Ok(invoice.map(|invoice| invoice.folio_id))
         }
-        
+
         "deposit_application" => {
             let application =
                 SqliteDepositApplicationRepository::find_by_id(tx, event.aggregate_id).await?;
@@ -156,8 +156,7 @@ async fn resolve_event_folio_id(
                 return Ok(None);
             };
 
-            let deposit =
-                SqliteDepositRepository::find_by_id(tx, application.deposit_id).await?;
+            let deposit = SqliteDepositRepository::find_by_id(tx, application.deposit_id).await?;
 
             Ok(deposit.map(|deposit| deposit.folio_id))
         }

@@ -310,3 +310,15 @@ echo "- deposit status after application: partially_applied" >&2
 echo "- deposit unapplied_amount after application: 500" >&2
 echo "- receivable status after deposit application: open" >&2
 echo "- receivable outstanding_amount after deposit application: 500" >&2
+
+echo "Reversing deposit application..." >&2
+
+reverse_deposit_application \
+  "${deposit_application_id}" \
+  "Console seed: reverse deposit application validation" >/dev/null
+
+echo "- reverse deposit application audit: deposit.application.reverse" >&2
+echo "- deposit status after reverse deposit application: held" >&2
+echo "- deposit unapplied_amount after reverse deposit application: 2000" >&2
+echo "- receivable status after reverse deposit application: open" >&2
+echo "- receivable outstanding_amount after reverse deposit application: 2000" >&2

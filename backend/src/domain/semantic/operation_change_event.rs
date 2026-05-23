@@ -45,6 +45,7 @@ pub enum OperationType {
     AssignBillingAccount,
 
     ApplyDepositToReceivable,
+    ReverseDepositApplication,
 
     IssueInvoice,
     VoidInvoice,
@@ -81,6 +82,7 @@ impl OperationType {
             Self::AssignBillingAccount => "assign_billing_account",
 
             Self::ApplyDepositToReceivable => "apply_deposit_to_receivable",
+            Self::ReverseDepositApplication => "reverse_deposit_application",
 
             Self::IssueInvoice => "issue_invoice",
             Self::VoidInvoice => "void_invoice",
@@ -119,6 +121,7 @@ impl OperationType {
             "refund_payment" => Some(Self::RefundPayment),
 
             "assign_billing_account" => Some(Self::AssignBillingAccount),
+            "reverse_deposit_application" => Some(Self::ReverseDepositApplication),
 
             "apply_deposit_to_receivable" => Some(Self::ApplyDepositToReceivable),
 

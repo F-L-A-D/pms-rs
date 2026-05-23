@@ -101,6 +101,7 @@ pub async fn materialize_semantic_activation(
         | OperationType::AllocateReceivablePayment
         | OperationType::AllocateExistingPayment
         | OperationType::ReceivePayment
+        | OperationType::ReverseDepositApplication
         | OperationType::ReversePaymentAllocation => (
             SemanticActivationKey::BillingRelevantChange,
             Decimal::new(80, 2),

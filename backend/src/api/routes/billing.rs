@@ -12,6 +12,7 @@ use crate::api::{
         deposit::{
             apply_deposit_to_receivable::apply_deposit_to_receivable_handler,
             create_deposit::create_deposit_handler,
+            reverse_deposit_application::reverse_deposit_application_handler,
         },
         folio::{
             close_folio::close_folio_handler,
@@ -82,6 +83,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/payment-allocations/:id/reverse",
             post(reverse_payment_allocation_handler),
+        )
+        .route(
+            "/deposit-applications/:id/reverse",
+            post(reverse_deposit_application_handler),
         )
         .route("/invoices", post(create_invoice_handler))
         .route("/invoices/:id", get(get_invoice_handler))

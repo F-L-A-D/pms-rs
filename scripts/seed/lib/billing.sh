@@ -256,3 +256,17 @@ apply_deposit_to_receivable() {
       \"reason\": \"${reason}\"
     }"
 }
+
+reverse_deposit_application() {
+  local deposit_application_id="$1"
+  local reason="$2"
+
+  curl -sS \
+    -X POST \
+    "${API_BASE_URL}/deposit-applications/${deposit_application_id}/reverse" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"reason\": \"${reason}\"
+    }"
+}

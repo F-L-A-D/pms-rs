@@ -20,6 +20,7 @@ pub enum SettlementTransitionType {
     InvoiceVoided,
     ReceivableVoided,
     DepositApplied,
+    DepositApplicationReversed,
 }
 
 impl SettlementTransitionType {
@@ -36,6 +37,7 @@ impl SettlementTransitionType {
             Self::InvoiceVoided => "invoice_voided",
             Self::ReceivableVoided => "receivable_voided",
             Self::DepositApplied => "deposit_applied",
+            Self::DepositApplicationReversed => "deposit_application_reversed",
         }
     }
 
@@ -52,6 +54,7 @@ impl SettlementTransitionType {
             "invoice_voided" => Some(Self::InvoiceVoided),
             "receivable_voided" => Some(Self::ReceivableVoided),
             "deposit_applied" => Some(Self::DepositApplied),
+            "deposit_application_reversed" => Some(Self::DepositApplicationReversed),
             _ => None,
         }
     }

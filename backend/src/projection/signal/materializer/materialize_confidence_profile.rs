@@ -52,6 +52,7 @@ pub async fn materialize_confidence_profile(
         | OperationType::AllocateReceivablePayment
         | OperationType::AllocateExistingPayment
         | OperationType::ReceivePayment
+        | OperationType::ReverseDepositApplication
         | OperationType::ReversePaymentAllocation => Decimal::new(90, 2),
     };
     let source_penalty = match event.source {

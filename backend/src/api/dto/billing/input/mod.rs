@@ -10,3 +10,4 @@ pub mod create_invoice_input;
 pub mod create_payment_input;
 pub mod open_reservation_folio_input;
 pub mod refund_payment_input;
+pub mod reverse_deposit_application_input;

@@ -66,6 +66,7 @@ pub async fn materialize_change_pattern(
         | OperationType::AllocateReceivablePayment
         | OperationType::AllocateExistingPayment
         | OperationType::ReceivePayment
+        | OperationType::ReverseDepositApplication
         | OperationType::ReversePaymentAllocation => ChangePatternType::ReservationUpdated,
     };
 

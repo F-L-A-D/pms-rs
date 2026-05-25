@@ -50,6 +50,7 @@ pub async fn materialize_change_pattern(
             }
         }
         OperationType::PostCharge
+        | OperationType::RoomMoved
         | OperationType::ApplyPayment
         | OperationType::ReceiveDeposit
         | OperationType::AdjustCharge

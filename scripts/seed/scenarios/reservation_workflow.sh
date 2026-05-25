@@ -142,3 +142,28 @@ create_trace \
   "${past_id}" \
   "front" \
   "Console seed trace: past reservation validation." >/dev/null
+
+echo "Preparing room move validation reservation" >&2
+
+room_move_id="$(
+  create_guest_and_reservation \
+    "RoomMove" \
+    "Console" \
+    "console.roommove@example.com" \
+    "console-seed-room-move-001" \
+    "2026-06-20" \
+    "2026-06-22" \
+    "standard"
+)"
+
+room_move_old_room_id="$(create_room_and_extract_id "103" "standard" "2" "18.5")"
+room_move_new_room_id="$(create_room_and_extract_id "104" "standard" "2" "18.5")"
+room_move_occupied_room_id="$(create_room_and_extract_id "105" "standard" "2" "18.5")"
+
+assign_room "${room_move_id}" "${room_move_old_room_id}" >/dev/null
+
+echo "Room move validation IDs:" >&2
+echo "room_move_id=${room_move_id}" >&2
+echo "room_move_old_room_id=${room_move_old_room_id}" >&2
+echo "room_move_new_room_id=${room_move_new_room_id}" >&2
+echo "room_move_occupied_room_id=${room_move_occupied_room_id}" >&2

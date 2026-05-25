@@ -5,14 +5,20 @@ use chrono::{Duration, Utc};
 use pms_rs::{
     api::dto::response::reservation::ReservationResponse,
     domain::entity::folio::FolioStatus,
-    domain::semantic::reservation_transition::ReservationTransitionType,
-    domain::semantic::room_daily_state::{
-        RoomDailyHousekeepingStatus, RoomDailyOccupancyStatus, RoomDailyState,
+    domain::{
+        semantic::{
+            reservation_transition::ReservationTransitionType,
+            operation_change_event::OperationType,
+            room_daily_state::{
+                RoomDailyHousekeepingStatus, RoomDailyOccupancyStatus, RoomDailyState,
+            },
+        },
     },
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
         operational::{
             billing::folio_repository::SqliteFolioRepository,
+            operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
             room::room_daily_state_repository::SqliteRoomDailyStateRepository,
         },
     },
@@ -258,6 +264,22 @@ async fn should_move_checked_in_reservation_to_another_room() {
         serde_json::from_value(response_json(get_response).await).unwrap();
 
     assert_eq!(updated.room_id, Some(new_room.id));
+    
+    let audit_response = get(
+        &app.app,
+        &format!("/audit-logs/reservation/{}", reservation.id),
+    )
+    .await;
+
+    assert_eq!(audit_response.status(), StatusCode::OK);
+
+    let audit_logs = response_json(audit_response).await;
+
+    assert!(audit_logs
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|log| log["action"] == "stay.room_move"));
 
     let mut tx = app.db.begin_tx().await;
 
@@ -266,6 +288,15 @@ async fn should_move_checked_in_reservation_to_another_room() {
             .await
             .unwrap();
 
+    let operation_events =
+        SqliteOperationChangeEventRepository::list_by_aggregate(
+            &mut tx,
+            "reservation",
+            reservation.id,
+        )
+        .await
+        .unwrap();
+
     let _ = tx.rollback().await;
 
     assert!(transitions.iter().any(|transition| {
@@ -273,6 +304,12 @@ async fn should_move_checked_in_reservation_to_another_room() {
             && transition.field_name == "room_id"
             && transition.before_value == old_room.id.to_string()
             && transition.after_value == new_room.id.to_string()
+    }));
+
+    assert!(operation_events.iter().any(|event| {
+        event.operation_type == OperationType::RoomMoved
+            && event.aggregate_type == "reservation"
+            && event.aggregate_id == reservation.id
     }));
 }
 

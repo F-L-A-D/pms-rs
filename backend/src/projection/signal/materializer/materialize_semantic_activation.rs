@@ -85,6 +85,7 @@ pub async fn materialize_semantic_activation(
         }
 
         OperationType::PostCharge
+        | OperationType::RoomMoved
         | OperationType::ApplyPayment
         | OperationType::ReceiveDeposit
         | OperationType::AdjustCharge

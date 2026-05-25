@@ -1,37 +1,55 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
+
 use chrono::NaiveDate;
+
+use serde::Deserialize;
+
 use uuid::Uuid;
 
 use crate::{
     api::{
         dto::{
             input::room::{
-                CreateRoomInput, GetRoomInput, ListRoomsInput, RoomDailyStateCommandInput,
-                UpdateRoomActivationInput, UpdateRoomInput,
+                CreateRoomInput, GetRoomInput, ListRoomsInput,
+                RoomDailyStateCommandInput, UpdateRoomActivationInput,
+                UpdateRoomInput,
             },
             request::room::{
-                CreateRoomRequest, RoomDailyStateCommandRequest, UpdateRoomActivationRequest,
-                UpdateRoomRequest,
+                CreateRoomRequest, RoomDailyStateCommandRequest,
+                UpdateRoomActivationRequest, UpdateRoomRequest,
             },
             response::housekeeping::RoomDailyStateResponse,
-            response::room::{RoomListResponse, RoomResponse},
+            response::room::{
+                RoomDetailResponse, RoomListResponse, RoomResponse,
+            },
         },
         error::{map_app_error, ApiError},
         state::AppState,
     },
     usecase::room::{
         command::{
-            create_room, mark_room_out_of_order, return_room_to_service, update_room::update_room,
+            create_room, mark_room_out_of_order, return_room_to_service,
+            update_room::update_room,
             update_room_activation::update_room_activation,
         },
         detail::get_room::get_room,
         search::list_rooms::list_rooms,
     },
 };
+
+#[derive(Debug, Deserialize)]
+pub struct ListRoomsQuery {
+    pub service_date: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GetRoomQuery {
+    pub service_date: Option<String>,
+}
 
 pub async fn create_room_handler(
     State(state): State<AppState>,
@@ -80,7 +98,9 @@ pub async fn update_room_handler(
         is_physical: req.is_physical,
     };
 
-    let room = update_room(&state.db, input).await.map_err(map_app_error)?;
+    let room = update_room(&state.db, input)
+        .await
+        .map_err(map_app_error)?;
 
     let response = RoomResponse::from(room);
 
@@ -142,29 +162,40 @@ pub async fn return_room_to_service_handler(
 
 pub async fn get_room_handler(
     State(state): State<AppState>,
-
     Path(room_id): Path<String>,
-) -> Result<Json<RoomResponse>, ApiError> {
+    Query(query): Query<GetRoomQuery>,
+) -> Result<Json<RoomDetailResponse>, ApiError> {
     let room_id = Uuid::parse_str(&room_id)
         .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let input = GetRoomInput { room_id };
+    let service_date = parse_optional_service_date(query.service_date)?;
 
-    let room = get_room(&state.db, input).await.map_err(map_app_error)?;
+    let input = GetRoomInput {
+        room_id,
+        service_date,
+    };
 
-    let response = RoomResponse::from(room);
+    let response = get_room(&state.db, input)
+        .await
+        .map_err(map_app_error)?;
 
     Ok(Json(response))
 }
 
 pub async fn list_rooms_handler(
     State(state): State<AppState>,
+    Query(query): Query<ListRoomsQuery>,
 ) -> Result<Json<RoomListResponse>, ApiError> {
+    let service_date = parse_optional_service_date(query.service_date)?;
+
     let input = ListRoomsInput {
         include_inactive: false,
+        service_date,
     };
 
-    let rooms = list_rooms(&state.db, input).await.map_err(map_app_error)?;
+    let rooms = list_rooms(&state.db, input)
+        .await
+        .map_err(map_app_error)?;
 
     let response = RoomListResponse::from(rooms);
 
@@ -185,4 +216,15 @@ fn room_daily_state_input(
         room_id,
         service_date,
     })
+}
+
+fn parse_optional_service_date(
+    value: Option<String>,
+) -> Result<Option<NaiveDate>, ApiError> {
+    value
+        .map(|value| {
+            NaiveDate::parse_from_str(&value, "%Y-%m-%d")
+                .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))
+        })
+        .transpose()
 }

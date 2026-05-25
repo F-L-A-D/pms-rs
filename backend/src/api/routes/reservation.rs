@@ -24,9 +24,11 @@ pub fn routes() -> Router<AppState> {
         )
         .route(
             "/reservations/:id",
-            patch(modify_reservation_handler)
-                .delete(cancel_reservation_handler)
-                .get(get_reservation_handler),
+            patch(modify_reservation_handler).get(get_reservation_handler),
+        )
+        .route(
+            "/reservations/:id/cancel",
+            post(cancel_reservation_handler),
         )
         .route(
             "/guests/:id/reservations",

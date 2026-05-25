@@ -36,6 +36,7 @@ pub async fn materialize_confidence_profile(
         OperationType::NoShow => Decimal::new(95, 2),
         OperationType::Reinstate => Decimal::new(90, 2),
         OperationType::PostCharge
+        | OperationType::RoomMoved
         | OperationType::ApplyPayment
         | OperationType::ReceiveDeposit
         | OperationType::AdjustCharge

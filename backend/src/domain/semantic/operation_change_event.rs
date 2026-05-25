@@ -35,6 +35,7 @@ pub enum OperationType {
     Cancel,
     NoShow,
     Reinstate,
+    RoomMoved,
 
     PostCharge,
     ReceivePayment,
@@ -73,6 +74,7 @@ impl OperationType {
             Self::Cancel => "cancel",
             Self::NoShow => "no_show",
             Self::Reinstate => "reinstate",
+            Self::RoomMoved => "room_moved",
 
             Self::PostCharge => "post_charge",
             Self::ReceivePayment => "receive_payment",
@@ -111,6 +113,7 @@ impl OperationType {
             "cancel" => Some(Self::Cancel),
             "no_show" => Some(Self::NoShow),
             "reinstate" => Some(Self::Reinstate),
+            "room_moved" => Some(Self::RoomMoved),
 
             "post_charge" => Some(Self::PostCharge),
             "receive_payment" => Some(Self::ReceivePayment),

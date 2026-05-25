@@ -5,14 +5,20 @@ use chrono::{Duration, Utc};
 use pms_rs::{
     api::dto::response::reservation::ReservationResponse,
     domain::entity::folio::FolioStatus,
-    domain::semantic::reservation_transition::ReservationTransitionType,
-    domain::semantic::room_daily_state::{
-        RoomDailyHousekeepingStatus, RoomDailyOccupancyStatus, RoomDailyState,
+    domain::{
+        semantic::{
+            reservation_transition::ReservationTransitionType,
+            operation_change_event::OperationType,
+            room_daily_state::{
+                RoomDailyHousekeepingStatus, RoomDailyOccupancyStatus, RoomDailyState,
+            },
+        },
     },
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
         operational::{
             billing::folio_repository::SqliteFolioRepository,
+            operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
             room::room_daily_state_repository::SqliteRoomDailyStateRepository,
         },
     },
@@ -77,6 +83,54 @@ async fn should_chek_in_reservation() {
         .unwrap()
         .iter()
         .any(|log| log["action"] == "stay.check_in"));
+}
+
+#[tokio::test]
+async fn should_reject_check_in_when_room_is_dirty() {
+    assert_check_in_rejected_by_housekeeping_status(RoomDailyHousekeepingStatus::Dirty).await;
+}
+
+#[tokio::test]
+async fn should_reject_check_in_when_room_is_cleaning() {
+    assert_check_in_rejected_by_housekeeping_status(RoomDailyHousekeepingStatus::Cleaning).await;
+}
+
+#[tokio::test]
+async fn should_reject_check_in_when_room_is_cleaned_but_not_inspected() {
+    assert_check_in_rejected_by_housekeeping_status(RoomDailyHousekeepingStatus::Cleaned).await;
+}
+
+#[tokio::test]
+async fn should_allow_check_in_when_room_is_inspected() {
+    let app = spawn_app().await;
+
+    let reservation = create_reservation(&app.app).await;
+    let room = create_room(&app.app).await;
+
+    assign_room(&app.app, reservation.id, room.id).await;
+
+    let mut room_state = RoomDailyState::new(room.id, reservation.check_in);
+
+    room_state.inspect();
+
+    save_room_daily_state(&app, &room_state).await;
+
+    let response = check_in(&app.app, reservation.id).await;
+
+    assert_eq!(response.id, reservation.id);
+    assert_eq!(response.status, "checked_in");
+
+    let room_state = find_room_daily_state(&app, room.id, reservation.check_in).await;
+
+    assert_eq!(
+        room_state.occupancy_status,
+        RoomDailyOccupancyStatus::Occupied,
+    );
+
+    assert_eq!(
+        room_state.housekeeping_status,
+        RoomDailyHousekeepingStatus::Inspected,
+    );
 }
 
 #[tokio::test]
@@ -210,6 +264,22 @@ async fn should_move_checked_in_reservation_to_another_room() {
         serde_json::from_value(response_json(get_response).await).unwrap();
 
     assert_eq!(updated.room_id, Some(new_room.id));
+    
+    let audit_response = get(
+        &app.app,
+        &format!("/audit-logs/reservation/{}", reservation.id),
+    )
+    .await;
+
+    assert_eq!(audit_response.status(), StatusCode::OK);
+
+    let audit_logs = response_json(audit_response).await;
+
+    assert!(audit_logs
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|log| log["action"] == "stay.room_move"));
 
     let mut tx = app.db.begin_tx().await;
 
@@ -218,6 +288,15 @@ async fn should_move_checked_in_reservation_to_another_room() {
             .await
             .unwrap();
 
+    let operation_events =
+        SqliteOperationChangeEventRepository::list_by_aggregate(
+            &mut tx,
+            "reservation",
+            reservation.id,
+        )
+        .await
+        .unwrap();
+
     let _ = tx.rollback().await;
 
     assert!(transitions.iter().any(|transition| {
@@ -225,6 +304,12 @@ async fn should_move_checked_in_reservation_to_another_room() {
             && transition.field_name == "room_id"
             && transition.before_value == old_room.id.to_string()
             && transition.after_value == new_room.id.to_string()
+    }));
+
+    assert!(operation_events.iter().any(|event| {
+        event.operation_type == OperationType::RoomMoved
+            && event.aggregate_type == "reservation"
+            && event.aggregate_id == reservation.id
     }));
 }
 
@@ -259,6 +344,46 @@ async fn should_reject_room_move_when_target_room_is_occupied() {
     .await;
 
     assert_eq!(response.status(), StatusCode::CONFLICT,);
+}
+
+async fn assert_check_in_rejected_by_housekeeping_status(
+    housekeeping_status: RoomDailyHousekeepingStatus,
+) {
+    let app = spawn_app().await;
+
+    let reservation = create_reservation(&app.app).await;
+    let room = create_room(&app.app).await;
+
+    assign_room(&app.app, reservation.id, room.id).await;
+
+    let mut room_state = RoomDailyState::new(room.id, reservation.check_in);
+
+    match housekeeping_status {
+        RoomDailyHousekeepingStatus::Dirty => room_state.mark_dirty(),
+        RoomDailyHousekeepingStatus::Cleaning => room_state.start_cleaning(),
+        RoomDailyHousekeepingStatus::Cleaned => room_state.finish_cleaning(),
+        RoomDailyHousekeepingStatus::Inspected => room_state.inspect(),
+    }
+
+    save_room_daily_state(&app, &room_state).await;
+
+    let response = post(
+        &app.app,
+        &format!("/reservations/{}/check-in", reservation.id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+async fn save_room_daily_state(app: &TestApp, room_state: &RoomDailyState) {
+    let mut tx = app.db.begin_tx().await;
+
+    SqliteRoomDailyStateRepository::save(&mut tx, room_state)
+        .await
+        .unwrap();
+
+    tx.commit().await.unwrap();
 }
 
 async fn find_room_daily_state(

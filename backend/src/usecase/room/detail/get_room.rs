@@ -1,12 +1,26 @@
 use crate::{
-    api::dto::input::room::GetRoomInput,
+    api::dto::{
+        input::room::GetRoomInput,
+        response::room::{
+            RoomAssignmentVisibilityResponse, RoomDetailResponse,
+        },
+    },
     db::connection::Db,
-    domain::entity::room::Room,
-    error::app_error::{not_found, AppResult},
-    repository::sqlite::operational::room::room_repository::SqliteRoomRepository,
+    error::app_error::{infra, not_found, AppResult},
+    repository::sqlite::operational::{
+        reservation::reservation_repository::SqliteReservationRepository,
+        room::{
+            room_daily_state_repository::SqliteRoomDailyStateRepository,
+            room_repository::SqliteRoomRepository,
+        },
+    },
+    usecase::room::assignment_visibility::build_assignment_visibility,
 };
 
-pub async fn get_room(db: &Db, input: GetRoomInput) -> AppResult<Room> {
+pub async fn get_room(
+    db: &Db,
+    input: GetRoomInput,
+) -> AppResult<RoomDetailResponse> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
@@ -14,11 +28,52 @@ pub async fn get_room(db: &Db, input: GetRoomInput) -> AppResult<Room> {
             .await?
             .ok_or_else(|| not_found("room not found"))?;
 
-        Ok(room)
+        let daily_state =
+            if let Some(service_date) = input.service_date {
+                SqliteRoomDailyStateRepository::find_by_room_and_service_date(
+                    &mut tx,
+                    input.room_id,
+                    service_date,
+                )
+                .await?
+            } else {
+                None
+            };
+
+        let assignment =
+            if let Some(service_date) = input.service_date {
+                let reservations =
+                    SqliteReservationRepository::list_room_assignments_by_room_and_service_date(
+                        &mut tx,
+                        input.room_id,
+                        service_date,
+                    )
+                    .await?;
+
+                build_assignment_visibility(reservations)
+            } else {
+                RoomAssignmentVisibilityResponse::unassigned()
+            };
+
+        Ok(RoomDetailResponse::from_parts(
+            room,
+            daily_state,
+            assignment,
+        ))
     }
     .await;
 
-    let _ = tx.rollback().await;
+    match result {
+        Ok(response) => {
+            tx.commit().await.map_err(infra)?;
 
-    result
+            Ok(response)
+        }
+
+        Err(e) => {
+            let _ = tx.rollback().await;
+
+            Err(e)
+        }
+    }
 }

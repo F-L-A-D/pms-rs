@@ -395,6 +395,100 @@ impl SqliteReservationRepository {
             .collect()
     }
 
+    pub async fn list_room_assignments_by_service_date(
+        tx: &mut Transaction<'_, Sqlite>,
+        service_date: chrono::NaiveDate,
+    ) -> AppResult<Vec<Reservation>> {
+        let rows = sqlx::query(
+            r#"
+                SELECT
+                    id,
+                    external_id,
+                    check_in,
+                    check_out,
+                    reservation_status,
+                    stay_status,
+                    room_class,
+                    room_id,
+                    booking_channel,
+                    source_channel,
+                    plan_code,
+                    version,
+                    created_at
+                FROM reservations
+                WHERE room_id IS NOT NULL
+                    AND check_in <= ?1
+                    AND check_out > ?1
+                    AND reservation_status != 'cancelled'
+                    AND (
+                        stay_status IS NULL
+                        OR stay_status != 'checked_out'
+                    )
+                ORDER BY check_in ASC, created_at ASC
+                "#,
+        )
+        .bind(service_date.to_string())
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(infra)?;
+
+        let mut reservations = vec![];
+
+        for row in rows.iter() {
+            reservations.push(Self::row_to_reservation(tx, row).await?);
+        }
+
+        Ok(reservations)
+    }
+
+    pub async fn list_room_assignments_by_room_and_service_date(
+        tx: &mut Transaction<'_, Sqlite>,
+        room_id: Uuid,
+        service_date: chrono::NaiveDate,
+    ) -> AppResult<Vec<Reservation>> {
+        let rows = sqlx::query(
+            r#"
+                SELECT
+                    id,
+                    external_id,
+                    check_in,
+                    check_out,
+                    reservation_status,
+                    stay_status,
+                    room_class,
+                    room_id,
+                    booking_channel,
+                    source_channel,
+                    plan_code,
+                    version,
+                    created_at
+                FROM reservations
+                WHERE room_id = ?1
+                    AND check_in <= ?2
+                    AND check_out > ?2
+                    AND reservation_status != 'cancelled'
+                    AND (
+                        stay_status IS NULL
+                        OR stay_status != 'checked_out'
+                    )
+                ORDER BY check_in ASC, created_at ASC
+                "#,
+        )
+        .bind(room_id.to_string())
+        .bind(service_date.to_string())
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(infra)?;
+
+        let mut reservations = vec![];
+
+        for row in rows.iter() {
+            reservations.push(Self::row_to_reservation(tx, row).await?);
+        }
+
+        Ok(reservations)
+    }
+
     async fn row_to_reservation(
         tx: &mut Transaction<'_, Sqlite>,
         row: &sqlx::sqlite::SqliteRow,

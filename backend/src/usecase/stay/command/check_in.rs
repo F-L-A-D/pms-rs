@@ -10,7 +10,9 @@ use crate::{
         semantic::{
             guest_timeline_event::TimelineEventType,
             operation_context::OperationContext,
-            room_daily_state::{RoomDailyOccupancyStatus, RoomDailyState},
+            room_daily_state::{
+                RoomDailyHousekeepingStatus, RoomDailyOccupancyStatus, RoomDailyState,
+            },
         },
     },
     error::app_error::{conflict, infra, not_found, AppResult},
@@ -70,6 +72,10 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
 
             if room_state.occupancy_status == RoomDailyOccupancyStatus::OutOfOrder {
                 return Err(conflict("room out of order"));
+            }
+
+            if room_state.housekeeping_status != RoomDailyHousekeepingStatus::Inspected {
+                return Err(conflict("room not inspected"));
             }
 
             room_state.set_occupancy_status(RoomDailyOccupancyStatus::Occupied);
@@ -181,6 +187,11 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
                     "reservation_id": reservation.id,
                     "stay_status": reservation.stay_status,
                     "room_id": reservation.room_id,
+                    "service_dates": reservation
+                        .nights()
+                        .into_iter()
+                        .map(|service_date| service_date.to_string())
+                        .collect::<Vec<_>>(),
                     "version": reservation.version,
                 })
                 .to_string(),

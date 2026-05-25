@@ -12,4 +12,10 @@ export const queryKeys = {
 
   folioAudit: (folioId: string) =>
     ["folios", "audit", folioId] as const,
+
+  roomList: (params: unknown) =>
+    ["rooms", "list", params] as const,
+
+  roomDetail: (roomId: string, params: unknown) =>
+    ["rooms", "detail", roomId, params] as const,
 };

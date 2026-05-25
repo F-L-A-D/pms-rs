@@ -9,7 +9,7 @@ use pms_rs::{
 
 use super::{
     builders::{ReservationBuilder, ReservationParticipantBuilder},
-    client::{post_json, response_json},
+    client::{post, post_json, response_json},
     guest::create_guest,
 };
 
@@ -31,7 +31,10 @@ pub async fn create_reservation(app: &Router) -> ReservationResponse {
     serde_json::from_value::<ReservationResponse>(body).unwrap()
 }
 
-pub async fn create_reservation_with_guest(app: &Router, guest_id: Uuid) -> ReservationResponse {
+pub async fn create_reservation_with_guest(
+    app: &Router,
+    guest_id: Uuid,
+) -> ReservationResponse {
     let participant = ReservationParticipantBuilder::new(guest_id).build();
 
     let request = ReservationBuilder::new()
@@ -84,6 +87,36 @@ pub async fn create_reservation_with_external_id_and_guest(
     let response = post_json(app, "/reservations", &request).await;
 
     assert_eq!(response.status(), StatusCode::CREATED,);
+
+    serde_json::from_value(response_json(response).await).unwrap()
+}
+
+pub async fn cancel_reservation(
+    app: &Router,
+    reservation_id: Uuid,
+) -> ReservationResponse {
+    let response = post(
+        app,
+        &format!("/reservations/{}/cancel", reservation_id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK,);
+
+    serde_json::from_value(response_json(response).await).unwrap()
+}
+
+pub async fn mark_no_show(
+    app: &Router,
+    reservation_id: Uuid,
+) -> ReservationResponse {
+    let response = post(
+        app,
+        &format!("/reservations/{}/no-show", reservation_id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK,);
 
     serde_json::from_value(response_json(response).await).unwrap()
 }

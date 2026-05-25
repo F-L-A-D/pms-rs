@@ -10,6 +10,11 @@ import type {
 type ReservationDetailViewProps = {
   reservation: ReservationDetail;
 
+  stayActionError: string | null;
+  stayActionSaving: boolean;
+  onCheckIn: () => void;
+  onCheckOut: () => void;
+
   noteError: string | null;
   noteSaving: boolean;
   onCreateNote: (request: CreateReservationNoteRequest) => void;
@@ -72,10 +77,35 @@ function Field({
   );
 }
 
+function ActionButton({
+  children,
+  disabled,
+  onClick,
+}: {
+  children: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="border border-slate-900 bg-slate-900 px-3 py-1 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-300"
+    >
+      {children}
+    </button>
+  );
+}
+
 export function ReservationDetailView({
   noteError,
   noteSaving,
   onCreateNote,
+  stayActionError,
+  stayActionSaving,
+  onCheckIn,
+  onCheckOut,
   traceError,
   traceSaving,
   onCreateTrace,
@@ -189,6 +219,47 @@ export function ReservationDetailView({
           <Field label="Created at" value={reservation.created_at} />
           <Field label="Internal note" value={visibility.internal_note} />
         </dl>
+      </section>
+
+      <section className="border border-slate-300 bg-white p-4">
+        <h3 className="text-sm font-semibold uppercase text-slate-500">
+          Stay Actions
+        </h3>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <ActionButton
+            disabled={
+              stayActionSaving ||
+              reservation.stay_status !== "confirmed" ||
+              reservation.room_id === null
+            }
+            onClick={onCheckIn}
+          >
+            Check In
+          </ActionButton>
+
+          <ActionButton
+            disabled={
+              stayActionSaving ||
+              reservation.stay_status !== "checked_in"
+            }
+            onClick={onCheckOut}
+          >
+            Check Out
+          </ActionButton>
+        </div>
+
+        {reservation.room_id === null && (
+          <p className="mt-3 text-sm text-slate-600">
+            Room assignment is required before check-in.
+          </p>
+        )}
+
+        {stayActionError && (
+          <pre className="mt-3 overflow-auto border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+            {stayActionError}
+          </pre>
+        )}
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">

@@ -251,6 +251,10 @@ export type CreateReservationTraceRequest = {
   actor_id: string | null;
 };
 
+export type MoveRoomRequest = {
+  effective_date: string;
+};
+
 export type StayActionResponse = {
   id: string;
   status: string;
@@ -299,6 +303,17 @@ export function checkOutReservation(
   return apiPost<StayActionResponse, undefined>(
     `/reservations/${reservationId}/check-out`,
     undefined,
+  );
+}
+
+export function moveReservationRoom(
+  reservationId: string,
+  roomId: string,
+  request: MoveRoomRequest,
+): Promise<StayActionResponse> {
+  return apiPost<StayActionResponse, MoveRoomRequest>(
+    `/reservations/${reservationId}/room-move/${roomId}`,
+    request,
   );
 }
 

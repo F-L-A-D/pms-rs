@@ -63,7 +63,6 @@ pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<
 
         reservation.reservation_status = ReservationStatus::NoShow;
         reservation.stay_status = Some(StayStatus::NoShow);
-        reservation.room_id = None;
 
         SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
 

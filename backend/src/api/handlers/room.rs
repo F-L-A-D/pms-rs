@@ -23,7 +23,9 @@ use crate::{
                 UpdateRoomActivationRequest, UpdateRoomRequest,
             },
             response::housekeeping::RoomDailyStateResponse,
-            response::room::{RoomListResponse, RoomResponse},
+            response::room::{
+                RoomDetailResponse, RoomListResponse, RoomResponse,
+            },
         },
         error::{map_app_error, ApiError},
         state::AppState,
@@ -41,6 +43,11 @@ use crate::{
 
 #[derive(Debug, Deserialize)]
 pub struct ListRoomsQuery {
+    pub service_date: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GetRoomQuery {
     pub service_date: Option<String>,
 }
 
@@ -155,19 +162,22 @@ pub async fn return_room_to_service_handler(
 
 pub async fn get_room_handler(
     State(state): State<AppState>,
-
     Path(room_id): Path<String>,
-) -> Result<Json<RoomResponse>, ApiError> {
+    Query(query): Query<GetRoomQuery>,
+) -> Result<Json<RoomDetailResponse>, ApiError> {
     let room_id = Uuid::parse_str(&room_id)
         .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
-    let input = GetRoomInput { room_id };
+    let service_date = parse_optional_service_date(query.service_date)?;
 
-    let room = get_room(&state.db, input)
+    let input = GetRoomInput {
+        room_id,
+        service_date,
+    };
+
+    let response = get_room(&state.db, input)
         .await
         .map_err(map_app_error)?;
-
-    let response = RoomResponse::from(room);
 
     Ok(Json(response))
 }

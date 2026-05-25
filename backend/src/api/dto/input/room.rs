@@ -32,6 +32,7 @@ pub struct UpdateRoomActivationInput {
 #[derive(Debug, Clone)]
 pub struct GetRoomInput {
     pub room_id: Uuid,
+    pub service_date: Option<NaiveDate>,
 }
 
 #[derive(Debug, Clone)]

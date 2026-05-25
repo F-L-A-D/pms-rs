@@ -34,7 +34,7 @@ use pms_rs::{
 use crate::common::{
     app::spawn_app,
     builders::{ReservationBuilder, ReservationParticipantBuilder},
-    client::{delete, delete_json, get, patch_json, post_json, response_json},
+    client::{delete, delete_json, get, patch_json, post_json, post, response_json},
     guest::create_guest,
     reservation::{create_reservation, create_reservation_with_guest},
     room::create_room,
@@ -626,7 +626,7 @@ async fn should_record_operational_audit_logs_for_reservation_workflow() {
 
     assert_eq!(stale_response.status(), StatusCode::CONFLICT);
 
-    let cancel_response = delete(&app.app, &format!("/reservations/{}", created.id)).await;
+    let cancel_response = post(&app.app, &format!("/reservations/{}/cancel", created.id)).await;
 
     assert_eq!(cancel_response.status(), StatusCode::OK);
 
@@ -1522,7 +1522,7 @@ async fn should_record_operation_change_events_for_modify_and_cancel() {
 
     assert_eq!(modify_response.status(), StatusCode::OK);
 
-    let cancel_response = delete(&app.app, &format!("/reservations/{}", created.id)).await;
+    let cancel_response = post(&app.app, &format!("/reservations/{}/cancel", created.id)).await;
 
     assert_eq!(cancel_response.status(), StatusCode::OK);
 

@@ -5,15 +5,24 @@ use uuid::Uuid;
 use crate::{
     api::dto::{
         input::room::ListRoomsInput,
-        response::room::RoomListItemResponse,
+        response::room::{
+            RoomAssignmentVisibilityResponse, RoomListItemResponse,
+        },
     },
     db::connection::Db,
-    domain::semantic::room_daily_state::RoomDailyState,
-    error::app_error::{infra, AppResult},
-    repository::sqlite::operational::room::{
-        room_daily_state_repository::SqliteRoomDailyStateRepository,
-        room_repository::SqliteRoomRepository,
+    domain::{
+        entity::reservation::Reservation,
+        semantic::room_daily_state::RoomDailyState,
     },
+    error::app_error::{infra, AppResult},
+    repository::sqlite::operational::{
+        reservation::reservation_repository::SqliteReservationRepository,
+        room::{
+            room_daily_state_repository::SqliteRoomDailyStateRepository,
+            room_repository::SqliteRoomRepository,
+        },
+    },
+    usecase::room::assignment_visibility::build_assignment_visibility,
 };
 
 pub async fn list_rooms(
@@ -46,16 +55,41 @@ pub async fn list_rooms(
                 HashMap::new()
             };
 
-        let response =
-            rooms
-                .into_iter()
-                .map(|room| {
-                    let daily_state =
-                        daily_states_by_room_id.get(&room.id).cloned();
+        let assignments_by_room_id =
+            if let Some(service_date) = input.service_date {
+                let reservations =
+                    SqliteReservationRepository::list_room_assignments_by_service_date(
+                        &mut tx,
+                        service_date,
+                    )
+                    .await?;
 
-                    RoomListItemResponse::from_parts(room, daily_state)
-                })
-                .collect();
+                group_reservations_by_room_id(reservations)
+            } else {
+                HashMap::new()
+            };
+
+        let response = rooms
+            .into_iter()
+            .map(|room| {
+                let daily_state =
+                    daily_states_by_room_id.get(&room.id).cloned();
+
+                let assignment = assignments_by_room_id
+                    .get(&room.id)
+                    .cloned()
+                    .map(build_assignment_visibility)
+                    .unwrap_or_else(
+                        RoomAssignmentVisibilityResponse::unassigned,
+                    );
+
+                RoomListItemResponse::from_parts(
+                    room,
+                    daily_state,
+                    assignment,
+                )
+            })
+            .collect();
 
         Ok(response)
     }
@@ -74,4 +108,21 @@ pub async fn list_rooms(
             Err(e)
         }
     }
+}
+
+fn group_reservations_by_room_id(
+    reservations: Vec<Reservation>,
+) -> HashMap<Uuid, Vec<Reservation>> {
+    let mut grouped = HashMap::new();
+
+    for reservation in reservations {
+        if let Some(room_id) = reservation.room_id {
+            grouped
+                .entry(room_id)
+                .or_insert_with(Vec::new)
+                .push(reservation);
+        }
+    }
+
+    grouped
 }

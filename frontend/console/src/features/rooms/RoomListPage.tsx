@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { ApiClientError } from "../../api/client";
@@ -27,6 +28,8 @@ function errorMessage(error: unknown) {
 }
 
 export function RoomListPage() {
+  const navigate = useNavigate();
+
   const [listRequest, setListRequest] =
     useState<ListRoomsRequest>({
       service_date: todayString(),
@@ -36,6 +39,18 @@ export function RoomListPage() {
     queryKey: queryKeys.roomList(listRequest),
     queryFn: () => listRooms(listRequest),
   });
+
+  function handleSelectRoom(roomId: string) {
+    const params = new URLSearchParams();
+
+    if (listRequest.service_date) {
+      params.set("service_date", listRequest.service_date);
+    }
+
+    const query = params.toString();
+
+    navigate(`/rooms/${roomId}${query ? `?${query}` : ""}`);
+  }
 
   return (
     <div className="space-y-4">
@@ -68,7 +83,10 @@ export function RoomListPage() {
       )}
 
       {roomListQuery.data && (
-        <RoomListTable rooms={roomListQuery.data.rooms} />
+        <RoomListTable
+          rooms={roomListQuery.data.rooms}
+          onSelect={handleSelectRoom}
+        />
       )}
     </div>
   );

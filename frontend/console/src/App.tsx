@@ -3,6 +3,7 @@ import { Link, Route, Routes } from "react-router-dom";
 import { ReservationDetailPage } from "./features/reservations/ReservationDetailPage";
 import { ReservationListPage } from "./features/reservations/ReservationListPage";
 import { FolioDetailPage } from "./features/billing/FolioDetailPage";
+import { RoomDetailPage } from "./features/rooms/RoomDetailPage";
 import { RoomListPage } from "./features/rooms/RoomListPage";
 
 function App() {
@@ -59,6 +60,11 @@ function App() {
         <Route
           path="/rooms"
           element={<RoomListPage />}
+        />
+
+        <Route
+          path="/rooms/:roomId"
+          element={<RoomDetailPage />}
         />
       </Routes>
     </div>

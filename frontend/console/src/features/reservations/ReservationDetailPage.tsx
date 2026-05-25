@@ -4,6 +4,8 @@ import { Link, useParams } from "react-router-dom";
 import { ApiClientError } from "../../api/client";
 import { queryKeys } from "../../api/queryKeys";
 import {
+  checkInReservation,
+  checkOutReservation,
   createReservationNote,
   createReservationTrace,
   getReservationDetail,
@@ -35,23 +37,55 @@ export function ReservationDetailPage() {
     enabled: reservationId.length > 0,
   });
 
+  function invalidateReservationQueries() {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.reservationDetail(reservationId),
+    });
+
+    const assignedRoomId = reservationQuery.data?.linked_resources.assigned_room_id;
+
+    if (assignedRoomId) {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.roomDetail(assignedRoomId, {
+          service_date: reservationQuery.data?.check_in,
+        }),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.roomList({
+          service_date: reservationQuery.data?.check_in,
+        }),
+      });
+    }
+  }
+
   const createNoteMutation = useMutation({
     mutationFn: (request: CreateReservationNoteRequest) =>
       createReservationNote(reservationId, request),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.reservationDetail(reservationId),
-      }),
+    onSuccess: invalidateReservationQueries,
   });
 
   const createTraceMutation = useMutation({
     mutationFn: (request: CreateReservationTraceRequest) =>
       createReservationTrace(reservationId, request),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.reservationDetail(reservationId),
-      }),
+    onSuccess: invalidateReservationQueries,
   });
+
+  const checkInMutation = useMutation({
+    mutationFn: () => checkInReservation(reservationId),
+    onSuccess: invalidateReservationQueries,
+  });
+
+  const checkOutMutation = useMutation({
+    mutationFn: () => checkOutReservation(reservationId),
+    onSuccess: invalidateReservationQueries,
+  });
+
+  const stayActionError =
+    checkInMutation.error ?? checkOutMutation.error ?? null;
+
+  const stayActionSaving =
+    checkInMutation.isPending || checkOutMutation.isPending;
 
   return (
     <div className="space-y-4">
@@ -85,6 +119,12 @@ export function ReservationDetailPage() {
       {reservationQuery.data && (
         <ReservationDetailView
           reservation={reservationQuery.data}
+          stayActionError={
+            stayActionError ? errorMessage(stayActionError) : null
+          }
+          stayActionSaving={stayActionSaving}
+          onCheckIn={() => checkInMutation.mutate()}
+          onCheckOut={() => checkOutMutation.mutate()}
           noteError={createNoteMutation.error ? errorMessage(createNoteMutation.error) : null}
           noteSaving={createNoteMutation.isPending}
           onCreateNote={(request) => createNoteMutation.mutate(request)}

@@ -189,6 +189,7 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
                     "room_id": reservation.room_id,
                     "service_dates": reservation
                         .nights()
+                        .into_iter()
                         .map(|service_date| service_date.to_string())
                         .collect::<Vec<_>>(),
                     "version": reservation.version,

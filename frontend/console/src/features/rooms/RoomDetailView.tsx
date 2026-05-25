@@ -13,6 +13,8 @@ type RoomDetailViewProps = {
   onInspect: () => void;
   onMarkOutOfOrder: () => void;
   onReturnToService: () => void;
+  onCheckIn: (reservationId: string) => void;
+  onCheckOut: (reservationId: string) => void;
 };
 
 function formatValue(value: string | number | boolean | null | undefined) {
@@ -71,7 +73,12 @@ export function RoomDetailView({
   onInspect,
   onMarkOutOfOrder,
   onReturnToService,
+  onCheckIn,
+  onCheckOut,
 }: RoomDetailViewProps) {
+  const reservationId = room.assignment.reservation_id;
+  const stayStatus = room.assignment.stay_status;
+
   return (
     <div className="space-y-4">
       <section className="border border-slate-300 bg-white p-4">
@@ -197,6 +204,34 @@ export function RoomDetailView({
             </p>
           )}
         </div>
+      </section>
+
+      <section className="border border-slate-300 bg-white p-4">
+        <h3 className="text-sm font-semibold uppercase text-slate-500">
+          Stay Actions
+        </h3>
+
+        {reservationId ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <ActionButton
+              disabled={actionSaving || stayStatus !== "confirmed"}
+              onClick={() => onCheckIn(reservationId)}
+            >
+              Check In
+            </ActionButton>
+
+            <ActionButton
+              disabled={actionSaving || stayStatus !== "checked_in"}
+              onClick={() => onCheckOut(reservationId)}
+            >
+              Check Out
+            </ActionButton>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-slate-600">
+            No linked active reservation is available for stay actions.
+          </p>
+        )}
       </section>
 
       <section className="border border-slate-300 bg-white p-4">

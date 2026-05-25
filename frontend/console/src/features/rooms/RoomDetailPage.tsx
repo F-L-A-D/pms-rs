@@ -3,6 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { ApiClientError } from "../../api/client";
+import {
+  checkInReservation,
+  checkOutReservation,
+} from "../../api/reservation";
 import { queryKeys } from "../../api/queryKeys";
 import {
   finishRoomCleaning,
@@ -100,6 +104,16 @@ export function RoomDetailPage() {
     onSuccess: invalidateRoomQueries,
   });
 
+  const checkInMutation = useMutation({
+    mutationFn: (reservationId: string) => checkInReservation(reservationId),
+    onSuccess: invalidateRoomQueries,
+  });
+
+  const checkOutMutation = useMutation({
+    mutationFn: (reservationId: string) => checkOutReservation(reservationId),
+    onSuccess: invalidateRoomQueries,
+  });
+
   const actionError =
     markDirtyMutation.error ??
     startCleaningMutation.error ??
@@ -107,6 +121,8 @@ export function RoomDetailPage() {
     inspectMutation.error ??
     markOutOfOrderMutation.error ??
     returnToServiceMutation.error ??
+    checkInMutation.error ??
+    checkOutMutation.error ??
     null;
 
   const actionSaving =
@@ -115,7 +131,9 @@ export function RoomDetailPage() {
     finishCleaningMutation.isPending ||
     inspectMutation.isPending ||
     markOutOfOrderMutation.isPending ||
-    returnToServiceMutation.isPending;
+    returnToServiceMutation.isPending ||
+    checkInMutation.isPending ||
+    checkOutMutation.isPending;
 
   return (
     <div className="space-y-4">
@@ -158,6 +176,8 @@ export function RoomDetailPage() {
           onInspect={() => inspectMutation.mutate()}
           onMarkOutOfOrder={() => markOutOfOrderMutation.mutate()}
           onReturnToService={() => returnToServiceMutation.mutate()}
+          onCheckIn={(reservationId) => checkInMutation.mutate(reservationId)}
+          onCheckOut={(reservationId) => checkOutMutation.mutate(reservationId)}
         />
       )}
     </div>

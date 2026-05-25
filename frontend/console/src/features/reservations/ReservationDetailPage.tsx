@@ -9,8 +9,10 @@ import {
   createReservationNote,
   createReservationTrace,
   getReservationDetail,
+  moveReservationRoom,
   type CreateReservationNoteRequest,
   type CreateReservationTraceRequest,
+  type MoveRoomRequest,
 } from "../../api/reservation";
 import { ReservationDetailView } from "./ReservationDetailView";
 
@@ -81,6 +83,17 @@ export function ReservationDetailPage() {
     onSuccess: invalidateReservationQueries,
   });
 
+  const moveRoomMutation = useMutation({
+    mutationFn: ({
+      roomId,
+      request,
+    }: {
+      roomId: string;
+      request: MoveRoomRequest;
+    }) => moveReservationRoom(reservationId, roomId, request),
+    onSuccess: invalidateReservationQueries,
+  });
+
   const stayActionError =
     checkInMutation.error ?? checkOutMutation.error ?? null;
 
@@ -125,6 +138,13 @@ export function ReservationDetailPage() {
           stayActionSaving={stayActionSaving}
           onCheckIn={() => checkInMutation.mutate()}
           onCheckOut={() => checkOutMutation.mutate()}
+          roomMoveError={
+            moveRoomMutation.error ? errorMessage(moveRoomMutation.error) : null
+          }
+          roomMoveSaving={moveRoomMutation.isPending}
+          onMoveRoom={(roomId, request) =>
+            moveRoomMutation.mutate({ roomId, request })
+          }
           noteError={createNoteMutation.error ? errorMessage(createNoteMutation.error) : null}
           noteSaving={createNoteMutation.isPending}
           onCreateNote={(request) => createNoteMutation.mutate(request)}

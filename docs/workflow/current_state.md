@@ -725,6 +725,25 @@ Stable Billing lifecycle capabilities:
 
 ---
 
+Stable Room / Housekeeping capabilities:
+
+* Room List / Room Detail console validation
+* RoomDailyState visibility by service_date
+* Room assignment visibility derived from Reservation.room_id
+* Assigned / occupied separation
+* No-Show linked room warning visibility
+* Check-in / check-out console actions
+* Inspected-room requirement before check-in
+* Check-in → occupied
+* Check-out → vacant + dirty
+* Housekeeping lifecycle actions from Room Detail
+* Room maintenance actions from Room Detail
+* Room Move from Reservation Detail
+* Room Move conflict visibility
+* Room Move transition / audit / operation event recording
+
+---
+
 ## Current Known Gaps
 
 ### Billing Audit query model
@@ -781,79 +800,227 @@ Deposit status supports forfeited and voided, but forfeit / void workflows are n
 
 ---
 
+### Business Date / Night Audit foundation
+
+The system does not yet have a current business date authority.
+
+Current `service_date` usage is mostly a query / room daily state filter, not the authoritative system business date.
+
+Because of this, the following are still possible and must be addressed next:
+
+* future reservation check-in
+* future reservation check-out
+* future housekeeping transitions
+* future maintenance transitions
+* future room move effective dates
+* operation execution without business date validation
+
+The next backend foundation should introduce a business date / service date authority and night audit lifecycle:
+
+* current open business date
+* business date close
+* next business date open
+* operation validation against current business date
+* minimum night audit workflow
+* billing day-boundary foundation
+
+This should be handled before expanding additional date-sensitive workflows such as turnover, due-out operations, housekeeping task assignment, or advanced room availability.
+
+---
+
+## Room / Housekeeping Workflow Validation
+
+Room / Housekeeping Console Validation Foundation has reached a stable checkpoint.
+
+This phase used the operational console to validate room visibility, room assignment visibility, housekeeping state transitions, stay actions, room move behavior, and missing workflow boundaries.
+
+The purpose was not final UI design. The purpose was to expose missing operational workflows and clarify authority boundaries through console usage.
+
+Implemented backend capabilities:
+
+* `GET /rooms?service_date=YYYY-MM-DD` includes RoomDailyState visibility.
+* `GET /rooms/:id?service_date=YYYY-MM-DD` includes RoomDailyState visibility.
+* Room assignment visibility is derived from `Reservation.room_id`.
+* RoomDailyState does not store assignment status.
+* Assigned and occupied are explicitly separated.
+* Assigned but not occupied is representable.
+* No-Show is not treated as an active assignment.
+* No-Show with linked `reservation.room_id` is shown as a soft warning:
+  * `no_show_reservation_still_linked_to_room`
+* Cancel route was changed from:
+  * `DELETE /reservations/:id`
+  to:
+  * `POST /reservations/:id/cancel`
+* Check-in now requires the assigned room to be inspected.
+* Dirty / Cleaning / Cleaned rooms reject check-in.
+* Inspected rooms allow check-in.
+* Check-in updates RoomDailyState occupancy to occupied.
+* Check-out updates RoomDailyState occupancy to vacant and housekeeping to dirty.
+* Room Move workflow is implemented and validated.
+* Room Move updates:
+  * old room: vacant
+  * old room on effective_date: dirty
+  * new room: occupied
+  * `Reservation.room_id`: updated to new room
+* Room Move records:
+  * `ReservationTransition::RoomMoved`
+  * `TimelineEventType::RoomMoved`
+  * audit log action: `stay.room_move`
+  * `OperationChangeEvent` with `OperationType::RoomMoved`
+* `OperationType::RoomMoved` is implemented.
+
+Implemented frontend console capabilities:
+
+* Room List Page.
+* `/rooms` route.
+* `service_date` filter.
+* Room List calls:
+  * `GET /rooms?service_date=...`
+* Room List displays:
+  * room_no
+  * room_class
+  * assignment_status
+  * linked reservation
+  * stay_status
+  * warning
+  * occupancy_status
+  * housekeeping_status
+* Room Detail Page.
+* `/rooms/:roomId?service_date=...` route.
+* Room Detail displays:
+  * room identity
+  * assignment visibility
+  * daily_state
+* Room Detail actions:
+  * Check In
+  * Check Out
+  * Mark Dirty
+  * Start Cleaning
+  * Finish Cleaning
+  * Inspect
+  * Mark Out Of Order
+  * Return To Service
+* Reservation Detail actions:
+  * Check In
+  * Check Out
+  * Room Move
+* Room Move form currently uses target room ID directly.
+  * Room number selector is intentionally deferred as a UI improvement.
+
+Validated backend tests:
+
+* RoomDailyState visibility tests.
+* Room assignment visibility tests.
+* No-Show linked room warning visibility.
+* Check-in requires inspected room.
+* Dirty / Cleaning / Cleaned rooms reject check-in.
+* Inspected rooms allow check-in.
+* Check-in sets occupied.
+* Check-out sets vacant + dirty.
+* Room Move updates source / target room daily state.
+* Room Move rejects occupied target room.
+* Room Move records transition.
+* Room Move records audit log.
+* Room Move records operation event.
+* `cargo test` passed.
+
+Validated frontend checks:
+
+* Room List manual check OK.
+* Room Detail manual check OK.
+* Reservation Detail stay actions manual check OK.
+* Room Move manual check OK.
+* Frontend console build passed.
+
+Important design decisions:
+
+* Room is a static master.
+* RoomDailyState is the daily authority for occupancy / housekeeping.
+* Assignment truth is `Reservation.room_id`.
+* Assignment visibility is derived in read responses.
+* Projection/read model is not truth.
+* Assigned is not the same as occupied.
+* No-Show is not an active assignment.
+* No-Show may still retain `reservation.room_id` for historical linkage and warning visibility.
+* Check-in is only allowed when the room is inspected.
+* Room Move is an operational workflow on checked-in stays.
+* Room Move currently requires room ID input in the console; room number based selection is deferred.
+
+Known limitations intentionally left for later:
+
+* Semantic Signal materialization is out of scope for this phase.
+* Current `service_date` filter is a UI/query date, not yet the system business date.
+* Future-dated operations are still possible because the system does not yet have a current business date authority.
+* Night audit / business date close-open lifecycle is not implemented.
+* Room number selector for room move is not implemented.
+* Housekeeping task assignment model is not implemented.
+
 ## Next Phase
 
 Next phase:
 
-Room / Housekeeping Workflow Validation
+Business Date / Night Audit Foundation
 
 Primary objective:
 
-Use the operational console to validate Room and Housekeeping workflows after Billing lifecycle validation has reached a stable checkpoint.
+Introduce an authoritative system business date so operational workflows cannot be executed against arbitrary future service dates.
 
-The next focus should start with a current-state review of:
+The immediate problem is that the console and backend currently allow future-dated operational actions, such as:
 
-* Room entity
-* RoomDailyState
-* Room status / room assignment semantics
-* Stay / Reservation / Room linkage
-* Housekeeping task model
-* Housekeeping operational commands
-* Housekeeping console visibility
-* Room state changes caused by check-in / check-out / housekeeping work
+* check-in for a future reservation
+* check-out outside the current business date
+* housekeeping state changes for future service dates
+* maintenance state changes for future service dates
+* room move effective dates unrelated to the current business date
 
-Likely validation surfaces:
+The next phase should establish the system-level date authority before expanding additional Room / Housekeeping workflows.
 
-* Room list
-* Room detail
-* Housekeeping task list
-* Housekeeping task detail
-* Reservation Detail → Room visibility
-* Room → current stay / reservation visibility
+Core concept:
 
-Initial questions:
+```text
+BusinessDate / OperationalServiceDate
+= the current system business date used by operational workflows
+```
 
-* What is the authoritative source for current room state?
-* How does room assignment affect operational room visibility?
-* How does check-in affect room occupancy?
-* How does check-out affect dirty/clean status?
-* What lifecycle should housekeeping tasks follow?
-* Which room states should be operational state versus projection/read model?
-* Which state transitions require audit and reason?
+This must be distinct from:
 
-Candidate lifecycle scope:
 
-Room:
+```text
+Reservation.check_in / check_out
+RoomDailyState.service_date
+Room List service_date filter
+Audit affected_service_dates
+```
 
-* room created
-* room assigned
-* room unassigned
-* room occupied
-* room vacated
-* room marked dirty
-* room marked clean
-* room inspected
-* room out_of_order
-* room returned_to_service
+Initial backend scope:
 
-Housekeeping:
+* Add a business date entity/table.
+* Store the current open business date.
+* Provide API to get the current business date.
+* Provide minimal night audit close/open command.
+* Enforce current business date validation for:
+  * check-in
+  * check-out
+  * room move
+  * housekeeping actions
+  * maintenance actions
+* Add operational audit for night audit close/open.
+* Add integration tests.
 
-* task created
-* task assigned
-* task started
-* task completed
-* task inspected
-* task reopened
+Initial frontend scope:
 
-The goal remains discovery of missing:
+- Display current business date in the console.
+- Default Room List / Room Detail service_date to current business date.
+- Keep future service_date viewing possible if needed.
+- Prevent or surface backend rejection for future-dated operational actions.
+- Optionally expose a minimal Night Audit action after backend validation is stable.
 
-* workflow
-* business logic
-* navigation
-* events
-* DTO fields
-* query models
-* projections
-* operational data
+Important design direction:
 
-Do not over-polish the UI.
+BusinessDate is the authority for "what operational date the system is currently on".
+RoomDailyState remains the authority for daily room occupancy / housekeeping.
+Reservation remains the authority for stay dates and assignment.
+Projection / Semantic Signal materialization remains out of scope for this phase.
+The goal is operational correctness and workflow boundary discovery, not final UI polish.
+
+Do not proceed into turnover, housekeeping task assignment, room number selector polish, or advanced availability logic until the business date / night audit foundation is in place.

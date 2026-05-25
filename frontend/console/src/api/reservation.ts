@@ -251,6 +251,11 @@ export type CreateReservationTraceRequest = {
   actor_id: string | null;
 };
 
+export type StayActionResponse = {
+  id: string;
+  status: string;
+};
+
 export function getReservationDetail(
   reservationId: string,
 ): Promise<ReservationDetail> {
@@ -276,6 +281,24 @@ export function createReservationTrace(
   return apiPost<ReservationTrace, CreateReservationTraceRequest>(
     `/reservations/${reservationId}/traces`,
     request,
+  );
+}
+
+export function checkInReservation(
+  reservationId: string,
+): Promise<StayActionResponse> {
+  return apiPost<StayActionResponse, undefined>(
+    `/reservations/${reservationId}/check-in`,
+    undefined,
+  );
+}
+
+export function checkOutReservation(
+  reservationId: string,
+): Promise<StayActionResponse> {
+  return apiPost<StayActionResponse, undefined>(
+    `/reservations/${reservationId}/check-out`,
+    undefined,
   );
 }
 

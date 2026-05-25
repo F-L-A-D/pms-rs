@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import type {
   CreateReservationNoteRequest,
   CreateReservationTraceRequest,
+  MoveRoomRequest,
   ReservationDetail,
 } from "../../api/reservation";
 
@@ -14,6 +15,10 @@ type ReservationDetailViewProps = {
   stayActionSaving: boolean;
   onCheckIn: () => void;
   onCheckOut: () => void;
+
+  roomMoveError: string | null;
+  roomMoveSaving: boolean;
+  onMoveRoom: (roomId: string, request: MoveRoomRequest) => void;
 
   noteError: string | null;
   noteSaving: boolean;
@@ -106,6 +111,9 @@ export function ReservationDetailView({
   stayActionSaving,
   onCheckIn,
   onCheckOut,
+  roomMoveError,
+  roomMoveSaving,
+  onMoveRoom,
   traceError,
   traceSaving,
   onCreateTrace,
@@ -126,6 +134,8 @@ export function ReservationDetailView({
   const [noteBody, setNoteBody] = useState("");
   const [traceDepartmentCode, setTraceDepartmentCode] = useState("");
   const [traceBody, setTraceBody] = useState("");
+  const [moveRoomId, setMoveRoomId] = useState("");
+  const [moveEffectiveDate, setMoveEffectiveDate] = useState(reservation.check_in);
 
   function submitNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -149,6 +159,14 @@ export function ReservationDetailView({
     });
 
     setTraceBody("");
+  }
+
+  function submitMoveRoom(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    onMoveRoom(moveRoomId.trim(), {
+      effective_date: moveEffectiveDate,
+    });
   }
 
   return (
@@ -258,6 +276,60 @@ export function ReservationDetailView({
         {stayActionError && (
           <pre className="mt-3 overflow-auto border border-red-300 bg-red-50 p-3 text-xs text-red-800">
             {stayActionError}
+          </pre>
+        )}
+      </section>
+
+      <section className="border border-slate-300 bg-white p-4">
+        <h3 className="text-sm font-semibold uppercase text-slate-500">
+          Room Move
+        </h3>
+
+        <form className="mt-3 grid gap-3 md:grid-cols-[1fr_12rem_auto]" onSubmit={submitMoveRoom}>
+          <label className="flex flex-col gap-1 text-sm text-slate-600">
+            Target Room ID
+            <input
+              className="border border-slate-400 bg-white px-2 py-2 text-sm text-slate-950"
+              value={moveRoomId}
+              onChange={(event) => setMoveRoomId(event.target.value)}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm text-slate-600">
+            Effective Date
+            <input
+              className="border border-slate-400 bg-white px-2 py-2 text-sm text-slate-950"
+              type="date"
+              value={moveEffectiveDate}
+              onChange={(event) => setMoveEffectiveDate(event.target.value)}
+            />
+          </label>
+
+          <div className="flex items-end">
+            <button
+              className="border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500"
+              disabled={
+                roomMoveSaving ||
+                reservation.stay_status !== "checked_in" ||
+                moveRoomId.trim().length === 0 ||
+                moveEffectiveDate.trim().length === 0
+              }
+              type="submit"
+            >
+              Move Room
+            </button>
+          </div>
+        </form>
+
+        {reservation.stay_status !== "checked_in" && (
+          <p className="mt-3 text-sm text-slate-600">
+            Room move requires checked-in stay.
+          </p>
+        )}
+
+        {roomMoveError && (
+          <pre className="mt-3 overflow-auto border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+            {roomMoveError}
           </pre>
         )}
       </section>

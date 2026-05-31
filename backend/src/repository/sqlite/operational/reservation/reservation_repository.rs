@@ -364,7 +364,7 @@ impl SqliteReservationRepository {
                 FROM reservations
                 WHERE reservation_status = ?1
                   AND stay_status = ?2
-                  AND {date_column} = ?3
+                  AND {date_column} <= ?3
                 ORDER BY check_in, id
                 "#
         );

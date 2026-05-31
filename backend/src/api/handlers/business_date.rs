@@ -1,4 +1,10 @@
-use axum::{extract::State, Json};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
+
+use uuid::Uuid;
 
 use crate::{
     api::{
@@ -20,11 +26,16 @@ use crate::{
                 },
             },
         },
+        dto::response::reservation::ReservationResponse,
         error::{map_app_error, ApiError},
+        handlers::reservation::reservation_to_response,
         state::AppState,
     },
+    domain::semantic::operation_context::OperationContext,
     usecase::business_date::{
-        command::{finalize_night_audit, post_room_charges, start_night_audit},
+        command::{
+            finalize_night_audit, mark_no_show_arrival, post_room_charges, start_night_audit,
+        },
         detail::{get_current_business_date, get_night_audit_worklist},
     },
 };
@@ -80,6 +91,21 @@ pub async fn post_night_audit_room_charges_handler(
             .map(NightAuditRoomChargeCandidateResponse::from)
             .collect(),
     }))
+}
+
+pub async fn mark_no_show_arrival_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<ReservationResponse>, ApiError> {
+    let reservation_id =
+        Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let reservation =
+        mark_no_show_arrival::execute(&state.db, reservation_id, OperationContext::api_system())
+            .await
+            .map_err(map_app_error)?;
+
+    Ok(Json(reservation_to_response(reservation)))
 }
 
 pub async fn finalize_night_audit_handler(

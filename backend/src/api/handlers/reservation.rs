@@ -690,7 +690,7 @@ fn reservation_edit_session_to_response(
     }
 }
 
-fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
+pub(crate) fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
     let primary_guest_id = reservation.primary_participant().map(|p| p.guest_id);
 
     let room_id = reservation.room_id;

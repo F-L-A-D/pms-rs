@@ -36,126 +36,7 @@ use crate::{
 pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<Reservation> {
     let mut tx = db.begin_tx().await;
 
-    let result = async {
-        let mut reservation = SqliteReservationRepository::find_by_id(&mut tx, id)
-            .await?
-            .ok_or(not_found("reservation not found"))?;
-
-        let before = reservation.clone();
-
-        if reservation.reservation_status == ReservationStatus::NoShow {
-            return Ok(reservation);
-        }
-
-        if reservation.reservation_status != ReservationStatus::Confirmed {
-            return Err(conflict(
-                "only confirmed reservations can be marked no-show",
-            ));
-        }
-
-        if reservation.stay_status == Some(StayStatus::CheckedIn)
-            || reservation.stay_status == Some(StayStatus::CheckedOut)
-        {
-            return Err(conflict(
-                "checked-in or checked-out stays cannot be marked no-show",
-            ));
-        }
-
-        reservation.reservation_status = ReservationStatus::NoShow;
-        reservation.stay_status = Some(StayStatus::NoShow);
-
-        SqliteReservationRepository::modify(&mut tx, &mut reservation).await?;
-
-        let before_json = reservation_json(&before).to_string();
-        let after_json = reservation_json(&reservation).to_string();
-        let changed_fields_json =
-            serde_json::to_string(&status_changed_fields(&before, &reservation)).map_err(infra)?;
-
-        let change_event = OperationChangeEvent {
-            id: Uuid::new_v4(),
-            operation_id: context.operation_id,
-            aggregate_type: "reservation".to_string(),
-            aggregate_id: reservation.id,
-            operation_type: OperationType::NoShow,
-            actor: context.actor,
-            actor_id: context.actor_id.clone(),
-            source: context.source,
-            before_json: Some(before_json.clone()),
-            after_json: after_json.clone(),
-            changed_fields_json: changed_fields_json.clone(),
-            occurred_at: chrono::Utc::now(),
-        };
-
-        SqliteOperationChangeEventRepository::save(&mut tx, &change_event).await?;
-
-        record_audit_log(
-            &mut tx,
-            &context,
-            RecordAuditLogInput {
-                aggregate_type: "reservation".to_string(),
-                aggregate_id: reservation.id,
-                action: "reservation.no_show".to_string(),
-                before_json: Some(before_json),
-                after_json,
-                changed_fields_json,
-                reason: None,
-            },
-        )
-        .await?;
-
-        refresh_projection_chain(
-            &mut tx,
-            ProjectionInvalidation::new(
-                ProjectionNode::ChangePattern,
-                ProjectionScope::Timeline,
-                ProjectionRefreshTarget::OperationEvent {
-                    event_id: change_event.id,
-                },
-            ),
-        )
-        .await?;
-
-        SqliteReservationTransitionRepository::save(
-            &mut tx,
-            &ReservationTransition {
-                id: Uuid::new_v4(),
-                reservation_id: reservation.id,
-                transition_type: ReservationTransitionType::NoShowMarked,
-                field_name: "reservation_status".to_string(),
-                before_value: before.reservation_status.to_snake().to_string(),
-                after_value: reservation.reservation_status.to_snake().to_string(),
-                occurred_at: chrono::Utc::now(),
-            },
-        )
-        .await?;
-
-        for participant in &reservation.participants {
-            record_event(
-                &mut tx,
-                participant.guest_id,
-                TimelineEventType::ReservationNoShow,
-                reservation.id,
-            )
-            .await?;
-
-            refresh_projection_chain(
-                &mut tx,
-                ProjectionInvalidation::new(
-                    ProjectionNode::GuestAggregate,
-                    ProjectionScope::Guest,
-                    ProjectionRefreshTarget::Guest {
-                        guest_id: participant.guest_id,
-                    },
-                ),
-            )
-            .await?;
-        }
-
-        refresh_inventory_and_kpis(&mut tx, &reservation).await?;
-
-        Ok(reservation)
-    }
-    .await;
+    let result = mark_no_show_in_tx(&mut tx, id, &context).await;
 
     match result {
         Ok(reservation) => {
@@ -170,6 +51,130 @@ pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<
             Err(e)
         }
     }
+}
+
+pub async fn mark_no_show_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    id: Uuid,
+    context: &OperationContext,
+) -> AppResult<Reservation> {
+    let mut reservation = SqliteReservationRepository::find_by_id(tx, id)
+        .await?
+        .ok_or(not_found("reservation not found"))?;
+
+    let before = reservation.clone();
+
+    if reservation.reservation_status == ReservationStatus::NoShow {
+        return Ok(reservation);
+    }
+
+    if reservation.reservation_status != ReservationStatus::Confirmed {
+        return Err(conflict(
+            "only confirmed reservations can be marked no-show",
+        ));
+    }
+
+    if reservation.stay_status == Some(StayStatus::CheckedIn)
+        || reservation.stay_status == Some(StayStatus::CheckedOut)
+    {
+        return Err(conflict(
+            "checked-in or checked-out stays cannot be marked no-show",
+        ));
+    }
+
+    reservation.reservation_status = ReservationStatus::NoShow;
+    reservation.stay_status = Some(StayStatus::NoShow);
+
+    SqliteReservationRepository::modify(tx, &mut reservation).await?;
+
+    let before_json = reservation_json(&before).to_string();
+    let after_json = reservation_json(&reservation).to_string();
+    let changed_fields_json =
+        serde_json::to_string(&status_changed_fields(&before, &reservation)).map_err(infra)?;
+
+    let change_event = OperationChangeEvent {
+        id: Uuid::new_v4(),
+        operation_id: context.operation_id,
+        aggregate_type: "reservation".to_string(),
+        aggregate_id: reservation.id,
+        operation_type: OperationType::NoShow,
+        actor: context.actor.clone(),
+        actor_id: context.actor_id.clone(),
+        source: context.source,
+        before_json: Some(before_json.clone()),
+        after_json: after_json.clone(),
+        changed_fields_json: changed_fields_json.clone(),
+        occurred_at: chrono::Utc::now(),
+    };
+
+    SqliteOperationChangeEventRepository::save(tx, &change_event).await?;
+
+    record_audit_log(
+        tx,
+        context,
+        RecordAuditLogInput {
+            aggregate_type: "reservation".to_string(),
+            aggregate_id: reservation.id,
+            action: "reservation.no_show".to_string(),
+            before_json: Some(before_json),
+            after_json,
+            changed_fields_json,
+            reason: None,
+        },
+    )
+    .await?;
+
+    refresh_projection_chain(
+        tx,
+        ProjectionInvalidation::new(
+            ProjectionNode::ChangePattern,
+            ProjectionScope::Timeline,
+            ProjectionRefreshTarget::OperationEvent {
+                event_id: change_event.id,
+            },
+        ),
+    )
+    .await?;
+
+    SqliteReservationTransitionRepository::save(
+        tx,
+        &ReservationTransition {
+            id: Uuid::new_v4(),
+            reservation_id: reservation.id,
+            transition_type: ReservationTransitionType::NoShowMarked,
+            field_name: "reservation_status".to_string(),
+            before_value: before.reservation_status.to_snake().to_string(),
+            after_value: reservation.reservation_status.to_snake().to_string(),
+            occurred_at: chrono::Utc::now(),
+        },
+    )
+    .await?;
+
+    for participant in &reservation.participants {
+        record_event(
+            tx,
+            participant.guest_id,
+            TimelineEventType::ReservationNoShow,
+            reservation.id,
+        )
+        .await?;
+
+        refresh_projection_chain(
+            tx,
+            ProjectionInvalidation::new(
+                ProjectionNode::GuestAggregate,
+                ProjectionScope::Guest,
+                ProjectionRefreshTarget::Guest {
+                    guest_id: participant.guest_id,
+                },
+            ),
+        )
+        .await?;
+    }
+
+    refresh_inventory_and_kpis(tx, &reservation).await?;
+
+    Ok(reservation)
 }
 
 fn status_changed_fields(before: &Reservation, after: &Reservation) -> Vec<ChangedField> {

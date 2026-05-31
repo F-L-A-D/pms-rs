@@ -138,6 +138,79 @@ async fn should_reject_night_audit_finalize_with_unresolved_arrivals() {
 }
 
 #[tokio::test]
+async fn should_resolve_unresolved_arrival_as_no_show_during_night_audit() {
+    let app = spawn_app().await;
+
+    let reservation = create_current_business_date_reservation(&app.app).await;
+    start_night_audit(&app.app).await;
+
+    let worklist = get_night_audit_worklist(&app.app).await;
+    assert_eq!(worklist["unresolved_arrivals"].as_array().unwrap().len(), 1);
+
+    let response = post(
+        &app.app,
+        &format!(
+            "/business-date/night-audit/arrivals/{}/no-show",
+            reservation.id
+        ),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = response_json(response).await;
+    assert_eq!(body["reservation_status"], "no_show");
+    assert_eq!(body["stay_status"], "no_show");
+
+    let worklist = get_night_audit_worklist(&app.app).await;
+    assert!(worklist["unresolved_arrivals"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+
+    let response = post_json(
+        &app.app,
+        "/business-date/night-audit/finalize",
+        &serde_json::json!({ "reason": "test finalize" }),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn should_reject_future_arrival_no_show_during_night_audit() {
+    let app = spawn_app().await;
+    let business_date = current_open_business_date(&app.app).await;
+    let guest = create_guest(&app.app).await;
+    let participant = ReservationParticipantBuilder::new(guest.id).build();
+    let request = ReservationBuilder::new()
+        .with_participant(participant)
+        .with_check_in(business_date + Duration::days(1))
+        .with_check_out(business_date + Duration::days(2))
+        .build();
+
+    let response = post_json(&app.app, "/reservations", &request).await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    let reservation: ReservationResponse =
+        serde_json::from_value(response_json(response).await).unwrap();
+
+    start_night_audit(&app.app).await;
+
+    let response = post(
+        &app.app,
+        &format!(
+            "/business-date/night-audit/arrivals/{}/no-show",
+            reservation.id
+        ),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
 async fn should_reject_night_audit_finalize_with_unposted_room_charges() {
     let app = spawn_app().await;
 

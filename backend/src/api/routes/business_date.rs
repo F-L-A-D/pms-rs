@@ -6,8 +6,8 @@ use axum::{
 use crate::api::{
     handlers::business_date::{
         finalize_night_audit_handler, get_current_business_date_handler,
-        get_night_audit_worklist_handler, post_night_audit_room_charges_handler,
-        start_night_audit_handler,
+        get_night_audit_worklist_handler, mark_no_show_arrival_handler,
+        post_night_audit_room_charges_handler, start_night_audit_handler,
     },
     state::AppState,
 };
@@ -29,6 +29,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/business-date/night-audit/post-room-charges",
             post(post_night_audit_room_charges_handler),
+        )
+        .route(
+            "/business-date/night-audit/arrivals/:id/no-show",
+            post(mark_no_show_arrival_handler),
         )
         .route(
             "/business-date/night-audit/finalize",

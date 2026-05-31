@@ -32,6 +32,7 @@ use pms_rs::{
 
 use crate::common::{
     app::spawn_app,
+    business_date::current_open_business_date,
     client::{post_json, response_json},
     guest::create_guest,
     room::create_room,
@@ -44,7 +45,7 @@ async fn should_refresh_daily_room_class_kpi_from_reservation_package_breakdowns
 
     create_room(&app.app).await;
 
-    let check_in = Utc::now().date_naive();
+    let check_in = current_open_business_date(&app.app).await;
     let reservation = create_reservation_with_breakdowns(
         &app.app,
         check_in,
@@ -91,7 +92,7 @@ async fn should_refresh_daily_hotel_kpi_from_reservation_package_breakdowns() {
 
     create_room(&app.app).await;
 
-    let check_in = Utc::now().date_naive();
+    let check_in = current_open_business_date(&app.app).await;
     let reservation = create_reservation_with_breakdowns(
         &app.app,
         check_in,
@@ -133,7 +134,7 @@ async fn should_refresh_monthly_room_class_and_hotel_kpis() {
 
     create_room(&app.app).await;
 
-    let today = Utc::now().date_naive();
+    let today = current_open_business_date(&app.app).await;
     let check_in = NaiveDate::from_ymd_opt(today.year(), today.month(), 2).unwrap();
     let check_out = check_in + Duration::days(2);
     let year_month = check_in.format("%Y-%m").to_string();
@@ -211,7 +212,7 @@ async fn should_project_daily_kpis_from_nightly_room_class_and_revenue_allocatio
     create_room_with_class(&app.app, "room_deluxe_daily_kpi", "deluxe").await;
 
     let guest = create_guest(&app.app).await;
-    let today = Utc::now().date_naive();
+    let today = current_open_business_date(&app.app).await;
 
     let body = json!({
         "check_in": today.to_string(),
@@ -318,7 +319,7 @@ async fn should_keep_zero_kpi_rates_when_all_rooms_are_out_of_order() {
     let app = spawn_app().await;
 
     let room = create_room(&app.app).await;
-    let service_date = Utc::now().date_naive();
+    let service_date = current_open_business_date(&app.app).await;
 
     let mut room_state = RoomDailyState::new(room.id, service_date);
     room_state.set_occupancy_status(RoomDailyOccupancyStatus::OutOfOrder);
@@ -368,7 +369,7 @@ async fn should_execute_daily_room_class_kpi_refresh_without_downstream_propagat
 
     let app = spawn_app().await;
     create_room(&app.app).await;
-    let service_date = Utc::now().date_naive();
+    let service_date = current_open_business_date(&app.app).await;
     let mut tx = app.db.begin_tx().await;
 
     clear_trace();
@@ -401,7 +402,7 @@ async fn should_execute_hotel_and_monthly_kpi_refreshes_without_downstream_propa
 
     let app = spawn_app().await;
     create_room(&app.app).await;
-    let service_date = Utc::now().date_naive();
+    let service_date = current_open_business_date(&app.app).await;
     let year_month = service_date.format("%Y-%m").to_string();
     let mut tx = app.db.begin_tx().await;
 
@@ -473,7 +474,7 @@ async fn should_rebuild_daily_room_class_kpi_equivalent_to_refresh() {
 
     create_room(&app.app).await;
 
-    let check_in = Utc::now().date_naive();
+    let check_in = current_open_business_date(&app.app).await;
     let reservation = create_reservation_with_breakdowns(
         &app.app,
         check_in,
@@ -521,7 +522,7 @@ async fn should_rebuild_monthly_hotel_kpi_equivalent_to_refresh() {
 
     create_room(&app.app).await;
 
-    let today = Utc::now().date_naive();
+    let today = current_open_business_date(&app.app).await;
     let check_in = NaiveDate::from_ymd_opt(today.year(), today.month(), 2).unwrap();
     let year_month = check_in.format("%Y-%m").to_string();
 

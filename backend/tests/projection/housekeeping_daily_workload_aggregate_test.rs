@@ -22,14 +22,14 @@ use pms_rs::{
     repository::sqlite::operational::room::room_daily_state_repository::SqliteRoomDailyStateRepository,
 };
 
-use crate::common::{app::spawn_app, client::post_json, room::create_room};
+use crate::common::{app::spawn_app, business_date::current_open_business_date, client::post_json, room::create_room};
 
 #[tokio::test]
 #[serial]
 async fn should_refresh_housekeeping_daily_workload_from_housekeeping_command() {
     let app = spawn_app().await;
     let room = create_room(&app.app).await;
-    let service_date = Utc::now().date_naive();
+    let service_date = current_open_business_date(&app.app).await;
     let body = json!({ "service_date": service_date.to_string() });
 
     let response = post_json(&app.app, &format!("/housekeeping/{}/dirty", room.id), &body).await;

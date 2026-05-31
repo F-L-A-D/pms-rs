@@ -1,6 +1,10 @@
 export const queryKeys = {
   health: ["health"] as const,
 
+  businessDateCurrent: ["business-date", "current"] as const,
+
+  nightAuditWorklist: ["business-date", "night-audit", "worklist"] as const,
+
   reservationSearch: (params: unknown) =>
     ["reservations", "search", params] as const,
 

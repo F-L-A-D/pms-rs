@@ -34,7 +34,8 @@ use crate::{
     domain::semantic::operation_context::OperationContext,
     usecase::business_date::{
         command::{
-            finalize_night_audit, mark_no_show_arrival, post_room_charges, start_night_audit,
+            extend_departure, finalize_night_audit, mark_no_show_arrival, post_room_charges,
+            start_night_audit,
         },
         detail::{get_current_business_date, get_night_audit_worklist},
     },
@@ -102,6 +103,21 @@ pub async fn mark_no_show_arrival_handler(
 
     let reservation =
         mark_no_show_arrival::execute(&state.db, reservation_id, OperationContext::api_system())
+            .await
+            .map_err(map_app_error)?;
+
+    Ok(Json(reservation_to_response(reservation)))
+}
+
+pub async fn extend_departure_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<ReservationResponse>, ApiError> {
+    let reservation_id =
+        Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let reservation =
+        extend_departure::execute(&state.db, reservation_id, OperationContext::api_system())
             .await
             .map_err(map_app_error)?;
 

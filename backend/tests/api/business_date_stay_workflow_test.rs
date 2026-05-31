@@ -3,8 +3,12 @@ use axum::http::StatusCode;
 use chrono::Duration;
 
 use pms_rs::{
-    api::dto::response::reservation::ReservationResponse, domain::entity::folio::FolioStatus,
-    repository::sqlite::operational::billing::folio_repository::SqliteFolioRepository,
+    api::dto::response::reservation::ReservationResponse,
+    domain::entity::folio::FolioStatus,
+    repository::sqlite::operational::{
+        billing::folio_repository::SqliteFolioRepository,
+        operation::operational_audit_log_repository::SqliteOperationalAuditLogRepository,
+    },
 };
 
 use crate::common::{
@@ -381,6 +385,103 @@ async fn should_block_night_audit_room_charge_when_open_folio_is_missing() {
     )
     .await;
     assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn should_extend_unresolved_departure_during_night_audit() {
+    let app = spawn_app().await;
+
+    let business_date = current_open_business_date(&app.app).await;
+    let reservation = create_room_charge_reservation(&app.app, "NA-EXTEND-001", 1).await;
+    let room = create_room(&app.app).await;
+
+    assign_room(&app.app, reservation.id, room.id).await;
+    inspect_room_for_date(&app.app, room.id, business_date).await;
+    check_in(&app.app, reservation.id).await;
+
+    start_night_audit(&app.app).await;
+    post_night_audit_room_charges(&app.app).await;
+    finalize_night_audit(&app.app).await;
+
+    start_night_audit(&app.app).await;
+
+    let worklist = get_night_audit_worklist(&app.app).await;
+    assert_eq!(
+        worklist["unresolved_departures"].as_array().unwrap().len(),
+        1
+    );
+
+    let response = post(
+        &app.app,
+        &format!(
+            "/business-date/night-audit/departures/{}/extend-stay",
+            reservation.id
+        ),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let extended: ReservationResponse =
+        serde_json::from_value(response_json(response).await).unwrap();
+    assert_eq!(extended.check_out, business_date + Duration::days(2));
+
+    let worklist = get_night_audit_worklist(&app.app).await;
+    assert!(worklist["unresolved_departures"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert_eq!(
+        worklist["room_charge_candidates"].as_array().unwrap().len(),
+        1
+    );
+    assert_eq!(worklist["room_charge_candidates"][0]["amount"], "100.00");
+
+    post_night_audit_room_charges(&app.app).await;
+
+    let response = post_json(
+        &app.app,
+        "/business-date/night-audit/finalize",
+        &serde_json::json!({ "reason": "test finalize" }),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn should_record_night_audit_audit_logs() {
+    let app = spawn_app().await;
+
+    let current = get_current_business_date(&app.app).await;
+    let business_date_id = uuid::Uuid::parse_str(current["id"].as_str().unwrap()).unwrap();
+    let business_date = current_open_business_date(&app.app).await;
+    let reservation = create_room_charge_reservation(&app.app, "NA-AUDIT-001", 1).await;
+    let room = create_room(&app.app).await;
+
+    assign_room(&app.app, reservation.id, room.id).await;
+    inspect_room_for_date(&app.app, room.id, business_date).await;
+    check_in(&app.app, reservation.id).await;
+
+    start_night_audit(&app.app).await;
+    post_night_audit_room_charges(&app.app).await;
+    finalize_night_audit(&app.app).await;
+
+    let mut tx = app.db.begin_tx().await;
+    let logs = SqliteOperationalAuditLogRepository::list_by_aggregate(
+        &mut tx,
+        "business_date",
+        business_date_id,
+    )
+    .await
+    .unwrap();
+    let _ = tx.rollback().await;
+
+    assert!(logs.iter().any(|log| log.action == "night_audit.start"));
+    assert!(logs
+        .iter()
+        .any(|log| log.action == "night_audit.post_room_charges"));
+    assert!(logs.iter().any(|log| log.action == "night_audit.finalize"));
 }
 
 #[tokio::test]

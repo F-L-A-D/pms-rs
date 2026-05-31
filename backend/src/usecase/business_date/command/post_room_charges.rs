@@ -4,18 +4,24 @@ use uuid::Uuid;
 
 use crate::{
     db::connection::Db,
-    domain::entity::{
-        folio_entry::{FolioEntry, FolioEntryType},
-        night_audit_room_charge_posting::NightAuditRoomChargePosting,
+    domain::{
+        entity::{
+            folio_entry::{FolioEntry, FolioEntryType},
+            night_audit_room_charge_posting::NightAuditRoomChargePosting,
+        },
+        semantic::operation_context::OperationContext,
     },
     error::app_error::{conflict, infra, AppResult},
     repository::sqlite::operational::{
         billing::folio_entry_repository::SqliteFolioEntryRepository,
         business_date::night_audit_room_charge_posting_repository::SqliteNightAuditRoomChargePostingRepository,
     },
-    usecase::business_date::{
-        night_audit_worklist::{collect_room_charge_status, NightAuditRoomChargeCandidate},
-        validation::ensure_active_business_date_closing,
+    usecase::{
+        audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
+        business_date::{
+            night_audit_worklist::{collect_room_charge_status, NightAuditRoomChargeCandidate},
+            validation::ensure_active_business_date_closing,
+        },
     },
 };
 
@@ -67,6 +73,30 @@ pub async fn execute(db: &Db) -> AppResult<PostRoomChargesResult> {
             SqliteNightAuditRoomChargePostingRepository::save(&mut tx, &posting).await?;
         }
 
+        let context = OperationContext::api_system();
+        record_audit_log(
+            &mut tx,
+            &context,
+            RecordAuditLogInput {
+                aggregate_type: "business_date".to_string(),
+                aggregate_id: business_date.id,
+                action: "night_audit.post_room_charges".to_string(),
+                before_json: None,
+                after_json: serde_json::json!({
+                    "business_date_id": business_date.id,
+                    "business_date": business_date.business_date,
+                    "posted_room_charges": candidates
+                        .iter()
+                        .map(room_charge_candidate_json)
+                        .collect::<Vec<_>>(),
+                })
+                .to_string(),
+                changed_fields_json: "[]".to_string(),
+                reason: None,
+            },
+        )
+        .await?;
+
         Ok(PostRoomChargesResult {
             posted_room_charges: candidates,
         })
@@ -86,4 +116,13 @@ pub async fn execute(db: &Db) -> AppResult<PostRoomChargesResult> {
             Err(e)
         }
     }
+}
+
+fn room_charge_candidate_json(candidate: &NightAuditRoomChargeCandidate) -> serde_json::Value {
+    serde_json::json!({
+        "reservation_id": candidate.reservation_id,
+        "folio_id": candidate.folio_id,
+        "service_date": candidate.service_date,
+        "amount": candidate.amount,
+    })
 }

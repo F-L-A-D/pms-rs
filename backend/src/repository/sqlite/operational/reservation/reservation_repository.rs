@@ -272,7 +272,7 @@ impl SqliteReservationRepository {
         tx: &mut Transaction<'_, Sqlite>,
         business_date: chrono::NaiveDate,
     ) -> AppResult<Vec<Reservation>> {
-        Self::list_by_date_and_status(
+        Self::list_due_by_date_and_status(
             tx,
             "check_in",
             business_date,
@@ -286,7 +286,7 @@ impl SqliteReservationRepository {
         tx: &mut Transaction<'_, Sqlite>,
         business_date: chrono::NaiveDate,
     ) -> AppResult<Vec<Reservation>> {
-        Self::list_by_date_and_status(
+        Self::list_due_by_date_and_status(
             tx,
             "check_out",
             business_date,
@@ -338,7 +338,7 @@ impl SqliteReservationRepository {
         Ok(reservations)
     }
 
-    async fn list_by_date_and_status(
+    async fn list_due_by_date_and_status(
         tx: &mut Transaction<'_, Sqlite>,
         date_column: &str,
         business_date: chrono::NaiveDate,

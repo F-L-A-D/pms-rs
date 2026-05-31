@@ -16,6 +16,14 @@ pub async fn ensure_active_business_date_open(
         .ok_or_else(|| conflict("active business date is not open"))
 }
 
+pub async fn ensure_active_business_date(
+    tx: &mut Transaction<'_, Sqlite>,
+) -> AppResult<BusinessDate> {
+    SqliteBusinessDateRepository::find_current_active(tx)
+        .await?
+        .ok_or_else(|| conflict("active business date not found"))
+}
+
 pub async fn ensure_active_business_date_closing(
     tx: &mut Transaction<'_, Sqlite>,
 ) -> AppResult<BusinessDate> {

@@ -29,14 +29,19 @@ use crate::{
             reservation::reservation_repository::SqliteReservationRepository,
         },
     },
-    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
-    usecase::timeline::command::record_event::record_event,
+    usecase::{
+        audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
+        business_date::validation::ensure_active_business_date_open,
+        timeline::command::record_event::record_event,
+    },
 };
 
 pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<Reservation> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
+        let business_date = ensure_active_business_date_open(&mut tx).await?;
+
         let mut reservation = SqliteReservationRepository::find_by_id(&mut tx, id)
             .await?
             .ok_or(not_found("reservation not found"))?;
@@ -53,6 +58,12 @@ pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<
         ) {
             return Err(conflict(
                 "only no-show or cancelled reservations can be reinstated",
+            ));
+        }
+
+        if reservation.check_in < business_date.business_date {
+            return Err(conflict(
+                "reservation check-in date must not be before current business date",
             ));
         }
 

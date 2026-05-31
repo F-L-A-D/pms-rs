@@ -30,13 +30,20 @@ use crate::{
         },
     },
     usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
+    usecase::business_date::validation::{
+        ensure_active_business_date, ensure_active_business_date_open,
+    },
     usecase::timeline::command::record_event::record_event,
 };
 
 pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<Reservation> {
     let mut tx = db.begin_tx().await;
 
-    let result = mark_no_show_in_tx(&mut tx, id, &context).await;
+    let result = async {
+        ensure_active_business_date_open(&mut tx).await?;
+        mark_no_show_in_tx(&mut tx, id, &context).await
+    }
+    .await;
 
     match result {
         Ok(reservation) => {
@@ -58,6 +65,8 @@ pub async fn mark_no_show_in_tx(
     id: Uuid,
     context: &OperationContext,
 ) -> AppResult<Reservation> {
+    let business_date = ensure_active_business_date(tx).await?;
+
     let mut reservation = SqliteReservationRepository::find_by_id(tx, id)
         .await?
         .ok_or(not_found("reservation not found"))?;
@@ -66,6 +75,12 @@ pub async fn mark_no_show_in_tx(
 
     if reservation.reservation_status == ReservationStatus::NoShow {
         return Ok(reservation);
+    }
+
+    if reservation.check_in > business_date.business_date {
+        return Err(conflict(
+            "reservation check-in date must not be after current business date for no-show",
+        ));
     }
 
     if reservation.reservation_status != ReservationStatus::Confirmed {

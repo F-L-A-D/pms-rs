@@ -8,8 +8,8 @@ use crate::common::{
     app::spawn_app,
     builders::{ReservationBuilder, ReservationParticipantBuilder},
     business_date::{
-        current_open_business_date, get_current_business_date, get_night_audit_worklist,
-        post_night_audit_room_charges, start_night_audit,
+        current_open_business_date, finalize_night_audit, get_current_business_date,
+        get_night_audit_worklist, post_night_audit_room_charges, start_night_audit,
     },
     client::{get, post, post_json, response_json},
     guest::create_guest,
@@ -204,6 +204,94 @@ async fn should_reject_future_arrival_no_show_during_night_audit() {
             "/business-date/night-audit/arrivals/{}/no-show",
             reservation.id
         ),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn should_reject_generic_no_show_for_future_arrival() {
+    let app = spawn_app().await;
+    let business_date = current_open_business_date(&app.app).await;
+    let guest = create_guest(&app.app).await;
+    let participant = ReservationParticipantBuilder::new(guest.id).build();
+    let request = ReservationBuilder::new()
+        .with_participant(participant)
+        .with_check_in(business_date + Duration::days(1))
+        .with_check_out(business_date + Duration::days(2))
+        .build();
+
+    let response = post_json(&app.app, "/reservations", &request).await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    let reservation: ReservationResponse =
+        serde_json::from_value(response_json(response).await).unwrap();
+
+    let response = post(
+        &app.app,
+        &format!("/reservations/{}/no-show", reservation.id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn should_reject_generic_no_show_during_night_audit_closing() {
+    let app = spawn_app().await;
+
+    let reservation = create_current_business_date_reservation(&app.app).await;
+    start_night_audit(&app.app).await;
+
+    let response = post(
+        &app.app,
+        &format!("/reservations/{}/no-show", reservation.id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn should_reject_reinstate_after_business_date_advances() {
+    let app = spawn_app().await;
+
+    let reservation = create_current_business_date_reservation(&app.app).await;
+
+    let response = post(
+        &app.app,
+        &format!("/reservations/{}/no-show", reservation.id),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+
+    start_night_audit(&app.app).await;
+    finalize_night_audit(&app.app).await;
+
+    let response = post(
+        &app.app,
+        &format!("/reservations/{}/reinstate", reservation.id),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn should_reject_cancel_after_check_in() {
+    let app = spawn_app().await;
+
+    let reservation = create_current_business_date_reservation(&app.app).await;
+    let room = create_room(&app.app).await;
+
+    assign_room(&app.app, reservation.id, room.id).await;
+    inspect_room_for_date(&app.app, room.id, reservation.check_in).await;
+    check_in(&app.app, reservation.id).await;
+
+    let response = post(
+        &app.app,
+        &format!("/reservations/{}/cancel", reservation.id),
     )
     .await;
 

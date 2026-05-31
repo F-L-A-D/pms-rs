@@ -3,14 +3,14 @@ use uuid::Uuid;
 use crate::{
     db::connection::Db,
     domain::{
-        entity::reservation::{Reservation, ReservationStatus},
+        entity::reservation::{Reservation, ReservationStatus, StayStatus},
         semantic::{
             guest_timeline_event::TimelineEventType,
             operation_change_event::{ChangedField, OperationChangeEvent, OperationType},
             operation_context::OperationContext,
         },
     },
-    error::app_error::{infra, not_found, AppResult},
+    error::app_error::{conflict, infra, not_found, AppResult},
     projection::{
         invalidation::{
             projection_invalidation::{ProjectionInvalidation, ProjectionRefreshTarget},
@@ -23,14 +23,19 @@ use crate::{
         operation::operation_change_event_repository::SqliteOperationChangeEventRepository,
         reservation::reservation_repository::SqliteReservationRepository,
     },
-    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
-    usecase::timeline::command::record_event::record_event,
+    usecase::{
+        audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
+        business_date::validation::ensure_active_business_date_open,
+        timeline::command::record_event::record_event,
+    },
 };
 
 pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<Reservation> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
+        let business_date = ensure_active_business_date_open(&mut tx).await?;
+
         let mut reservation = SqliteReservationRepository::find_by_id(&mut tx, id)
             .await?
             .ok_or(not_found("reservation not found"))?;
@@ -39,6 +44,21 @@ pub async fn execute(db: &Db, id: Uuid, context: OperationContext) -> AppResult<
 
         if reservation.reservation_status == ReservationStatus::Cancelled {
             return Ok(reservation);
+        }
+
+        if reservation.check_in < business_date.business_date {
+            return Err(conflict(
+                "reservation check-in date must not be before current business date",
+            ));
+        }
+
+        if matches!(
+            reservation.stay_status,
+            Some(StayStatus::CheckedIn) | Some(StayStatus::CheckedOut)
+        ) {
+            return Err(conflict(
+                "checked-in or checked-out stays cannot be cancelled",
+            ));
         }
 
         reservation.reservation_status = ReservationStatus::Cancelled;

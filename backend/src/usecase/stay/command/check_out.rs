@@ -57,16 +57,17 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
         let room_id = reservation
             .room_id
             .ok_or_else(|| conflict("room not assigned"))?;
+        let operation_date = business_date.business_date;
 
         let mut room_state = match SqliteRoomDailyStateRepository::find_by_room_and_service_date(
             &mut tx,
             room_id,
-            reservation.check_out,
+            operation_date,
         )
         .await?
         {
             Some(state) => state,
-            None => RoomDailyState::new(room_id, reservation.check_out),
+            None => RoomDailyState::new(room_id, operation_date),
         };
 
         room_state.set_occupancy_status(RoomDailyOccupancyStatus::Vacant);

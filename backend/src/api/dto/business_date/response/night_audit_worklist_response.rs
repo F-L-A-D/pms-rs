@@ -9,7 +9,8 @@ use uuid::Uuid;
 use crate::{
     api::dto::business_date::response::business_date_response::BusinessDateResponse,
     usecase::business_date::night_audit_worklist::{
-        NightAuditReservationItem, NightAuditRoomChargeCandidate, NightAuditWorklist,
+        NightAuditReservationItem, NightAuditRoomChargeBlocker, NightAuditRoomChargeCandidate,
+        NightAuditWorklist,
     },
 };
 
@@ -19,6 +20,7 @@ pub struct NightAuditWorklistResponse {
     pub unresolved_arrivals: Vec<NightAuditReservationItemResponse>,
     pub unresolved_departures: Vec<NightAuditReservationItemResponse>,
     pub room_charge_candidates: Vec<NightAuditRoomChargeCandidateResponse>,
+    pub room_charge_blockers: Vec<NightAuditRoomChargeBlockerResponse>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -36,6 +38,14 @@ pub struct NightAuditRoomChargeCandidateResponse {
     pub folio_id: Uuid,
     pub service_date: NaiveDate,
     pub amount: Decimal,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NightAuditRoomChargeBlockerResponse {
+    pub reservation_id: Uuid,
+    pub service_date: NaiveDate,
+    pub amount: Decimal,
+    pub reason: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -62,6 +72,11 @@ impl From<NightAuditWorklist> for NightAuditWorklistResponse {
                 .into_iter()
                 .map(NightAuditRoomChargeCandidateResponse::from)
                 .collect(),
+            room_charge_blockers: value
+                .room_charge_blockers
+                .into_iter()
+                .map(NightAuditRoomChargeBlockerResponse::from)
+                .collect(),
         }
     }
 }
@@ -74,6 +89,17 @@ impl From<NightAuditReservationItem> for NightAuditReservationItemResponse {
             check_in: value.check_in,
             check_out: value.check_out,
             room_id: value.room_id,
+        }
+    }
+}
+
+impl From<NightAuditRoomChargeBlocker> for NightAuditRoomChargeBlockerResponse {
+    fn from(value: NightAuditRoomChargeBlocker) -> Self {
+        Self {
+            reservation_id: value.reservation_id,
+            service_date: value.service_date,
+            amount: value.amount,
+            reason: value.reason.to_snake().to_string(),
         }
     }
 }

@@ -41,6 +41,11 @@ pub async fn execute(
         return Err(conflict("night audit has unposted room charges"));
     }
 
+    if !worklist.room_charge_blockers.is_empty() {
+        let _ = tx.rollback().await;
+        return Err(conflict("night audit has room charge blockers"));
+    }
+
     let now = Utc::now();
 
     closing_business_date.finalize_close(now)?;

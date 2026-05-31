@@ -2,7 +2,10 @@ use axum::http::StatusCode;
 
 use chrono::Duration;
 
-use pms_rs::api::dto::response::reservation::ReservationResponse;
+use pms_rs::{
+    api::dto::response::reservation::ReservationResponse, domain::entity::folio::FolioStatus,
+    repository::sqlite::operational::billing::folio_repository::SqliteFolioRepository,
+};
 
 use crate::common::{
     app::spawn_app,
@@ -318,6 +321,65 @@ async fn should_reject_night_audit_finalize_with_unposted_room_charges() {
     )
     .await;
 
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn should_block_night_audit_room_charge_when_open_folio_is_missing() {
+    let app = spawn_app().await;
+
+    let business_date = current_open_business_date(&app.app).await;
+    let reservation = create_room_charge_reservation(&app.app, "NA-MISSING-FOLIO-001", 1).await;
+    let room = create_room(&app.app).await;
+
+    assign_room(&app.app, reservation.id, room.id).await;
+    inspect_room_for_date(&app.app, room.id, business_date).await;
+    check_in(&app.app, reservation.id).await;
+
+    let mut tx = app.db.begin_tx().await;
+    let folios = SqliteFolioRepository::list_by_reservation_id(&mut tx, reservation.id)
+        .await
+        .unwrap();
+    let _ = tx.rollback().await;
+
+    let open_folio = folios
+        .into_iter()
+        .find(|folio| folio.status == FolioStatus::Open)
+        .unwrap();
+
+    let response = post(&app.app, &format!("/folios/{}/close", open_folio.id)).await;
+    assert_eq!(response.status(), StatusCode::OK);
+
+    start_night_audit(&app.app).await;
+
+    let worklist = get_night_audit_worklist(&app.app).await;
+    assert!(worklist["room_charge_candidates"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert_eq!(
+        worklist["room_charge_blockers"].as_array().unwrap().len(),
+        1
+    );
+    assert_eq!(
+        worklist["room_charge_blockers"][0]["reason"],
+        "missing_open_folio"
+    );
+
+    let response = post_json(
+        &app.app,
+        "/business-date/night-audit/post-room-charges",
+        &serde_json::json!({}),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+
+    let response = post_json(
+        &app.app,
+        "/business-date/night-audit/finalize",
+        &serde_json::json!({ "reason": "test finalize" }),
+    )
+    .await;
     assert_eq!(response.status(), StatusCode::CONFLICT);
 }
 

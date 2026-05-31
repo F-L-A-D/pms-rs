@@ -40,11 +40,39 @@ pub struct NightAuditRoomChargeCandidate {
 }
 
 #[derive(Clone, Debug)]
+pub struct NightAuditRoomChargeBlocker {
+    pub reservation_id: Uuid,
+    pub service_date: NaiveDate,
+    pub amount: Decimal,
+    pub reason: NightAuditRoomChargeBlockerReason,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum NightAuditRoomChargeBlockerReason {
+    MissingOpenFolio,
+}
+
+impl NightAuditRoomChargeBlockerReason {
+    pub fn to_snake(&self) -> &'static str {
+        match self {
+            Self::MissingOpenFolio => "missing_open_folio",
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct NightAuditWorklist {
     pub business_date: BusinessDate,
     pub unresolved_arrivals: Vec<NightAuditReservationItem>,
     pub unresolved_departures: Vec<NightAuditReservationItem>,
     pub room_charge_candidates: Vec<NightAuditRoomChargeCandidate>,
+    pub room_charge_blockers: Vec<NightAuditRoomChargeBlocker>,
+}
+
+#[derive(Clone, Debug)]
+pub struct NightAuditRoomChargeStatus {
+    pub candidates: Vec<NightAuditRoomChargeCandidate>,
+    pub blockers: Vec<NightAuditRoomChargeBlocker>,
 }
 
 pub async fn collect_worklist(
@@ -69,13 +97,14 @@ pub async fn collect_worklist(
     .map(reservation_item)
     .collect();
 
-    let room_charge_candidates = collect_room_charge_candidates(tx, &business_date).await?;
+    let room_charge_status = collect_room_charge_status(tx, &business_date).await?;
 
     Ok(NightAuditWorklist {
         business_date,
         unresolved_arrivals,
         unresolved_departures,
-        room_charge_candidates,
+        room_charge_candidates: room_charge_status.candidates,
+        room_charge_blockers: room_charge_status.blockers,
     })
 }
 
@@ -83,11 +112,21 @@ pub async fn collect_room_charge_candidates(
     tx: &mut Transaction<'_, Sqlite>,
     business_date: &BusinessDate,
 ) -> AppResult<Vec<NightAuditRoomChargeCandidate>> {
+    Ok(collect_room_charge_status(tx, business_date)
+        .await?
+        .candidates)
+}
+
+pub async fn collect_room_charge_status(
+    tx: &mut Transaction<'_, Sqlite>,
+    business_date: &BusinessDate,
+) -> AppResult<NightAuditRoomChargeStatus> {
     let reservations =
         SqliteReservationRepository::list_checked_in_by_stay_date(tx, business_date.business_date)
             .await?;
 
     let mut candidates = vec![];
+    let mut blockers = vec![];
 
     for reservation in reservations {
         if SqliteNightAuditRoomChargePostingRepository::find_by_reservation_and_service_date(
@@ -101,15 +140,22 @@ pub async fn collect_room_charge_candidates(
             continue;
         }
 
-        let Some(folio_id) = open_folio_id(tx, reservation.id).await? else {
-            continue;
-        };
-
         let amount = room_revenue_amount(tx, reservation.id, business_date.business_date).await?;
 
         if amount <= Decimal::ZERO {
             continue;
         }
+
+        let Some(folio_id) = open_folio_id(tx, reservation.id).await? else {
+            blockers.push(NightAuditRoomChargeBlocker {
+                reservation_id: reservation.id,
+                service_date: business_date.business_date,
+                amount,
+                reason: NightAuditRoomChargeBlockerReason::MissingOpenFolio,
+            });
+
+            continue;
+        };
 
         candidates.push(NightAuditRoomChargeCandidate {
             reservation_id: reservation.id,
@@ -119,7 +165,10 @@ pub async fn collect_room_charge_candidates(
         });
     }
 
-    Ok(candidates)
+    Ok(NightAuditRoomChargeStatus {
+        candidates,
+        blockers,
+    })
 }
 
 pub async fn open_folio_id(

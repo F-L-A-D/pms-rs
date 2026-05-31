@@ -8,13 +8,13 @@ use crate::{
         folio_entry::{FolioEntry, FolioEntryType},
         night_audit_room_charge_posting::NightAuditRoomChargePosting,
     },
-    error::app_error::{infra, AppResult},
+    error::app_error::{conflict, infra, AppResult},
     repository::sqlite::operational::{
         billing::folio_entry_repository::SqliteFolioEntryRepository,
         business_date::night_audit_room_charge_posting_repository::SqliteNightAuditRoomChargePostingRepository,
     },
     usecase::business_date::{
-        night_audit_worklist::{collect_room_charge_candidates, NightAuditRoomChargeCandidate},
+        night_audit_worklist::{collect_room_charge_status, NightAuditRoomChargeCandidate},
         validation::ensure_active_business_date_closing,
     },
 };
@@ -28,7 +28,13 @@ pub async fn execute(db: &Db) -> AppResult<PostRoomChargesResult> {
 
     let result = async {
         let business_date = ensure_active_business_date_closing(&mut tx).await?;
-        let candidates = collect_room_charge_candidates(&mut tx, &business_date).await?;
+        let room_charge_status = collect_room_charge_status(&mut tx, &business_date).await?;
+
+        if !room_charge_status.blockers.is_empty() {
+            return Err(conflict("night audit room charges have blockers"));
+        }
+
+        let candidates = room_charge_status.candidates;
 
         for candidate in &candidates {
             let now = Utc::now();

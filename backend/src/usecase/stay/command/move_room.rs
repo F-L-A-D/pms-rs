@@ -34,8 +34,13 @@ use crate::{
             },
         },
     },
-    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
-    usecase::timeline::command::record_event::record_event,
+    usecase::{
+        audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
+        business_date::validation::{
+            ensure_active_business_date_open, ensure_operation_date_matches_business_date,
+        },
+        timeline::command::record_event::record_event,
+    },
 };
 
 pub async fn execute(
@@ -47,6 +52,10 @@ pub async fn execute(
     let mut tx = db.begin_tx().await;
 
     let result = async {
+        let business_date = ensure_active_business_date_open(&mut tx).await?;
+
+        ensure_operation_date_matches_business_date(effective_date, &business_date)?;
+
         let mut reservation = SqliteReservationRepository::find_by_id(&mut tx, reservation_id)
             .await?
             .ok_or_else(|| not_found("reservation not found"))?;
@@ -247,10 +256,7 @@ fn move_dates(reservation: &Reservation, effective_date: NaiveDate) -> Vec<Naive
         .collect()
 }
 
-fn room_move_changed_fields(
-    old_room_id: Uuid,
-    new_room_id: Uuid,
-) -> Vec<ChangedField> {
+fn room_move_changed_fields(old_room_id: Uuid, new_room_id: Uuid) -> Vec<ChangedField> {
     vec![ChangedField::new(
         "room_id",
         Some(old_room_id.to_string()),

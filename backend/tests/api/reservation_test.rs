@@ -34,7 +34,8 @@ use pms_rs::{
 use crate::common::{
     app::spawn_app,
     builders::{ReservationBuilder, ReservationParticipantBuilder},
-    client::{delete, delete_json, get, patch_json, post_json, post, response_json},
+    business_date::current_open_business_date,
+    client::{delete_json, get, patch_json, post, post_json, response_json},
     guest::create_guest,
     reservation::{create_reservation, create_reservation_with_guest},
     room::create_room,
@@ -124,7 +125,7 @@ async fn should_return_sleep_sharing_children_and_reservation_notes() {
     let app = spawn_app().await;
 
     let guest = create_guest(&app.app).await;
-    let today = Utc::now().date_naive();
+    let today = current_open_business_date(&app.app).await;
 
     let create_response = post_json(
         &app.app,
@@ -396,7 +397,7 @@ async fn should_reject_invalid_stay_range() {
 
     let participant = ReservationParticipantBuilder::new(guest.id).build();
 
-    let today = Utc::now().date_naive();
+    let today = current_open_business_date(&app.app).await;
 
     let request = ReservationBuilder::new()
         .with_participant(participant)
@@ -407,6 +408,46 @@ async fn should_reject_invalid_stay_range() {
     let response = post_json(&app.app, "/reservations", &request).await;
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST,);
+}
+
+#[tokio::test]
+async fn should_reject_reservation_create_before_current_business_date() {
+    let app = spawn_app().await;
+
+    let business_date = current_open_business_date(&app.app).await;
+    let guest = create_guest(&app.app).await;
+    let participant = ReservationParticipantBuilder::new(guest.id).build();
+
+    let request = ReservationBuilder::new()
+        .with_participant(participant)
+        .with_check_in(business_date - Duration::days(1))
+        .with_check_out(business_date + Duration::days(1))
+        .build();
+
+    let response = post_json(&app.app, "/reservations", &request).await;
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn should_reject_reservation_modify_before_current_business_date() {
+    let app = spawn_app().await;
+
+    let business_date = current_open_business_date(&app.app).await;
+    let created = create_reservation(&app.app).await;
+
+    let response = patch_json(
+        &app.app,
+        &format!("/reservations/{}", created.id),
+        &serde_json::json!({
+            "expected_version": created.version,
+            "check_in": (business_date - Duration::days(1)).to_string(),
+            "check_out": (business_date + Duration::days(1)).to_string(),
+        }),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
 }
 
 #[tokio::test]
@@ -476,7 +517,7 @@ async fn should_create_reservation_with_booking_channel_and_package_breakdowns()
 
     let guest = create_guest(&app.app).await;
     let participant = ReservationParticipantBuilder::new(guest.id).build();
-    let today = Utc::now().date_naive();
+    let today = current_open_business_date(&app.app).await;
 
     let request = serde_json::json!({
         "external_id": "RES-PACKAGE-001",
@@ -780,7 +821,7 @@ async fn should_create_reservation_with_daily_stay_details_and_daily_revenue_all
 
     let guest = create_guest(&app.app).await;
     let participant = ReservationParticipantBuilder::new(guest.id).build();
-    let today = Utc::now().date_naive();
+    let today = current_open_business_date(&app.app).await;
 
     let request = serde_json::json!({
         "external_id": "RES-DAILY-001",
@@ -896,7 +937,7 @@ async fn should_reject_daily_details_that_do_not_cover_every_reservation_night()
 
     let guest = create_guest(&app.app).await;
     let participant = ReservationParticipantBuilder::new(guest.id).build();
-    let today = Utc::now().date_naive();
+    let today = current_open_business_date(&app.app).await;
 
     let request = serde_json::json!({
         "check_in": today.to_string(),
@@ -1126,7 +1167,7 @@ async fn should_preserve_daily_details_when_modifying_package_breakdowns_only() 
 
     let guest = create_guest(&app.app).await;
     let participant = ReservationParticipantBuilder::new(guest.id).build();
-    let today = Utc::now().date_naive();
+    let today = current_open_business_date(&app.app).await;
 
     let create_request = serde_json::json!({
         "check_in": today.to_string(),

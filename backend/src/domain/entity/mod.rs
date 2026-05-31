@@ -1,4 +1,5 @@
 pub mod billing_account;
+pub mod business_date;
 pub mod company;
 pub mod deposit;
 pub mod deposit_application;
@@ -7,6 +8,7 @@ pub mod folio;
 pub mod folio_entry;
 pub mod guest;
 pub mod invoice;
+pub mod night_audit_room_charge_posting;
 pub mod package_definition;
 pub mod payment;
 pub mod payment_allocation;

@@ -268,6 +268,124 @@ impl SqliteReservationRepository {
         Ok(reservations)
     }
 
+    pub async fn list_unresolved_arrivals_by_date(
+        tx: &mut Transaction<'_, Sqlite>,
+        business_date: chrono::NaiveDate,
+    ) -> AppResult<Vec<Reservation>> {
+        Self::list_by_date_and_status(
+            tx,
+            "check_in",
+            business_date,
+            ReservationStatus::Confirmed,
+            Some(StayStatus::Confirmed),
+        )
+        .await
+    }
+
+    pub async fn list_unresolved_departures_by_date(
+        tx: &mut Transaction<'_, Sqlite>,
+        business_date: chrono::NaiveDate,
+    ) -> AppResult<Vec<Reservation>> {
+        Self::list_by_date_and_status(
+            tx,
+            "check_out",
+            business_date,
+            ReservationStatus::Confirmed,
+            Some(StayStatus::CheckedIn),
+        )
+        .await
+    }
+
+    pub async fn list_checked_in_by_stay_date(
+        tx: &mut Transaction<'_, Sqlite>,
+        business_date: chrono::NaiveDate,
+    ) -> AppResult<Vec<Reservation>> {
+        let rows = sqlx::query(
+            r#"
+                SELECT
+                    id,
+                    external_id,
+                    check_in,
+                    check_out,
+                    reservation_status,
+                    stay_status,
+                    room_class,
+                    room_id,
+                    booking_channel,
+                    source_channel,
+                    plan_code,
+                    version,
+                    created_at
+                FROM reservations
+                WHERE reservation_status = 'confirmed'
+                  AND stay_status = 'checked_in'
+                  AND check_in <= ?1
+                  AND check_out > ?1
+                ORDER BY check_in, id
+                "#,
+        )
+        .bind(business_date.to_string())
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(infra)?;
+
+        let mut reservations = vec![];
+
+        for row in rows.iter() {
+            reservations.push(Self::row_to_reservation(tx, row).await?);
+        }
+
+        Ok(reservations)
+    }
+
+    async fn list_by_date_and_status(
+        tx: &mut Transaction<'_, Sqlite>,
+        date_column: &str,
+        business_date: chrono::NaiveDate,
+        reservation_status: ReservationStatus,
+        stay_status: Option<StayStatus>,
+    ) -> AppResult<Vec<Reservation>> {
+        let sql = format!(
+            r#"
+                SELECT
+                    id,
+                    external_id,
+                    check_in,
+                    check_out,
+                    reservation_status,
+                    stay_status,
+                    room_class,
+                    room_id,
+                    booking_channel,
+                    source_channel,
+                    plan_code,
+                    version,
+                    created_at
+                FROM reservations
+                WHERE reservation_status = ?1
+                  AND stay_status = ?2
+                  AND {date_column} = ?3
+                ORDER BY check_in, id
+                "#
+        );
+
+        let rows = sqlx::query(&sql)
+            .bind(reservation_status.to_snake())
+            .bind(stay_status.as_ref().map(StayStatus::to_snake))
+            .bind(business_date.to_string())
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(infra)?;
+
+        let mut reservations = vec![];
+
+        for row in rows.iter() {
+            reservations.push(Self::row_to_reservation(tx, row).await?);
+        }
+
+        Ok(reservations)
+    }
+
     pub async fn find_by_search_input(
         tx: &mut Transaction<'_, Sqlite>,
         input: &SearchReservationsInput,

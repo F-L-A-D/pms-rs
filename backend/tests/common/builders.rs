@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use chrono::{Duration, NaiveDate, Utc};
+use chrono::{Duration, NaiveDate};
 
 use uuid::Uuid;
 
@@ -168,19 +168,19 @@ impl ReservationParticipantBuilder {
 
 impl ReservationBuilder {
     pub fn new() -> Self {
-        let today = Utc::now().date_naive();
+        let business_date = NaiveDate::from_ymd_opt(2026, 6, 1).unwrap();
 
         Self {
             external_id: None,
-            check_in: today.to_string(),
-            check_out: (today + Duration::days(1)).to_string(),
+            check_in: business_date.to_string(),
+            check_out: (business_date + Duration::days(1)).to_string(),
             room_class: "standard".to_string(),
             booking_channel: Some(ReservationBookingChannel::Direct),
             source_channel: None,
             plan_code: None,
             participants: vec![],
             daily_details: vec![ReservationDailyDetailRequest {
-                service_date: today.to_string(),
+                service_date: business_date.to_string(),
                 room_class: "standard".to_string(),
                 plan_code: None,
                 adult_count: 2,

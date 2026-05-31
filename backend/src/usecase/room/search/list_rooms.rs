@@ -5,15 +5,10 @@ use uuid::Uuid;
 use crate::{
     api::dto::{
         input::room::ListRoomsInput,
-        response::room::{
-            RoomAssignmentVisibilityResponse, RoomListItemResponse,
-        },
+        response::room::{RoomAssignmentVisibilityResponse, RoomListItemResponse},
     },
     db::connection::Db,
-    domain::{
-        entity::reservation::Reservation,
-        semantic::room_daily_state::RoomDailyState,
-    },
+    domain::{entity::reservation::Reservation, semantic::room_daily_state::RoomDailyState},
     error::app_error::{infra, AppResult},
     repository::sqlite::operational::{
         reservation::reservation_repository::SqliteReservationRepository,
@@ -25,10 +20,7 @@ use crate::{
     usecase::room::assignment_visibility::build_assignment_visibility,
 };
 
-pub async fn list_rooms(
-    db: &Db,
-    input: ListRoomsInput,
-) -> AppResult<Vec<RoomListItemResponse>> {
+pub async fn list_rooms(db: &Db, input: ListRoomsInput) -> AppResult<Vec<RoomListItemResponse>> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
@@ -38,56 +30,42 @@ pub async fn list_rooms(
             SqliteRoomRepository::find_active(&mut tx).await?
         };
 
-        let daily_states_by_room_id =
-            if let Some(service_date) = input.service_date {
-                let daily_states =
-                    SqliteRoomDailyStateRepository::list_by_service_date(
-                        &mut tx,
-                        service_date,
-                    )
-                    .await?;
+        let daily_states_by_room_id = if let Some(service_date) = input.service_date {
+            let daily_states =
+                SqliteRoomDailyStateRepository::list_by_service_date(&mut tx, service_date).await?;
 
-                daily_states
-                    .into_iter()
-                    .map(|state| (state.room_id, state))
-                    .collect::<HashMap<Uuid, RoomDailyState>>()
-            } else {
-                HashMap::new()
-            };
+            daily_states
+                .into_iter()
+                .map(|state| (state.room_id, state))
+                .collect::<HashMap<Uuid, RoomDailyState>>()
+        } else {
+            HashMap::new()
+        };
 
-        let assignments_by_room_id =
-            if let Some(service_date) = input.service_date {
-                let reservations =
-                    SqliteReservationRepository::list_room_assignments_by_service_date(
-                        &mut tx,
-                        service_date,
-                    )
-                    .await?;
+        let assignments_by_room_id = if let Some(service_date) = input.service_date {
+            let reservations = SqliteReservationRepository::list_room_assignments_by_service_date(
+                &mut tx,
+                service_date,
+            )
+            .await?;
 
-                group_reservations_by_room_id(reservations)
-            } else {
-                HashMap::new()
-            };
+            group_reservations_by_room_id(reservations)
+        } else {
+            HashMap::new()
+        };
 
         let response = rooms
             .into_iter()
             .map(|room| {
-                let daily_state =
-                    daily_states_by_room_id.get(&room.id).cloned();
+                let daily_state = daily_states_by_room_id.get(&room.id).cloned();
 
                 let assignment = assignments_by_room_id
                     .get(&room.id)
                     .cloned()
                     .map(build_assignment_visibility)
-                    .unwrap_or_else(
-                        RoomAssignmentVisibilityResponse::unassigned,
-                    );
+                    .unwrap_or_else(RoomAssignmentVisibilityResponse::unassigned);
 
-                RoomListItemResponse::from_parts(
-                    room,
-                    daily_state,
-                    assignment,
-                )
+                RoomListItemResponse::from_parts(room, daily_state, assignment)
             })
             .collect();
 

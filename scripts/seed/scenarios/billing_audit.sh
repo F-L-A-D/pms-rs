@@ -4,7 +4,7 @@ echo "Adding billing validation data..." >&2
 
 confirmed_folio_id="$(get_folio_id_for_reservation "${confirmed_id}")"
 range_folio_id="$(get_folio_id_for_reservation "${range_id}")"
-past_folio_id="$(get_folio_id_for_reservation "${past_id}")"
+settled_folio_id="$(get_folio_id_for_reservation "${settled_id}")"
 
 echo "Adding folio entries to confirmed reservation" >&2
 create_folio_entry \
@@ -38,24 +38,24 @@ create_payment \
   "credit_card" \
   "console-seed-payment-001" >/dev/null
 
-echo "Adding past reservation billing data" >&2
+echo "Adding settled reservation billing data" >&2
 create_folio_entry \
-  "${past_folio_id}" \
+  "${settled_folio_id}" \
   "room_charge" \
   "8000" \
-  "Console seed: past reservation room charge" >/dev/null
+  "Console seed: settled reservation room charge" >/dev/null
 
 create_folio_entry \
-  "${past_folio_id}" \
+  "${settled_folio_id}" \
   "manual_adjustment" \
   "-1000" \
   "Console seed: goodwill adjustment" >/dev/null
 
 create_payment \
-  "${past_folio_id}" \
+  "${settled_folio_id}" \
   "7000" \
   "cash" \
-  "console-seed-payment-past-001" >/dev/null
+  "console-seed-payment-settled-001" >/dev/null
 
 echo "Creating billing account for range folio" >&2
 
@@ -107,7 +107,7 @@ void_invoice \
 echo "Billing validation expectations:" >&2
 echo "- confirmed: charges=13200 payments=5000 balance=8200" >&2
 echo "- range: charges=20000 payments=20000 balance=0" >&2
-echo "- past: charges=8000 payments=8000 balance=0" >&2
+echo "- settled: charges=7000 payments=7000 balance=0" >&2
 echo "- confirmed audit: receive_deposit" >&2
 echo "- range audit: apply_payment + close_folio + issue_invoice + void_invoice" >&2
-echo "- past audit: apply_payment" >&2
+echo "- settled audit: apply_payment" >&2

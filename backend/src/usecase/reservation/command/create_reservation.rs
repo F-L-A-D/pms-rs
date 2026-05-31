@@ -20,7 +20,7 @@ use crate::{
             reservation_guest_relation::ReservationGuestRelation,
         },
     },
-    error::app_error::{infra, not_found, validation, AppResult},
+    error::app_error::{conflict, infra, not_found, validation, AppResult},
     projection::{
         invalidation::{
             projection_invalidation::{ProjectionInvalidation, ProjectionRefreshTarget},
@@ -41,9 +41,12 @@ use crate::{
             reservation_repository::SqliteReservationRepository,
         },
     },
-    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
-    usecase::billing::command::folio::open_reservation_folio::open_reservation_folio_in_tx,
-    usecase::timeline::command::record_event::record_event,
+    usecase::{
+        audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
+        billing::command::folio::open_reservation_folio::open_reservation_folio_in_tx,
+        business_date::validation::ensure_active_business_date_open,
+        timeline::command::record_event::record_event,
+    },
 };
 
 pub async fn execute(
@@ -54,6 +57,14 @@ pub async fn execute(
     let mut tx = db.begin_tx().await;
 
     let result = async {
+        let business_date = ensure_active_business_date_open(&mut tx).await?;
+
+        if input.check_in < business_date.business_date {
+            return Err(conflict(
+                "reservation check-in date must not be before current business date",
+            ));
+        }
+
         let daily_inputs = input.daily_details;
         let package_inputs = input.package_breakdowns;
         let participant_inputs = input.participants;

@@ -15,13 +15,27 @@ use crate::{
         room_daily_state_repository::SqliteRoomDailyStateRepository,
         room_repository::SqliteRoomRepository,
     },
-    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
+    usecase::{
+        audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
+        business_date::validation::{
+            ensure_active_business_date_open, ensure_operation_date_matches_business_date,
+        },
+    },
 };
 
 pub async fn execute(db: &Db, input: HousekeepingRoomDailyStateInput) -> AppResult<RoomDailyState> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
+
+        let business_date =
+            ensure_active_business_date_open(&mut tx).await?;
+
+        ensure_operation_date_matches_business_date(
+            input.service_date,
+            &business_date,
+        )?;
+
         SqliteRoomRepository::find_by_id(&mut tx, input.room_id)
             .await?
             .ok_or(not_found("room not found"))?;

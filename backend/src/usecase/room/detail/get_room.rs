@@ -1,9 +1,7 @@
 use crate::{
     api::dto::{
         input::room::GetRoomInput,
-        response::room::{
-            RoomAssignmentVisibilityResponse, RoomDetailResponse,
-        },
+        response::room::{RoomAssignmentVisibilityResponse, RoomDetailResponse},
     },
     db::connection::Db,
     error::app_error::{infra, not_found, AppResult},
@@ -17,10 +15,7 @@ use crate::{
     usecase::room::assignment_visibility::build_assignment_visibility,
 };
 
-pub async fn get_room(
-    db: &Db,
-    input: GetRoomInput,
-) -> AppResult<RoomDetailResponse> {
+pub async fn get_room(db: &Db, input: GetRoomInput) -> AppResult<RoomDetailResponse> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
@@ -28,32 +23,30 @@ pub async fn get_room(
             .await?
             .ok_or_else(|| not_found("room not found"))?;
 
-        let daily_state =
-            if let Some(service_date) = input.service_date {
-                SqliteRoomDailyStateRepository::find_by_room_and_service_date(
+        let daily_state = if let Some(service_date) = input.service_date {
+            SqliteRoomDailyStateRepository::find_by_room_and_service_date(
+                &mut tx,
+                input.room_id,
+                service_date,
+            )
+            .await?
+        } else {
+            None
+        };
+
+        let assignment = if let Some(service_date) = input.service_date {
+            let reservations =
+                SqliteReservationRepository::list_room_assignments_by_room_and_service_date(
                     &mut tx,
                     input.room_id,
                     service_date,
                 )
-                .await?
-            } else {
-                None
-            };
+                .await?;
 
-        let assignment =
-            if let Some(service_date) = input.service_date {
-                let reservations =
-                    SqliteReservationRepository::list_room_assignments_by_room_and_service_date(
-                        &mut tx,
-                        input.room_id,
-                        service_date,
-                    )
-                    .await?;
-
-                build_assignment_visibility(reservations)
-            } else {
-                RoomAssignmentVisibilityResponse::unassigned()
-            };
+            build_assignment_visibility(reservations)
+        } else {
+            RoomAssignmentVisibilityResponse::unassigned()
+        };
 
         Ok(RoomDetailResponse::from_parts(
             room,

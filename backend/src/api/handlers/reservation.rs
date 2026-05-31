@@ -15,7 +15,7 @@ use crate::{
         dto::{
             input::reservation::{
                 CloseReservationEditSessionInput, CreateReservationInput,
-                CreateReservationNoteInput, CreateReservationTraceInput,
+                CreateReservationNoteInput, CreateReservationTraceInput, DeferArrivalInput,
                 DeleteReservationNoteInput, DeleteReservationTraceInput, ModifyReservationInput,
                 OpenReservationEditSessionInput, ReservationDailyDetailInput,
                 ReservationDailyRevenueAllocationInput, ReservationPackageBreakdownInput,
@@ -24,7 +24,7 @@ use crate::{
             },
             request::reservation::{
                 CloseReservationEditSessionRequest, CreateReservationNoteRequest,
-                CreateReservationRequest, CreateReservationTraceRequest,
+                CreateReservationRequest, CreateReservationTraceRequest, DeferArrivalRequest,
                 DeleteReservationNoteRequest, DeleteReservationTraceRequest,
                 ModifyReservationRequest, OpenReservationEditSessionRequest,
                 ResolveReservationTraceRequest, SearchReservationsQueryRequest,
@@ -50,9 +50,9 @@ use crate::{
     usecase::reservation::{
         command::{
             cancel_reservation, close_edit_session, create_reservation, create_reservation_note,
-            create_reservation_trace, delete_reservation_note, delete_reservation_trace,
-            mark_no_show, modify_reservation, open_edit_session, reinstate_reservation,
-            resolve_reservation_trace,
+            create_reservation_trace, defer_arrival, delete_reservation_note,
+            delete_reservation_trace, mark_no_show, modify_reservation, open_edit_session,
+            reinstate_reservation, resolve_reservation_trace,
         },
         detail::get_reservation::get_reservation_detail,
         search::{get_guest_reservations::get_guest_reservations, search_reservations},
@@ -428,6 +428,26 @@ pub async fn mark_no_show_handler(
     Ok(Json(reservation_to_response(reservation)))
 }
 
+pub async fn defer_arrival_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(req): Json<DeferArrivalRequest>,
+) -> Result<Json<ReservationResponse>, ApiError> {
+    let reservation_id =
+        Uuid::parse_str(&id).map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let input = DeferArrivalInput {
+        reservation_id,
+        post_room_charge: req.post_room_charge,
+    };
+
+    let reservation = defer_arrival::execute(&state.db, input, OperationContext::api_system())
+        .await
+        .map_err(map_app_error)?;
+
+    Ok(Json(reservation_to_response(reservation)))
+}
+
 pub async fn reinstate_reservation_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -707,7 +727,7 @@ fn reservation_to_response(reservation: Reservation) -> ReservationResponse {
                 version: reservation.version,
                 updated_at: None,
             },
-        
+
         linked_resources: ReservationLinkedResources {
             primary_guest_id,
             assigned_room_id: reservation.room_id,

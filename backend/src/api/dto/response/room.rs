@@ -89,12 +89,7 @@ impl RoomAssignmentVisibilityResponse {
 
             external_id: reservation.external_id,
 
-            reservation_status: Some(
-                reservation
-                    .reservation_status
-                    .to_snake()
-                    .to_string(),
-            ),
+            reservation_status: Some(reservation.reservation_status.to_snake().to_string()),
 
             stay_status: reservation
                 .stay_status
@@ -116,12 +111,7 @@ impl RoomAssignmentVisibilityResponse {
 
             external_id: reservation.external_id,
 
-            reservation_status: Some(
-                reservation
-                    .reservation_status
-                    .to_snake()
-                    .to_string(),
-            ),
+            reservation_status: Some(reservation.reservation_status.to_snake().to_string()),
 
             stay_status: reservation
                 .stay_status
@@ -131,15 +121,11 @@ impl RoomAssignmentVisibilityResponse {
 
             check_out: Some(reservation.check_out),
 
-            warning: Some(
-                "no_show_reservation_still_linked_to_room".to_string(),
-            ),
+            warning: Some("no_show_reservation_still_linked_to_room".to_string()),
         }
     }
 
-    pub fn from_reservation_status(
-        reservation: Reservation,
-    ) -> Option<Self> {
+    pub fn from_reservation_status(reservation: Reservation) -> Option<Self> {
         if reservation.reservation_status == ReservationStatus::Cancelled {
             return None;
         }

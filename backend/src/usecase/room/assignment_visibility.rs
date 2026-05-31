@@ -1,8 +1,6 @@
 use crate::{
     api::dto::response::room::RoomAssignmentVisibilityResponse,
-    domain::entity::reservation::{
-        Reservation, ReservationStatus, StayStatus,
-    },
+    domain::entity::reservation::{Reservation, ReservationStatus, StayStatus},
 };
 
 pub fn build_assignment_visibility(

@@ -89,6 +89,11 @@ pub struct ModifyReservationInput {
     pub participants: Option<Vec<ReservationParticipantInput>>,
 }
 
+pub struct DeferArrivalInput {
+    pub reservation_id: Uuid,
+    pub post_room_charge: bool,
+}
+
 pub struct CreateReservationNoteInput {
     pub reservation_id: Uuid,
     pub kind: ReservationNoteKind,

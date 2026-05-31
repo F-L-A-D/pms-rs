@@ -29,17 +29,28 @@ use crate::{
         reservation::reservation_repository::SqliteReservationRepository,
         room::room_daily_state_repository::SqliteRoomDailyStateRepository,
     },
-    usecase::audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
-    usecase::timeline::command::record_event::record_event,
+    usecase::{
+        audit::command::record_audit_log::{record_audit_log, RecordAuditLogInput},
+        business_date::validation::ensure_active_business_date_open,
+        timeline::command::record_event::record_event,
+    },
 };
 
 pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
     let mut tx = db.begin_tx().await;
 
     let result = async {
+        let business_date = ensure_active_business_date_open(&mut tx).await?;
+
         let mut reservation = SqliteReservationRepository::find_by_id(&mut tx, reservation_id)
             .await?
             .ok_or_else(|| not_found("reservation not found"))?;
+
+        if business_date.business_date != reservation.check_in {
+            return Err(conflict(
+                "business date must match reservation check-in date",
+            ));
+        }
 
         if reservation.reservation_status != ReservationStatus::Confirmed {
             return Err(conflict("reservation inactive"));
@@ -74,7 +85,9 @@ pub async fn execute(db: &Db, reservation_id: Uuid) -> AppResult<()> {
                 return Err(conflict("room out of order"));
             }
 
-            if room_state.housekeeping_status != RoomDailyHousekeepingStatus::Inspected {
+            if service_date == business_date.business_date
+                && room_state.housekeeping_status != RoomDailyHousekeepingStatus::Inspected
+            {
                 return Err(conflict("room not inspected"));
             }
 

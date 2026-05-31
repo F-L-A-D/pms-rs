@@ -75,6 +75,36 @@ impl SqliteReservationDailyRevenueAllocationRepository {
         rows.iter().map(Self::row_to_allocation).collect()
     }
 
+    pub async fn list_by_reservation_and_service_date(
+        tx: &mut Transaction<'_, Sqlite>,
+        reservation_id: Uuid,
+        service_date: NaiveDate,
+    ) -> AppResult<Vec<ReservationDailyRevenueAllocation>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                reservation_id,
+                service_date,
+                package_code,
+                revenue_category,
+                department_code,
+                account_code,
+                amount
+            FROM reservation_daily_revenue_allocations
+            WHERE reservation_id = ?1
+              AND service_date = ?2
+            ORDER BY package_code, revenue_category
+            "#,
+        )
+        .bind(reservation_id.to_string())
+        .bind(service_date.to_string())
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(infra)?;
+
+        rows.iter().map(Self::row_to_allocation).collect()
+    }
+
     pub async fn delete_by_reservation_id(
         tx: &mut Transaction<'_, Sqlite>,
         reservation_id: Uuid,

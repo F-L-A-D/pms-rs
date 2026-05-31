@@ -11,7 +11,7 @@ use crate::{
             operation_context::OperationContext,
         },
     },
-    error::app_error::{conflict, infra, not_found, validation, AppResult},
+    error::app_error::{conflict, infra, not_found, AppResult},
     repository::sqlite::operational::{
         billing::{
             folio_repository::SqliteFolioRepository, payment_repository::SqlitePaymentRepository,

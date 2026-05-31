@@ -1,6 +1,23 @@
 use sqlx::SqlitePool;
 
 pub async fn bootstrap(pool: &SqlitePool) {
+    sqlx::query(include_str!("business_date/business_dates.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query(include_str!("business_date/business_dates_seed.sql"))
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query(include_str!(
+        "business_date/night_audit_room_charge_postings.sql"
+    ))
+    .execute(pool)
+    .await
+    .unwrap();
+
     sqlx::query(include_str!("reservation/reservations.sql"))
         .execute(pool)
         .await

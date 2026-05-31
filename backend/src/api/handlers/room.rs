@@ -14,26 +14,22 @@ use crate::{
     api::{
         dto::{
             input::room::{
-                CreateRoomInput, GetRoomInput, ListRoomsInput,
-                RoomDailyStateCommandInput, UpdateRoomActivationInput,
-                UpdateRoomInput,
+                CreateRoomInput, GetRoomInput, ListRoomsInput, RoomDailyStateCommandInput,
+                UpdateRoomActivationInput, UpdateRoomInput,
             },
             request::room::{
-                CreateRoomRequest, RoomDailyStateCommandRequest,
-                UpdateRoomActivationRequest, UpdateRoomRequest,
+                CreateRoomRequest, RoomDailyStateCommandRequest, UpdateRoomActivationRequest,
+                UpdateRoomRequest,
             },
             response::housekeeping::RoomDailyStateResponse,
-            response::room::{
-                RoomDetailResponse, RoomListResponse, RoomResponse,
-            },
+            response::room::{RoomDetailResponse, RoomListResponse, RoomResponse},
         },
         error::{map_app_error, ApiError},
         state::AppState,
     },
     usecase::room::{
         command::{
-            create_room, mark_room_out_of_order, return_room_to_service,
-            update_room::update_room,
+            create_room, mark_room_out_of_order, return_room_to_service, update_room::update_room,
             update_room_activation::update_room_activation,
         },
         detail::get_room::get_room,
@@ -98,9 +94,7 @@ pub async fn update_room_handler(
         is_physical: req.is_physical,
     };
 
-    let room = update_room(&state.db, input)
-        .await
-        .map_err(map_app_error)?;
+    let room = update_room(&state.db, input).await.map_err(map_app_error)?;
 
     let response = RoomResponse::from(room);
 
@@ -175,9 +169,7 @@ pub async fn get_room_handler(
         service_date,
     };
 
-    let response = get_room(&state.db, input)
-        .await
-        .map_err(map_app_error)?;
+    let response = get_room(&state.db, input).await.map_err(map_app_error)?;
 
     Ok(Json(response))
 }
@@ -193,9 +185,7 @@ pub async fn list_rooms_handler(
         service_date,
     };
 
-    let rooms = list_rooms(&state.db, input)
-        .await
-        .map_err(map_app_error)?;
+    let rooms = list_rooms(&state.db, input).await.map_err(map_app_error)?;
 
     let response = RoomListResponse::from(rooms);
 
@@ -218,9 +208,7 @@ fn room_daily_state_input(
     })
 }
 
-fn parse_optional_service_date(
-    value: Option<String>,
-) -> Result<Option<NaiveDate>, ApiError> {
+fn parse_optional_service_date(value: Option<String>) -> Result<Option<NaiveDate>, ApiError> {
     value
         .map(|value| {
             NaiveDate::parse_from_str(&value, "%Y-%m-%d")

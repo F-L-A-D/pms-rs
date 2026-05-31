@@ -12,6 +12,7 @@ use pms_rs::projection::aggregate::access::{
 use crate::common::{
     app::spawn_app,
     client::{get, post, post_json, response_json},
+    housekeeping::inspect_room_for_date,
     reservation::create_reservation,
     room::create_room,
     stay::{assign_room, check_in},
@@ -129,6 +130,7 @@ async fn should_reject_marking_occupied_room_out_of_order() {
     let room = create_room(&app.app).await;
 
     assign_room(&app.app, reservation.id, room.id).await;
+    inspect_room_for_date(&app.app, room.id, reservation.check_in).await;
     check_in(&app.app, reservation.id).await;
 
     let response = post_json(

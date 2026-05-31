@@ -75,20 +75,20 @@ range_id="$(
     "standard"
 )"
 
-past_id="$(
+settled_id="$(
   create_guest_and_reservation \
-    "Past" \
+    "Settled" \
     "Completed" \
-    "past.completed@example.com" \
-    "console-seed-past-001" \
-    "2026-05-01" \
-    "2026-05-03" \
+    "settled.completed@example.com" \
+    "console-seed-settled-001" \
+    "2026-06-16" \
+    "2026-06-18" \
     "standard"
 )"
 
 export confirmed_id
 export range_id
-export past_id
+export settled_id
 
 echo "Assigning rooms..." >&2
 
@@ -137,11 +137,11 @@ create_note \
   "front" \
   "Console seed note: range-search target." >/dev/null
 
-echo "Adding trace to past reservation" >&2
+echo "Adding trace to settled reservation" >&2
 create_trace \
-  "${past_id}" \
+  "${settled_id}" \
   "front" \
-  "Console seed trace: past reservation validation." >/dev/null
+  "Console seed trace: settled reservation validation." >/dev/null
 
 echo "Preparing room move validation reservation" >&2
 

@@ -13,6 +13,7 @@ pub fn create_router(state: AppState) -> Router {
     Router::new()
         .merge(routes::health::routes())
         .merge(routes::audit::routes())
+        .merge(routes::business_date::routes())
         .merge(routes::reservation::routes())
         .merge(routes::stay::routes())
         .merge(routes::room::routes())

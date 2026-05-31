@@ -1,18 +1,14 @@
 use axum::http::StatusCode;
 
-use chrono::{Duration, Utc};
+use chrono::Duration;
 
 use pms_rs::{
     api::dto::response::reservation::ReservationResponse,
     domain::entity::folio::FolioStatus,
-    domain::{
-        semantic::{
-            reservation_transition::ReservationTransitionType,
-            operation_change_event::OperationType,
-            room_daily_state::{
-                RoomDailyHousekeepingStatus, RoomDailyOccupancyStatus, RoomDailyState,
-            },
-        },
+    domain::semantic::{
+        operation_change_event::OperationType,
+        reservation_transition::ReservationTransitionType,
+        room_daily_state::{RoomDailyHousekeepingStatus, RoomDailyOccupancyStatus, RoomDailyState},
     },
     repository::sqlite::{
         behavioral::reservation_transition_repository::SqliteReservationTransitionRepository,
@@ -27,8 +23,10 @@ use pms_rs::{
 use crate::common::{
     app::{spawn_app, TestApp},
     builders::{ReservationBuilder, ReservationParticipantBuilder},
+    business_date::{advance_business_date, current_open_business_date},
     client::{get, post, post_json, response_json},
     guest::create_guest,
+    housekeeping::inspect_room_for_date,
     reservation::create_reservation,
     room::create_room,
     stay::{assign_room, check_in, check_out},
@@ -43,6 +41,7 @@ async fn should_chek_in_reservation() {
     let room = create_room(&app.app).await;
 
     assign_room(&app.app, reservation.id, room.id).await;
+    inspect_room_for_date(&app.app, room.id, reservation.check_in).await;
 
     let response = check_in(&app.app, reservation.id).await;
 
@@ -142,8 +141,10 @@ async fn should_chek_out_reservation() {
     let room = create_room(&app.app).await;
 
     assign_room(&app.app, reservation.id, room.id).await;
+    inspect_room_for_date(&app.app, room.id, reservation.check_in).await;
 
     check_in(&app.app, reservation.id).await;
+    advance_business_date(&app.app).await;
 
     let response = check_out(&app.app, reservation.id).await;
 
@@ -199,13 +200,13 @@ async fn should_reject_check_in_when_room_is_out_of_order() {
 async fn should_move_checked_in_reservation_to_another_room() {
     let app = spawn_app().await;
 
-    let today = Utc::now().date_naive();
+    let business_date = current_open_business_date(&app.app).await;
     let guest = create_guest(&app.app).await;
     let participant = ReservationParticipantBuilder::new(guest.id).build();
     let request = ReservationBuilder::new()
         .with_participant(participant)
-        .with_check_in(today)
-        .with_check_out(today + Duration::days(2))
+        .with_check_in(business_date)
+        .with_check_out(business_date + Duration::days(2))
         .build();
 
     let create_response = post_json(&app.app, "/reservations", &request).await;
@@ -219,12 +220,13 @@ async fn should_move_checked_in_reservation_to_another_room() {
     let new_room = create_room(&app.app).await;
 
     assign_room(&app.app, reservation.id, old_room.id).await;
+    inspect_room_for_date(&app.app, old_room.id, business_date).await;
     check_in(&app.app, reservation.id).await;
 
     let move_response = post_json(
         &app.app,
         &format!("/reservations/{}/room-move/{}", reservation.id, new_room.id),
-        &serde_json::json!({ "effective_date": today }),
+        &serde_json::json!({ "effective_date": business_date }),
     )
     .await;
 
@@ -234,10 +236,10 @@ async fn should_move_checked_in_reservation_to_another_room() {
 
     assert_eq!(body["status"], "room_moved");
 
-    let old_room_state = find_room_daily_state(&app, old_room.id, today).await;
-    let new_room_state = find_room_daily_state(&app, new_room.id, today).await;
+    let old_room_state = find_room_daily_state(&app, old_room.id, business_date).await;
+    let new_room_state = find_room_daily_state(&app, new_room.id, business_date).await;
     let next_new_room_state =
-        find_room_daily_state(&app, new_room.id, today + Duration::days(1)).await;
+        find_room_daily_state(&app, new_room.id, business_date + Duration::days(1)).await;
 
     assert_eq!(
         old_room_state.occupancy_status,
@@ -264,7 +266,7 @@ async fn should_move_checked_in_reservation_to_another_room() {
         serde_json::from_value(response_json(get_response).await).unwrap();
 
     assert_eq!(updated.room_id, Some(new_room.id));
-    
+
     let audit_response = get(
         &app.app,
         &format!("/audit-logs/reservation/{}", reservation.id),
@@ -288,14 +290,13 @@ async fn should_move_checked_in_reservation_to_another_room() {
             .await
             .unwrap();
 
-    let operation_events =
-        SqliteOperationChangeEventRepository::list_by_aggregate(
-            &mut tx,
-            "reservation",
-            reservation.id,
-        )
-        .await
-        .unwrap();
+    let operation_events = SqliteOperationChangeEventRepository::list_by_aggregate(
+        &mut tx,
+        "reservation",
+        reservation.id,
+    )
+    .await
+    .unwrap();
 
     let _ = tx.rollback().await;
 
@@ -322,6 +323,7 @@ async fn should_reject_room_move_when_target_room_is_occupied() {
     let new_room = create_room(&app.app).await;
 
     assign_room(&app.app, reservation.id, old_room.id).await;
+    inspect_room_for_date(&app.app, old_room.id, reservation.check_in).await;
     check_in(&app.app, reservation.id).await;
 
     let mut new_room_state = RoomDailyState::new(new_room.id, reservation.check_in);

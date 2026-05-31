@@ -383,7 +383,7 @@ impl From<ReservationDetail> for ReservationResponse {
                 version,
                 updated_at: None,
             },
-            
+
             linked_resources: ReservationLinkedResources{
                 primary_guest_id: detail
                     .participant_details
@@ -405,7 +405,7 @@ impl From<ReservationDetail> for ReservationResponse {
                     status: folio.status,
                 })
                 .collect(),
-                
+
             room_assignment: ReservationRoomAssignmentResponse {
                 room_id,
                 room: detail

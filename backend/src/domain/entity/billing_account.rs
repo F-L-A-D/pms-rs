@@ -31,12 +31,8 @@ impl BillingAccountStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BillingAccount {
     pub id: Uuid,
-
     pub company_id: Option<Uuid>,
-
     pub name: String,
-
     pub status: BillingAccountStatus,
-
     pub created_at: DateTime<Utc>,
 }

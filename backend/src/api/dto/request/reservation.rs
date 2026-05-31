@@ -102,6 +102,12 @@ pub struct ModifyReservationRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct DeferArrivalRequest {
+    #[serde(default)]
+    pub post_room_charge: bool,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CreateReservationNoteRequest {
     pub kind: ReservationNoteKind,
     pub department_code: Option<String>,
